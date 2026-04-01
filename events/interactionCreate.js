@@ -1,4 +1,7 @@
-const ROLE_EMPLOYE_ID = '917744433682849802';
+const ROLES_AUTORISES = [
+  '917744433682849802', // Employé
+  '1375930527873368066', // Direction
+];
 
 module.exports = {
   name: 'interactionCreate',
@@ -8,10 +11,11 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // Vérification du rôle employé
-    if (!interaction.member.roles.cache.has(ROLE_EMPLOYE_ID)) {
+    // Vérification des rôles autorisés
+    const aAcces = ROLES_AUTORISES.some(id => interaction.member.roles.cache.has(id));
+    if (!aAcces) {
       return interaction.reply({
-        content: '❌ Tu dois avoir le rôle **Employé** pour utiliser cette commande.',
+        content: '❌ Tu dois avoir le rôle **Employé** ou **Direction** pour utiliser cette commande.',
         ephemeral: true,
       });
     }
