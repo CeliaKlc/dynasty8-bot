@@ -55,24 +55,18 @@ module.exports = {
       .setRequired(true)
     )
     .addStringOption(opt => opt
-      .setName('prenom')
-      .setDescription('Prénom du client')
-      .setRequired(true)
-    )
-    .addStringOption(opt => opt
-      .setName('nom')
-      .setDescription('Nom du client')
+      .setName('description')
+      .setDescription('Description du dossier (ex: Norah-Kartelle, Vente-Appartement...)')
       .setRequired(true)
     ),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const agentUser  = interaction.options.getUser('agent');
-    const statutKey  = interaction.options.getString('statut');
-    const numero     = interaction.options.getString('numero');
-    const prenom     = interaction.options.getString('prenom');
-    const nom        = interaction.options.getString('nom');
+    const agentUser   = interaction.options.getUser('agent');
+    const statutKey   = interaction.options.getString('statut');
+    const numero      = interaction.options.getString('numero');
+    const description = interaction.options.getString('description');
 
     // Récupérer l'emoji de l'agent
     const agentEmoji = AGENTS[agentUser.id];
@@ -84,13 +78,20 @@ module.exports = {
 
     const statut = STATUTS[statutKey];
 
-    // Format final : 🦊⌛𝟭𝟯𝟯𝟲_𝗡𝗼𝗿𝗮𝗵-𝗞𝗮𝗿𝘁𝗲𝗹𝗹𝗲
-    const newName = `${agentEmoji}${statut.emoji}${toMathSansBold(numero)}_${toMathSansBold(prenom)}-${toMathSansBold(nom)}`;
+    // Format final : 🦊⌛𝟭𝟯𝟯𝟲_𝗗𝗲𝘀𝗰𝗿𝗶𝗽𝘁𝗶𝗼𝗻
+    const newName = `${agentEmoji}${statut.emoji}${toMathSansBold(numero)}_${toMathSansBold(description)}`;
 
     try {
       await interaction.channel.setName(newName, `Renommé par ${interaction.user.tag}`);
     } catch (err) {
       console.error('[RENAME] Erreur :', err.message);
+
+      if (err.status === 429 || err.code === 20028 || err.message?.toLowerCase().includes('rate limit')) {
+        return interaction.editReply({
+          content: '⏳ **Limite Discord atteinte** — un salon ne peut être renommé que **2 fois par 10 minutes**. Réessaie dans quelques minutes.',
+        });
+      }
+
       return interaction.editReply({
         content: '❌ Impossible de renommer le salon. Vérifie que le bot a la permission **Gérer les salons**.',
       });
@@ -102,8 +103,8 @@ module.exports = {
       .addFields(
         { name: '👤 Agent',   value: `${agentEmoji} <@${agentUser.id}>`,      inline: true },
         { name: '📋 Statut',  value: `${statut.emoji} ${statut.label}`,        inline: true },
-        { name: '🔢 Numéro',  value: numero,                                    inline: true },
-        { name: '🙍 Client',  value: `${prenom} ${nom}`,                        inline: true },
+        { name: '🔢 Numéro',      value: numero,      inline: true },
+        { name: '📝 Description', value: description, inline: true },
         { name: '🏷️ Résultat', value: `\`${newName}\``,                        inline: false },
       )
       .setFooter({ text: 'Dynasty 8 • Gestion des dossiers' })
