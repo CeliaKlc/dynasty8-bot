@@ -102,25 +102,13 @@ async function execute(interaction) {
     client.dossiers.forEach((dossier, i) => {
       const emoji = STATUT_EMOJI[dossier.statut] || '❓';
       const date = new Date(dossier.date).toLocaleDateString('fr-FR');
-
-      // Historique des notes internes
-      let notesText = '';
-      if (dossier.notes && dossier.notes.length > 0) {
-        notesText = dossier.notes.map(n => {
-          const d = new Date(n.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-          return `• \`${d}\` **${n.auteur}** : ${n.contenu}`;
-        }).join('\n');
-      } else if (dossier.note) {
-        notesText = dossier.note;
-      }
-
       embed.addFields({
         name: `${emoji} Dossier #${i + 1} — ${dossier.type}`,
         value:
           `**Statut :** ${dossier.statut}\n` +
           `**Agente :** ${dossier.agente || 'Non assignée'}\n` +
           `**Date :** ${date}\n` +
-          (notesText ? `**Notes :** ${notesText}\n` : ''),
+          (dossier.note ? `**Note :** ${dossier.note}\n` : ''),
       });
     });
 
@@ -171,7 +159,7 @@ async function execute(interaction) {
       const c = clients[id];
       c.dossiers
         .filter(d => d.statut === 'Ouvert' || d.statut === 'En cours')
-        .forEach(d => actifs.push({ ...d, clientTag: c.tag, clientUsername: c.username }));
+        .forEach(d => actifs.push({ ...d, clientUsername: c.username }));
     }
 
     if (!actifs.length) {
