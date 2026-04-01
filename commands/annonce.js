@@ -151,15 +151,14 @@ module.exports = {
 
     // Construction du message texte
     const lignes = [
-      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
-      `🏛️  **DYNASTY 8 — Agence Immobilière**`,
-      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
+      `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
+      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
       `✨ **${transactionLabel} : ${type}** ✨`,
+      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
       ``,
       `📍 **Emplacement :** ${quartier}`,
       `💰 **Prix :** ${prix}`,
-      `🔢 **Réf. :** #${numero}`,
     ];
 
     if (caracteristiques.length > 0) {
