@@ -42,7 +42,11 @@ async function sendRdvReminder(client, rdv, isPreReminder = false) {
       .setTimestamp();
 
     const mentions = `<@${rdv.agentId}> <@${rdv.clientId}>`;
-    await channel.send({ content: mentions, embeds: [embed] });
+    await channel.send({
+      content: mentions,
+      embeds: [embed],
+      allowedMentions: { users: [rdv.agentId, rdv.clientId] },
+    });
 
     if (!isPreReminder) {
       const rdvData = loadRdv();
