@@ -26,23 +26,28 @@ module.exports = {
     if (interaction.isButton()) {
       const { customId } = interaction;
 
-      // Boutons d'ouverture de ticket
-      if (['ticket_achat', 'ticket_location', 'ticket_vente', 'ticket_rdv'].includes(customId)) {
-        await handleTicketButton(interaction, customId);
-        return;
-      }
+      const handleButton = async () => {
+        if (['ticket_achat', 'ticket_location', 'ticket_vente', 'ticket_rdv'].includes(customId)) {
+          await handleTicketButton(interaction, customId);
+        } else if (customId === 'ticket_close') {
+          await handleTicketClose(interaction);
+        } else if (customId === 'ticket_claim') {
+          await handleTicketClaim(interaction);
+        }
+      };
 
-      // Fermeture de ticket
-      if (customId === 'ticket_close') {
-        await handleTicketClose(interaction);
-        return;
+      try {
+        await handleButton();
+      } catch (error) {
+        console.error(`❌ Erreur bouton ${customId}:`, error);
+        const msg = { content: '❌ Une erreur est survenue lors du traitement. Contacte un administrateur.', ephemeral: true };
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(msg).catch(() => {});
+        } else {
+          await interaction.reply(msg).catch(() => {});
+        }
       }
-
-      // Prise en charge d'un ticket
-      if (customId === 'ticket_claim') {
-        await handleTicketClaim(interaction);
-        return;
-      }
+      return;
     }
   },
 };
