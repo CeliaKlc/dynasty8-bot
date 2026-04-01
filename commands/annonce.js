@@ -110,6 +110,10 @@ module.exports = {
     .addStringOption(opt => opt
       .setName('description')
       .setDescription('Description libre (équipements, détails supplémentaires...)')
+      .setRequired(false))
+    .addUserOption(opt => opt
+      .setName('client')
+      .setDescription('Mentionner le client concerné par l\'annonce')
       .setRequired(false)),
 
   async execute(interaction) {
@@ -133,6 +137,8 @@ module.exports = {
     const salleAManger = interaction.options.getBoolean('salle_a_manger');
     const dressing     = interaction.options.getBoolean('dressing');
 
+    const client = interaction.options.getUser('client');
+
     const isVente = transaction === 'vente';
     const transactionLabel = isVente ? 'À VENDRE' : 'À LOUER';
 
@@ -152,15 +158,16 @@ module.exports = {
     // Construction du message texte
     const lignes = [
       `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
-      `🏛️  **DYNASTY 8 — Agence Immobilière**`,
-      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
-      ``,
       `✨ **${transactionLabel} : ${type}** ✨`,
+      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
       ``,
       `📍 **Emplacement :** ${quartier}`,
       `💰 **Prix :** ${prix}`,
-      `🔢 **Réf. :** #${numero}`,
     ];
+
+    if (client) {
+      lignes.push(`👤 **Client :** ${client}`);
+    }
 
     if (caracteristiques.length > 0) {
       lignes.push(``, `🏠 **Caractéristiques :**`);
