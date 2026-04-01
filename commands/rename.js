@@ -85,6 +85,13 @@ module.exports = {
       await interaction.channel.setName(newName, `Renommé par ${interaction.user.tag}`);
     } catch (err) {
       console.error('[RENAME] Erreur :', err.message);
+
+      if (err.status === 429 || err.code === 20028 || err.message?.toLowerCase().includes('rate limit')) {
+        return interaction.editReply({
+          content: '⏳ **Limite Discord atteinte** — un salon ne peut être renommé que **2 fois par 10 minutes**. Réessaie dans quelques minutes.',
+        });
+      }
+
       return interaction.editReply({
         content: '❌ Impossible de renommer le salon. Vérifie que le bot a la permission **Gérer les salons**.',
       });
