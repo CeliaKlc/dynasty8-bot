@@ -102,13 +102,25 @@ async function execute(interaction) {
     client.dossiers.forEach((dossier, i) => {
       const emoji = STATUT_EMOJI[dossier.statut] || '❓';
       const date = new Date(dossier.date).toLocaleDateString('fr-FR');
+
+      // Historique des notes internes
+      let notesText = '';
+      if (dossier.notes && dossier.notes.length > 0) {
+        notesText = dossier.notes.map(n => {
+          const d = new Date(n.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+          return `• \`${d}\` **${n.auteur}** : ${n.contenu}`;
+        }).join('\n');
+      } else if (dossier.note) {
+        notesText = dossier.note;
+      }
+
       embed.addFields({
         name: `${emoji} Dossier #${i + 1} — ${dossier.type}`,
         value:
           `**Statut :** ${dossier.statut}\n` +
           `**Agente :** ${dossier.agente || 'Non assignée'}\n` +
           `**Date :** ${date}\n` +
-          (dossier.note ? `**Note :** ${dossier.note}\n` : ''),
+          (notesText ? `**Notes :** ${notesText}\n` : ''),
       });
     });
 
