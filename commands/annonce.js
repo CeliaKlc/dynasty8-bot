@@ -141,10 +141,35 @@ module.exports = {
     const isVente = transaction === 'vente';
     const transactionLabel = isVente ? 'À VENDRE' : 'À LOUER';
 
-    // ── Catégorie STOCKAGE ──
+    // Article selon le type de bien
+    const articleType = {
+      'Appartement Simple':  "L'Appartement Simple",
+      'Appartement de Luxe': "L'Appartement de Luxe",
+      'Maison':              'La Maison',
+      'Villa':               'La Villa',
+      'Local Commercial':    'Le Local Commercial',
+      'Terrain':             'Le Terrain',
+      'Garage':              'Le Garage',
+    }[type] ?? `Le bien`;
+
+    // Unités de stockage par taille de garage
+    const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400 };
+    const garageUnites = garage ? STOCKAGE_GARAGE[garage] : 0;
+
+    // ── Catégorie STOCKAGE (texte narratif) ──
     const lignesStockage = [];
-    if (stockage) lignesStockage.push(`> 📦 ${stockage} unités de stockage`);
-    if (garage)   lignesStockage.push(`> 🚗 Stockage garage : ${garage} places`);
+    if (stockage || garage) {
+      if (stockage) {
+        lignesStockage.push(`> ${articleType} dispose de **${stockage} unités** de stockage.`);
+      }
+      if (garage) {
+        lignesStockage.push(`> Le Garage ${garage} places dispose de **${garageUnites} unités** supplémentaires.`);
+      }
+      if (stockage && garage) {
+        const total = stockage + garageUnites;
+        lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
+      }
+    }
 
     // ── Catégorie CONFORT & ESPACE ──
     const lignesConfort = [];
