@@ -1,61 +1,96 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
-const STATUTS = {
-  attente:          { emoji: '⌛', label: 'En attente' },
-  vendu:            { emoji: '✅', label: 'Vendu' },
-  'ne-sais-pas':    { emoji: '❓', label: 'Ne sais pas' },
-  'fin-de-contrat': { emoji: '❌', label: 'Fin de contrat' },
+// ─── Agents et leurs emojis ───────────────────────────────────────────────────
+// Remplace les IDs par les vrais identifiants Discord de chaque agent
+// (clic droit sur un membre → Copier l'identifiant, avec le mode développeur activé)
+const AGENTS = {
+  'ID_SACHA_ROLLAY': '🦊',  // Sacha Rollay
+  'ID_ELY_ROLLAY':   '🦦',  // Ely Rollay
+  'ID_MARCO_ROMANOV':'🐻',  // Marco Romanov
 };
 
-// Convertit le texte en Mathematical Sans-Serif Bold (Unicode)
+// ─── Statuts et leurs emojis ──────────────────────────────────────────────────
+const STATUTS = {
+  'attente':          { emoji: '⌛', label: 'En attente' },
+  'vendu':            { emoji: '✅', label: 'Vendu' },
+  'ne-sais-pas':      { emoji: '❓', label: 'Ne sais pas' },
+  'fin-de-contrat':   { emoji: '❌', label: 'Fin de contrat' },
+};
+
+// ─── Conversion en Mathematical Sans-Serif Bold (Unicode) ────────────────────
 function toMathSansBold(str) {
   return str.split('').map(char => {
     const code = char.charCodeAt(0);
-    if (code >= 65 && code <= 90) return String.fromCodePoint(0x1D5D4 + (code - 65)); // A-Z
+    if (code >= 65 && code <= 90)  return String.fromCodePoint(0x1D5D4 + (code - 65)); // A-Z
     if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D5EE + (code - 97)); // a-z
     if (code >= 48 && code <= 57)  return String.fromCodePoint(0x1D7EC + (code - 48)); // 0-9
-    return char; // espaces, tirets, etc. conservés tels quels
+    return char; // tirets, underscores, etc. conservés
   }).join('');
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('rename')
-    .setDescription('✏️ Renommer le salon avec un statut et une police stylisée')
+    .setDescription('✏️ Renommer le ticket avec agent, statut, numéro et nom du client')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+    .addUserOption(opt => opt
+      .setName('agent')
+      .setDescription('L\'agent responsable du dossier')
+      .setRequired(true)
+    )
     .addStringOption(opt => opt
       .setName('statut')
       .setDescription('Statut du dossier')
       .setRequired(true)
       .addChoices(
-        { name: '⌛ En attente',      value: 'attente' },
-        { name: '✅ Vendu',           value: 'vendu' },
-        { name: '❓ Ne sais pas',     value: 'ne-sais-pas' },
-        { name: '❌ Fin de contrat',  value: 'fin-de-contrat' },
+        { name: '⌛ En attente',     value: 'attente' },
+        { name: '✅ Vendu',          value: 'vendu' },
+        { name: '❓ Ne sais pas',    value: 'ne-sais-pas' },
+        { name: '❌ Fin de contrat', value: 'fin-de-contrat' },
       )
     )
     .addStringOption(opt => opt
+      .setName('numero')
+      .setDescription('Numéro de l\'annonce (ex: 1336)')
+      .setRequired(true)
+    )
+    .addStringOption(opt => opt
+      .setName('prenom')
+      .setDescription('Prénom du client')
+      .setRequired(true)
+    )
+    .addStringOption(opt => opt
       .setName('nom')
-      .setDescription('Nouveau nom du salon (optionnel — conserve le nom actuel si vide)')
-      .setRequired(false)
+      .setDescription('Nom du client')
+      .setRequired(true)
     ),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const statutKey = interaction.options.getString('statut');
-    const nomOption = interaction.options.getString('nom');
-    const statut = STATUTS[statutKey];
-    const channel = interaction.channel;
+    const agentUser  = interaction.options.getUser('agent');
+    const statutKey  = interaction.options.getString('statut');
+    const numero     = interaction.options.getString('numero');
+    const prenom     = interaction.options.getString('prenom');
+    const nom        = interaction.options.getString('nom');
 
-    // Utilise le nom fourni ou le nom actuel du salon (sans ancien emoji en début)
-    const baseName = (nomOption || channel.name).replace(/^[\p{Emoji}\s・]+/u, '').trim();
-    const newName = `${statut.emoji}・${toMathSansBold(baseName)}`;
+    // Récupérer l'emoji de l'agent
+    const agentEmoji = AGENTS[agentUser.id];
+    if (!agentEmoji) {
+      return interaction.editReply({
+        content: `❌ **${agentUser.username}** n'est pas dans la liste des agents configurés.`,
+      });
+    }
+
+    const statut = STATUTS[statutKey];
+
+    // Format final : 🦊⌛𝟭𝟯𝟯𝟲_𝗡𝗼𝗿𝗮𝗵-𝗞𝗮𝗿𝘁𝗲𝗹𝗹𝗲
+    const newName = `${agentEmoji}${statut.emoji}${toMathSansBold(numero)}_${toMathSansBold(prenom)}-${toMathSansBold(nom)}`;
 
     try {
-      await channel.setName(newName, `Statut mis à jour : ${statut.label} par ${interaction.user.tag}`);
+      await interaction.channel.setName(newName, `Renommé par ${interaction.user.tag}`);
     } catch (err) {
-      console.error('[RENAME] Erreur lors du renommage :', err.message);
+      console.error('[RENAME] Erreur :', err.message);
       return interaction.editReply({
         content: '❌ Impossible de renommer le salon. Vérifie que le bot a la permission **Gérer les salons**.',
       });
@@ -63,11 +98,13 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setColor(0xC9A84C)
-      .setTitle('✏️ Salon renommé')
+      .setTitle('✏️ Ticket renommé')
       .addFields(
-        { name: 'Statut',    value: `${statut.emoji} ${statut.label}`, inline: true },
-        { name: 'Agent',     value: `<@${interaction.user.id}>`,       inline: true },
-        { name: 'Nouveau nom', value: `\`${newName}\``,                inline: false },
+        { name: '👤 Agent',   value: `${agentEmoji} <@${agentUser.id}>`,      inline: true },
+        { name: '📋 Statut',  value: `${statut.emoji} ${statut.label}`,        inline: true },
+        { name: '🔢 Numéro',  value: numero,                                    inline: true },
+        { name: '🙍 Client',  value: `${prenom} ${nom}`,                        inline: true },
+        { name: '🏷️ Résultat', value: `\`${newName}\``,                        inline: false },
       )
       .setFooter({ text: 'Dynasty 8 • Gestion des dossiers' })
       .setTimestamp();
