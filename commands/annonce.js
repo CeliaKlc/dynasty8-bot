@@ -135,7 +135,6 @@ module.exports = {
 
     const isVente = transaction === 'vente';
     const transactionLabel = isVente ? 'À VENDRE' : 'À LOUER';
-    const couleur = isVente ? 0xC9A84C : 0x2ECC71;
 
     // Construction des caractéristiques
     const caracteristiques = [];
@@ -150,27 +149,31 @@ module.exports = {
     if (terrasse)     caracteristiques.push('☀️ Terrasse');
     if (piscine)      caracteristiques.push('🏊 Piscine');
 
-    const embed = new EmbedBuilder()
-      .setColor(couleur)
-      .setTitle(`✨ ${transactionLabel} : ${type} ✨`)
-      .addFields(
-        { name: '📍 Emplacement', value: quartier, inline: false },
-        { name: '💰 Prix',        value: prix,      inline: true },
-        { name: '🔢 Réf.',        value: `#${numero}`, inline: true },
-      );
+    // Construction du message texte
+    const lignes = [
+      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
+      `🏛️  **DYNASTY 8 — Agence Immobilière**`,
+      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
+      ``,
+      `✨ **${transactionLabel} : ${type}** ✨`,
+      ``,
+      `📍 **Emplacement :** ${quartier}`,
+      `💰 **Prix :** ${prix}`,
+      `🔢 **Réf. :** #${numero}`,
+    ];
 
     if (caracteristiques.length > 0) {
-      embed.addFields({ name: '🏠 Caractéristiques', value: caracteristiques.join('\n'), inline: false });
+      lignes.push(``, `🏠 **Caractéristiques :**`);
+      lignes.push(...caracteristiques.map(c => `> ${c}`));
     }
 
     if (description) {
-      embed.addFields({ name: '📝 Détails', value: description, inline: false });
+      lignes.push(``, `📝 **Détails :**`, `> ${description}`);
     }
 
-    embed
-      .setImage(image.url)
-      .setFooter({ text: 'Dynasty 8 — Transformons vos projets immobiliers en réalité. 🏡' })
-      .setTimestamp();
+    lignes.push(``, `*Dynasty 8 — Transformons vos projets immobiliers en réalité. 🏡*`);
+
+    const contenu = lignes.join('\n');
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -183,7 +186,7 @@ module.exports = {
         .setStyle(ButtonStyle.Primary),
     );
 
-    await interaction.channel.send({ embeds: [embed], components: [row] });
+    await interaction.channel.send({ content: contenu, files: [image.url], components: [row] });
     await interaction.editReply({ content: '✅ Annonce publiée !' });
   },
 };
