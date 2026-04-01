@@ -20,9 +20,11 @@ function saveRdv(data) {
 
 async function sendRdvReminder(client, rdv, isPreReminder = false) {
   try {
-    const guild = await client.guilds.fetch(rdv.guildId);
-    const channel = await guild.channels.fetch(rdv.channelId);
-    if (!channel) return;
+    const channel = await client.channels.fetch(rdv.channelId).catch(() => null);
+    if (!channel || !channel.isTextBased()) {
+      console.error(`[RDV] Salon introuvable ou non-textuel pour le rappel ${rdv.id} (channelId: ${rdv.channelId})`);
+      return;
+    }
 
     const datetime = new Date(rdv.datetime);
     const heureFormatted = datetime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
