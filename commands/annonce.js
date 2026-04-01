@@ -39,13 +39,23 @@ module.exports = {
       .setDescription('Type de bien')
       .setRequired(true)
       .addChoices(
-        { name: 'Appartement Simple',  value: 'Appartement Simple' },
-        { name: 'Appartement de Luxe', value: 'Appartement de Luxe' },
-        { name: 'Maison',              value: 'Maison' },
-        { name: 'Villa',               value: 'Villa' },
-        { name: 'Local Commercial',    value: 'Local Commercial' },
-        { name: 'Terrain',             value: 'Terrain' },
-        { name: 'Garage',              value: 'Garage' },
+        { name: 'Appartement Simple',            value: 'Appartement Simple' },
+        { name: 'Appartement Basique',           value: 'Appartement Basique' },
+        { name: 'Maison Simple',                 value: 'Maison Simple' },
+        { name: 'Caravane',                      value: 'Caravane' },
+        { name: 'Appartement Favelas',           value: 'Appartement Favelas' },
+        { name: 'Maison Favelas',                value: 'Maison Favelas' },
+        { name: 'Studio de Luxe',                value: 'Studio de Luxe' },
+        { name: 'Appartement Moderne',           value: 'Appartement Moderne' },
+        { name: 'Duplex',                        value: 'Duplex' },
+        { name: 'Appartement de Luxe Modifiable', value: 'Appartement de Luxe Modifiable' },
+        { name: 'Villa',                         value: 'Villa' },
+        { name: 'Maison de Luxe',                value: 'Maison de Luxe' },
+        { name: 'Villa de Luxe',                 value: 'Villa de Luxe' },
+        { name: 'Bureau',                        value: 'Bureau' },
+        { name: 'Agence',                        value: 'Agence' },
+        { name: 'Hangar',                        value: 'Hangar' },
+        { name: 'Entrepôt',                      value: 'Entrepôt' },
       ))
     .addStringOption(opt => opt
       .setName('transaction')
@@ -78,10 +88,6 @@ module.exports = {
     .addIntegerOption(opt => opt
       .setName('salles_de_bain')
       .setDescription('Nombre de salles de bain')
-      .setRequired(false))
-    .addIntegerOption(opt => opt
-      .setName('stockage')
-      .setDescription('Capacité de stockage (unités)')
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('garage')
@@ -127,7 +133,6 @@ module.exports = {
     const prix         = interaction.options.getString('prix');
     const image        = interaction.options.getAttachment('image');
     const description  = interaction.options.getString('description');
-    const stockage     = interaction.options.getInteger('stockage');
     const chambres     = interaction.options.getInteger('chambres');
     const salons       = interaction.options.getInteger('salons');
     const sallesDeBain = interaction.options.getInteger('salles_de_bain');
@@ -141,16 +146,31 @@ module.exports = {
     const isVente = transaction === 'vente';
     const transactionLabel = isVente ? 'À VENDRE' : 'À LOUER';
 
-    // Article selon le type de bien
-    const articleType = {
-      'Appartement Simple':  "L'Appartement Simple",
-      'Appartement de Luxe': "L'Appartement de Luxe",
-      'Maison':              'La Maison',
-      'Villa':               'La Villa',
-      'Local Commercial':    'Le Local Commercial',
-      'Terrain':             'Le Terrain',
-      'Garage':              'Le Garage',
-    }[type] ?? `Le bien`;
+    // ── Mapping stockage & article par type de bien ──
+    const BIENS = {
+      'Appartement Simple':             { article: "L'Appartement Simple",             base: 400,  frigo: 0   },
+      'Appartement Basique':            { article: "L'Appartement Basique",            base: 250,  frigo: 0   },
+      'Maison Simple':                  { article: 'La Maison Simple',                 base: 500,  frigo: 0   },
+      'Caravane':                       { article: 'La Caravane',                      base: 200,  frigo: 0   },
+      'Appartement Favelas':            { article: "L'Appartement Favelas",            base: 300,  frigo: 0   },
+      'Maison Favelas':                 { article: 'La Maison Favelas',                base: 500,  frigo: 0   },
+      'Studio de Luxe':                 { article: 'Le Studio de Luxe',                base: 500,  frigo: 100 },
+      'Appartement Moderne':            { article: "L'Appartement Moderne",            base: 500,  frigo: 0   },
+      'Duplex':                         { article: 'Le Duplex',                        base: 600,  frigo: 100 },
+      'Appartement de Luxe Modifiable': { article: "L'Appartement de Luxe Modifiable", base: 750,  frigo: 0   },
+      'Villa':                          { article: 'La Villa',                         base: 800,  frigo: 100 },
+      'Maison de Luxe':                 { article: 'La Maison de Luxe',                base: 2000, frigo: 0   },
+      'Villa de Luxe':                  { article: 'La Villa de Luxe',                 base: 2000, frigo: 0   },
+      'Bureau':                         { article: 'Le Bureau',                        base: 750,  frigo: 0   },
+      'Agence':                         { article: "L'Agence",                         base: 800,  frigo: 0   },
+      'Hangar':                         { article: 'Le Hangar',                        base: 500,  frigo: 0   },
+      'Entrepôt':                       { article: "L'Entrepôt",                       base: 600,  frigo: 0   },
+    };
+
+    const bien        = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0 };
+    const articleType = bien.article;
+    const stockage    = bien.base;
+    const frigo       = bien.frigo;
 
     // Unités de stockage par taille de garage
     const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400 };
@@ -158,17 +178,15 @@ module.exports = {
 
     // ── Catégorie STOCKAGE (texte narratif) ──
     const lignesStockage = [];
-    if (stockage || garage) {
-      if (stockage) {
-        lignesStockage.push(`> ${articleType} dispose de **${stockage} unités** de stockage.`);
-      }
-      if (garage) {
-        lignesStockage.push(`> Le Garage ${garage} places dispose de **${garageUnites} unités** supplémentaires.`);
-      }
-      if (stockage && garage) {
-        const total = stockage + garageUnites;
-        lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
-      }
+    if (frigo > 0) {
+      lignesStockage.push(`> ${articleType} dispose de **${stockage} unités** de stockage + **${frigo} unités** dans le frigo, soit **${stockage + frigo} unités** au total.`);
+    } else {
+      lignesStockage.push(`> ${articleType} dispose de **${stockage} unités** de stockage.`);
+    }
+    if (garage) {
+      lignesStockage.push(`> Le Garage ${garage} places dispose de **${garageUnites} unités** supplémentaires.`);
+      const total = stockage + frigo + garageUnites;
+      lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
     }
 
     // ── Catégorie CONFORT & ESPACE ──
