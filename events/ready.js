@@ -1,3 +1,5 @@
+const { initScheduler } = require('../utils/rdvScheduler');
+
 module.exports = {
   name: 'ready',
   once: true,
@@ -9,5 +11,6 @@ module.exports = {
 ╚═══════════════════════════════════════╝
     `);
     client.user.setActivity('Dynasty 8 | Baylife RP', { type: 3 });
+    initScheduler(client);
   },
 };
