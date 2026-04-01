@@ -1,22 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const { getDB } = require('../utils/db');
 const { scheduleRdv, cancelRdv } = require('../utils/rdvScheduler');
-
-const rdvPath = path.join(__dirname, '..', 'data', 'rdv.json');
-
-function loadRdv() {
-  if (!fs.existsSync(rdvPath)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(rdvPath, 'utf8'));
-  } catch {
-    return {};
-  }
-}
-
-function saveRdv(data) {
-  fs.writeFileSync(rdvPath, JSON.stringify(data, null, 2));
-}
 
 function parseDateTime(dateStr, heureStr) {
   const now = new Date();
@@ -100,6 +84,7 @@ module.exports = {
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
+    const col = getDB().collection('rendez_vous');
 
     // ─── CRÉER ───────────────────────────────────────────────────────────────
     if (sub === 'créer') {
@@ -138,10 +123,7 @@ module.exports = {
         createdAt: new Date().toISOString(),
       };
 
-      const rdvData = loadRdv();
-      rdvData[id] = rdvEntry;
-      saveRdv(rdvData);
-
+      await col.insertOne(rdvEntry);
       scheduleRdv(interaction.client, rdvEntry);
 
       const dateFormatted = datetime.toLocaleDateString('fr-FR', {
@@ -179,13 +161,11 @@ module.exports = {
 
     // ─── LISTE ───────────────────────────────────────────────────────────────
     if (sub === 'liste') {
-      const rdvData = loadRdv();
       const now = new Date();
-
-      const upcoming = Object.values(rdvData)
-        .filter(r => r.statut === 'prévu' && new Date(r.datetime) > now)
-        .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
-        .slice(0, 10);
+      const upcoming = await col.find({
+        statut: 'prévu',
+        datetime: { $gt: now.toISOString() },
+      }).sort({ datetime: 1 }).limit(10).toArray();
 
       if (upcoming.length === 0) {
         return interaction.reply({ content: '📅 Aucun rendez-vous à venir.', ephemeral: true });
@@ -213,13 +193,11 @@ module.exports = {
     // ─── ANNULER ─────────────────────────────────────────────────────────────
     if (sub === 'annuler') {
       const id = interaction.options.getString('id');
-      const rdvData = loadRdv();
+      const rdv = await col.findOne({ id });
 
-      if (!rdvData[id]) {
+      if (!rdv) {
         return interaction.reply({ content: '❌ Rendez-vous introuvable. Vérifie l\'ID.', ephemeral: true });
       }
-
-      const rdv = rdvData[id];
 
       if (rdv.agentId !== interaction.user.id && !interaction.member.permissions.has('ManageChannels')) {
         return interaction.reply({ content: '❌ Seul l\'agent qui a créé ce RDV peut l\'annuler.', ephemeral: true });
@@ -229,8 +207,7 @@ module.exports = {
         return interaction.reply({ content: `❌ Ce rendez-vous est déjà marqué comme **${rdv.statut}**.`, ephemeral: true });
       }
 
-      rdvData[id].statut = 'annulé';
-      saveRdv(rdvData);
+      await col.updateOne({ id }, { $set: { statut: 'annulé' } });
       cancelRdv(id);
 
       const embed = new EmbedBuilder()
