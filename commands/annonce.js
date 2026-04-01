@@ -83,10 +83,15 @@ module.exports = {
       .setName('stockage')
       .setDescription('Capacité de stockage (unités)')
       .setRequired(false))
-    .addBooleanOption(opt => opt
+    .addStringOption(opt => opt
       .setName('garage')
-      .setDescription('Garage inclus ?')
-      .setRequired(false))
+      .setDescription('Garage inclus ? Si oui, combien de places ?')
+      .setRequired(false)
+      .addChoices(
+        { name: '🚗 2 places',  value: '2' },
+        { name: '🚗 6 places',  value: '6' },
+        { name: '🚗 10 places', value: '10' },
+      ))
     .addBooleanOption(opt => opt
       .setName('jardin')
       .setDescription('Jardin inclus ?')
@@ -126,7 +131,7 @@ module.exports = {
     const chambres     = interaction.options.getInteger('chambres');
     const salons       = interaction.options.getInteger('salons');
     const sallesDeBain = interaction.options.getInteger('salles_de_bain');
-    const garage       = interaction.options.getBoolean('garage');
+    const garage       = interaction.options.getString('garage');
     const jardin       = interaction.options.getBoolean('jardin');
     const piscine      = interaction.options.getBoolean('piscine');
     const terrasse     = interaction.options.getBoolean('terrasse');
@@ -136,38 +141,56 @@ module.exports = {
     const isVente = transaction === 'vente';
     const transactionLabel = isVente ? 'À VENDRE' : 'À LOUER';
 
-    // Construction des caractéristiques
-    const caracteristiques = [];
-    if (chambres)     caracteristiques.push(`🛏️ ${chambres} Chambre${chambres > 1 ? 's' : ''}`);
-    if (salons)       caracteristiques.push(`🛋️ ${salons} Salon${salons > 1 ? 's' : ''}`);
-    if (sallesDeBain) caracteristiques.push(`🚿 ${sallesDeBain} Salle${sallesDeBain > 1 ? 's' : ''} de bain`);
-    if (stockage)     caracteristiques.push(`📦 ${stockage} unités de stockage`);
-    if (dressing)     caracteristiques.push('🪞 Dressing');
-    if (salleAManger) caracteristiques.push('🍽️ Salle à manger');
-    if (garage)       caracteristiques.push('🚗 Garage');
-    if (jardin)       caracteristiques.push('🌿 Jardin');
-    if (terrasse)     caracteristiques.push('☀️ Terrasse');
-    if (piscine)      caracteristiques.push('🏊 Piscine');
+    // ── Catégorie STOCKAGE ──
+    const lignesStockage = [];
+    if (stockage) lignesStockage.push(`> 📦 ${stockage} unités de stockage`);
+    if (garage)   lignesStockage.push(`> 🚗 Stockage garage : ${garage} places`);
 
-    // Construction du message texte
+    // ── Catégorie CONFORT & ESPACE ──
+    const lignesConfort = [];
+    if (chambres)     lignesConfort.push(`> 🛏️ ${chambres} Chambre${chambres > 1 ? 's' : ''}`);
+    if (salons)       lignesConfort.push(`> 🛋️ ${salons} Salon${salons > 1 ? 's' : ''}`);
+    if (sallesDeBain) lignesConfort.push(`> 🚿 ${sallesDeBain} Salle${sallesDeBain > 1 ? 's' : ''} de bain`);
+    if (salleAManger) lignesConfort.push(`> 🍽️ Salle à manger`);
+    if (dressing)     lignesConfort.push(`> 🪞 Dressing`);
+
+    // ── Catégorie LES + ──
+    const lignesPlus = [];
+    if (garage)   lignesPlus.push(`> 🚗 Garage ${garage} places`);
+    if (jardin)   lignesPlus.push(`> 🌿 Jardin`);
+    if (terrasse) lignesPlus.push(`> ☀️ Terrasse`);
+    if (piscine)  lignesPlus.push(`> 🏊 Piscine`);
+
+    // ── Construction du message ──
     const lignes = [
-      `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
-      ``,
       `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
       `✨ **${transactionLabel} : ${type}** ✨`,
       `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
       ``,
-      `📍 **Emplacement :** ${quartier}`,
-      `💰 **Prix :** ${prix}`,
+      `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
+      ``,
+      `**📍 EMPLACEMENT**`,
+      `> 📍 ${quartier}`,
+      `> 💰 ${prix}`,
     ];
 
-    if (caracteristiques.length > 0) {
-      lignes.push(``, `🏠 **Caractéristiques :**`);
-      lignes.push(...caracteristiques.map(c => `> ${c}`));
+    if (lignesStockage.length > 0) {
+      lignes.push(``, `**📦 STOCKAGE**`);
+      lignes.push(...lignesStockage);
+    }
+
+    if (lignesConfort.length > 0) {
+      lignes.push(``, `**🛋️ CONFORT & ESPACE**`);
+      lignes.push(...lignesConfort);
+    }
+
+    if (lignesPlus.length > 0) {
+      lignes.push(``, `**✨ LES +**`);
+      lignes.push(...lignesPlus);
     }
 
     if (description) {
-      lignes.push(``, `📝 **Détails :**`, `> ${description}`);
+      lignes.push(``, `**📝 DÉTAILS**`, `> ${description}`);
     }
 
     lignes.push(``, `*Dynasty 8 — Transformons vos projets immobiliers en réalité. 🏡*`);
