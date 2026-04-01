@@ -4,9 +4,9 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('disc
 // Remplace les IDs par les vrais identifiants Discord de chaque agent
 // (clic droit sur un membre → Copier l'identifiant, avec le mode développeur activé)
 const AGENTS = {
-  'ID_SACHA_ROLLAY': '🦊',  // Sacha Rollay
-  'ID_ELY_ROLLAY':   '🦦',  // Ely Rollay
-  'ID_MARCO_ROMANOV':'🐻',  // Marco Romanov
+  '314057285523472394': '🦊',  // Sacha Rollay
+  '261956403546161152':   '🦦',  // Ely Rollay
+  '1151865005239697449':'🐻',  // Marco Romanov
 };
 
 // ─── Statuts et leurs emojis ──────────────────────────────────────────────────
