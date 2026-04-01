@@ -6,6 +6,7 @@ const {
   ButtonStyle,
   PermissionFlagsBits,
   ChannelType,
+  OverwriteType,
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -118,14 +119,17 @@ async function handleTicketButton(interaction, customId) {
     permissionOverwrites: [
       {
         id: guild.id,
+        type: OverwriteType.Role,
         deny: [PermissionFlagsBits.ViewChannel],
       },
       {
         id: member.id,
+        type: OverwriteType.Member,
         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
       },
       {
         id: process.env.ROLE_AGENTE_ID,
+        type: OverwriteType.Role,
         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages],
       },
     ],
