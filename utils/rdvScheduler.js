@@ -1,22 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const { getDB } = require('./db');
 
-const rdvPath = path.join(__dirname, '..', 'data', 'rdv.json');
 const timeouts = new Map(); // id -> [timeoutId, ...]
-
-function loadRdv() {
-  if (!fs.existsSync(rdvPath)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(rdvPath, 'utf8'));
-  } catch {
-    return {};
-  }
-}
-
-function saveRdv(data) {
-  fs.writeFileSync(rdvPath, JSON.stringify(data, null, 2));
-}
 
 async function sendRdvReminder(client, rdv, isPreReminder = false) {
   try {
@@ -50,15 +35,16 @@ async function sendRdvReminder(client, rdv, isPreReminder = false) {
       allowedMentions: { users: [rdv.agentId, rdv.clientId] },
     });
 
+    console.log(`[RDV] ✅ Rappel envoyé pour ${rdv.id} (${isPreReminder ? 'pré-rappel' : 'à l\'heure'})`);
+
     if (!isPreReminder) {
-      const rdvData = loadRdv();
-      if (rdvData[rdv.id]) {
-        rdvData[rdv.id].statut = 'passé';
-        saveRdv(rdvData);
-      }
+      await getDB().collection('rendez_vous').updateOne(
+        { id: rdv.id },
+        { $set: { statut: 'passé' } }
+      );
     }
   } catch (err) {
-    console.error(`[RDV] Erreur lors du rappel ${rdv.id}:`, err.message);
+    console.error(`[RDV] ❌ Erreur rappel ${rdv.id}:`, err.message);
   }
 }
 
@@ -71,12 +57,14 @@ function scheduleRdv(client, rdv) {
     const preDelay = rdvTime - rdv.rappelMinutes * 60 * 1000 - now;
     if (preDelay > 0) {
       ids.push(setTimeout(() => sendRdvReminder(client, rdv, true), preDelay));
+      console.log(`[RDV] ⏱ Pré-rappel planifié dans ${Math.round(preDelay / 1000)}s pour ${rdv.id}`);
     }
   }
 
   const delay = rdvTime - now;
   if (delay > 0) {
     ids.push(setTimeout(() => sendRdvReminder(client, rdv, false), delay));
+    console.log(`[RDV] ⏱ Rappel principal planifié dans ${Math.round(delay / 1000)}s pour ${rdv.id}`);
   }
 
   if (ids.length > 0) timeouts.set(rdv.id, ids);
@@ -90,19 +78,23 @@ function cancelRdv(id) {
   }
 }
 
-function initScheduler(client) {
-  const rdvData = loadRdv();
+async function initScheduler(client) {
   const now = new Date();
-  let count = 0;
 
-  for (const rdv of Object.values(rdvData)) {
-    if (rdv.statut === 'prévu' && new Date(rdv.datetime) > now) {
-      scheduleRdv(client, rdv);
-      count++;
-    }
+  const pending = await getDB().collection('rendez_vous').find({
+    statut: 'prévu',
+    datetime: { $gt: now.toISOString() },
+  }).toArray();
+
+  for (const rdv of pending) {
+    scheduleRdv(client, rdv);
   }
 
-  if (count > 0) console.log(`[RDV] ${count} rendez-vous planifié(s) chargé(s).`);
+  if (pending.length > 0) {
+    console.log(`[RDV] 📅 ${pending.length} rendez-vous planifié(s) rechargé(s) depuis MongoDB.`);
+  } else {
+    console.log('[RDV] Aucun rendez-vous en attente.');
+  }
 }
 
 module.exports = { scheduleRdv, cancelRdv, initScheduler };
