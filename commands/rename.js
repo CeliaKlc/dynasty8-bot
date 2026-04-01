@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 // ─── Agents et leurs emojis ───────────────────────────────────────────────────
 // Remplace les IDs par les vrais identifiants Discord de chaque agent
@@ -32,7 +32,6 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('rename')
     .setDescription('✏️ Renommer le ticket avec agent, statut, numéro et nom du client')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addUserOption(opt => opt
       .setName('agent')
       .setDescription('L\'agent responsable du dossier')
