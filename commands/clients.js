@@ -1,7 +1,6 @@
 const {
   SlashCommandBuilder,
   EmbedBuilder,
-  PermissionFlagsBits,
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -27,8 +26,6 @@ const STATUT_EMOJI = {
 const data = new SlashCommandBuilder()
   .setName('client')
   .setDescription('👤 Gestion des dossiers clients Dynasty 8')
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
-
   // Sous-commande : voir dossier d'un client
   .addSubcommand(sub =>
     sub.setName('dossier')
