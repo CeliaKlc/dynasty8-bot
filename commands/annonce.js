@@ -26,6 +26,207 @@ function toMathSansBold(str) {
   }).join('');
 }
 
+// ── Données par type de bien ───────────────────────────────────────────────────
+const BIENS = {
+  'Appartement Simple': {
+    article: "L'Appartement Simple",
+    base: 400, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '📺 2 Télévisions',
+    ],
+  },
+  'Appartement Basique': {
+    article: "L'Appartement Basique",
+    base: 250, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '📺 1 Télévision (fonctionnelle que sur le son)',
+    ],
+  },
+  'Maison Simple': {
+    article: 'La Maison Simple',
+    base: 500, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '📺 2 Télévisions',
+      '☕ 1 Cafetière',
+    ],
+  },
+  'Caravane': {
+    article: 'La Caravane',
+    base: 200, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '📺 1 Télévision',
+    ],
+  },
+  'Appartement Favelas': {
+    article: "L'Appartement Favelas",
+    base: 300, frigo: 0,
+    caracteristiques: [
+      '🛏️ 2 Chambres',
+      '🪞 1 Dressing',
+      '🛋️ 1 Salon',
+      '🍳 1 Cuisine',
+      '🚿 1 Salle de bain',
+      '📺 1 Télévision',
+    ],
+  },
+  'Maison Favelas': {
+    article: 'La Maison Favelas',
+    base: 500, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🛋️ 1 Salon',
+      '🍳 1 Cuisine',
+      '🚿 1 Salle de bain',
+      '📺 2 Télévisions',
+    ],
+  },
+  'Studio de Luxe': {
+    article: 'Le Studio de Luxe',
+    base: 500, frigo: 100,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🚿 1 Salle de bain',
+      '📺 1 Télévision',
+      '✨ Intérieur vivant (store qui ferme, etc.)',
+    ],
+  },
+  'Appartement Moderne': {
+    article: "L'Appartement Moderne",
+    base: 500, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🖥️ 1 Bureau',
+      '📺 1 Télévision',
+    ],
+  },
+  'Duplex': {
+    article: 'Le Duplex',
+    base: 600, frigo: 100,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🖥️ 1 Bureau',
+      '🏠 2 Étages',
+      '📺 1 Télévision',
+    ],
+  },
+  'Appartement de Luxe Modifiable': {
+    article: "L'Appartement de Luxe Modifiable",
+    base: 750, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🖥️ 1 Bureau',
+      '☕ 1 Cafetière',
+      '📺 1 Télévision',
+      '🔧 Intérieur modifiable',
+    ],
+  },
+  'Villa': {
+    article: 'La Villa',
+    base: 800, frigo: 100,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🖥️ 1 Bureau',
+      '🏠 3 Étages',
+      '📺 1 Télévision',
+    ],
+  },
+  'Maison de Luxe': {
+    article: 'La Maison de Luxe',
+    base: 2000, frigo: 0,
+    caracteristiques: [
+      '🛏️ 2 Chambres avec dressing',
+      '🚿 2 Salles de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🖥️ 1 Bureau',
+      '🃏 Salle de poker',
+      '🍷 Salle à vin',
+      '📺 Télévisions',
+    ],
+  },
+  'Villa de Luxe': {
+    article: 'La Villa de Luxe',
+    base: 2000, frigo: 0,
+    caracteristiques: [
+      '🛏️ 4 Chambres avec dressing',
+      '🚿 4 Salles de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🖥️ 1 Bureau avec salle de réunion',
+      '💪 1 Salle de sport',
+      '🎙️ Studio d\'enregistrement',
+      '🏊 Piscine intérieure avec jacuzzi',
+      '🏠 2 Étages',
+      '📺 Télévisions',
+    ],
+  },
+  'Bureau': {
+    article: 'Le Bureau',
+    base: 750, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🖥️ 1 Bureau',
+      '🤝 1 Salle de réunion',
+      '📺 1 Télévision',
+      '🔧 Intérieur modifiable',
+    ],
+  },
+  'Agence': {
+    article: "L'Agence",
+    base: 800, frigo: 0,
+    caracteristiques: [
+      '🛏️ 1 Chambre avec dressing',
+      '🚿 1 Salle de bain',
+      '🛋️ 1 Salon avec cuisine ouverte',
+      '🖥️ 3 Bureaux',
+      '🤝 1 Salle de réunion',
+      '🚁 1 Héliport',
+      '🛎️ 1 Accueil',
+      '📺 1 Télévision',
+      '🔧 Intérieur modifiable',
+    ],
+  },
+  'Hangar': {
+    article: 'Le Hangar',
+    base: 500, frigo: 0,
+    caracteristiques: [
+      '🧺 Machine à laver',
+    ],
+  },
+  'Entrepôt': {
+    article: "L'Entrepôt",
+    base: 600, frigo: 0,
+    caracteristiques: [
+      '🖥️ 1 Bureau',
+      '🪞 1 Dressing',
+      '🔧 Intérieur modifiable',
+      '📦 Des racks',
+    ],
+  },
+};
+
+// Unités de stockage par taille de garage
+const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400 };
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('annonce')
@@ -39,23 +240,23 @@ module.exports = {
       .setDescription('Type de bien')
       .setRequired(true)
       .addChoices(
-        { name: 'Appartement Simple',            value: 'Appartement Simple' },
-        { name: 'Appartement Basique',           value: 'Appartement Basique' },
-        { name: 'Maison Simple',                 value: 'Maison Simple' },
-        { name: 'Caravane',                      value: 'Caravane' },
-        { name: 'Appartement Favelas',           value: 'Appartement Favelas' },
-        { name: 'Maison Favelas',                value: 'Maison Favelas' },
-        { name: 'Studio de Luxe',                value: 'Studio de Luxe' },
-        { name: 'Appartement Moderne',           value: 'Appartement Moderne' },
-        { name: 'Duplex',                        value: 'Duplex' },
+        { name: 'Appartement Simple',             value: 'Appartement Simple' },
+        { name: 'Appartement Basique',            value: 'Appartement Basique' },
+        { name: 'Maison Simple',                  value: 'Maison Simple' },
+        { name: 'Caravane',                       value: 'Caravane' },
+        { name: 'Appartement Favelas',            value: 'Appartement Favelas' },
+        { name: 'Maison Favelas',                 value: 'Maison Favelas' },
+        { name: 'Studio de Luxe',                 value: 'Studio de Luxe' },
+        { name: 'Appartement Moderne',            value: 'Appartement Moderne' },
+        { name: 'Duplex',                         value: 'Duplex' },
         { name: 'Appartement de Luxe Modifiable', value: 'Appartement de Luxe Modifiable' },
-        { name: 'Villa',                         value: 'Villa' },
-        { name: 'Maison de Luxe',                value: 'Maison de Luxe' },
-        { name: 'Villa de Luxe',                 value: 'Villa de Luxe' },
-        { name: 'Bureau',                        value: 'Bureau' },
-        { name: 'Agence',                        value: 'Agence' },
-        { name: 'Hangar',                        value: 'Hangar' },
-        { name: 'Entrepôt',                      value: 'Entrepôt' },
+        { name: 'Villa',                          value: 'Villa' },
+        { name: 'Maison de Luxe',                 value: 'Maison de Luxe' },
+        { name: 'Villa de Luxe',                  value: 'Villa de Luxe' },
+        { name: 'Bureau',                         value: 'Bureau' },
+        { name: 'Agence',                         value: 'Agence' },
+        { name: 'Hangar',                         value: 'Hangar' },
+        { name: 'Entrepôt',                       value: 'Entrepôt' },
       ))
     .addStringOption(opt => opt
       .setName('transaction')
@@ -69,26 +270,10 @@ module.exports = {
       .setName('quartier')
       .setDescription('Quartier / emplacement du bien')
       .setRequired(true))
-    .addStringOption(opt => opt
-      .setName('prix')
-      .setDescription('Prix du bien (ex: 160\'000$)')
-      .setRequired(true))
     .addAttachmentOption(opt => opt
       .setName('image')
       .setDescription('Photo du bien (obligatoire)')
       .setRequired(true))
-    .addIntegerOption(opt => opt
-      .setName('chambres')
-      .setDescription('Nombre de chambres')
-      .setRequired(false))
-    .addIntegerOption(opt => opt
-      .setName('salons')
-      .setDescription('Nombre de salons')
-      .setRequired(false))
-    .addIntegerOption(opt => opt
-      .setName('salles_de_bain')
-      .setDescription('Nombre de salles de bain')
-      .setRequired(false))
     .addStringOption(opt => opt
       .setName('garage')
       .setDescription('Garage inclus ? Si oui, combien de places ?')
@@ -110,94 +295,48 @@ module.exports = {
       .setName('terrasse')
       .setDescription('Terrasse incluse ?')
       .setRequired(false))
-    .addBooleanOption(opt => opt
-      .setName('salle_a_manger')
-      .setDescription('Salle à manger incluse ?')
-      .setRequired(false))
-    .addBooleanOption(opt => opt
-      .setName('dressing')
-      .setDescription('Dressing inclus ?')
-      .setRequired(false))
     .addStringOption(opt => opt
       .setName('description')
-      .setDescription('Description libre (équipements, détails supplémentaires...)')
+      .setDescription('Description libre (détails supplémentaires...)')
       .setRequired(false)),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const numero       = interaction.options.getString('numero');
-    const type         = interaction.options.getString('type');
-    const transaction  = interaction.options.getString('transaction');
-    const quartier     = interaction.options.getString('quartier');
-    const prix         = interaction.options.getString('prix');
-    const image        = interaction.options.getAttachment('image');
-    const description  = interaction.options.getString('description');
-    const chambres     = interaction.options.getInteger('chambres');
-    const salons       = interaction.options.getInteger('salons');
-    const sallesDeBain = interaction.options.getInteger('salles_de_bain');
-    const garage       = interaction.options.getString('garage');
-    const jardin       = interaction.options.getBoolean('jardin');
-    const piscine      = interaction.options.getBoolean('piscine');
-    const terrasse     = interaction.options.getBoolean('terrasse');
-    const salleAManger = interaction.options.getBoolean('salle_a_manger');
-    const dressing     = interaction.options.getBoolean('dressing');
+    const numero      = interaction.options.getString('numero');
+    const type        = interaction.options.getString('type');
+    const transaction = interaction.options.getString('transaction');
+    const quartier    = interaction.options.getString('quartier');
+    const image       = interaction.options.getAttachment('image');
+    const garage      = interaction.options.getString('garage');
+    const jardin      = interaction.options.getBoolean('jardin');
+    const piscine     = interaction.options.getBoolean('piscine');
+    const terrasse    = interaction.options.getBoolean('terrasse');
+    const description = interaction.options.getString('description');
 
-    const isVente = transaction === 'vente';
+    const isVente          = transaction === 'vente';
     const transactionLabel = isVente ? 'À VENDRE' : 'À LOUER';
 
-    // ── Mapping stockage & article par type de bien ──
-    const BIENS = {
-      'Appartement Simple':             { article: "L'Appartement Simple",             base: 400,  frigo: 0   },
-      'Appartement Basique':            { article: "L'Appartement Basique",            base: 250,  frigo: 0   },
-      'Maison Simple':                  { article: 'La Maison Simple',                 base: 500,  frigo: 0   },
-      'Caravane':                       { article: 'La Caravane',                      base: 200,  frigo: 0   },
-      'Appartement Favelas':            { article: "L'Appartement Favelas",            base: 300,  frigo: 0   },
-      'Maison Favelas':                 { article: 'La Maison Favelas',                base: 500,  frigo: 0   },
-      'Studio de Luxe':                 { article: 'Le Studio de Luxe',                base: 500,  frigo: 100 },
-      'Appartement Moderne':            { article: "L'Appartement Moderne",            base: 500,  frigo: 0   },
-      'Duplex':                         { article: 'Le Duplex',                        base: 600,  frigo: 100 },
-      'Appartement de Luxe Modifiable': { article: "L'Appartement de Luxe Modifiable", base: 750,  frigo: 0   },
-      'Villa':                          { article: 'La Villa',                         base: 800,  frigo: 100 },
-      'Maison de Luxe':                 { article: 'La Maison de Luxe',                base: 2000, frigo: 0   },
-      'Villa de Luxe':                  { article: 'La Villa de Luxe',                 base: 2000, frigo: 0   },
-      'Bureau':                         { article: 'Le Bureau',                        base: 750,  frigo: 0   },
-      'Agence':                         { article: "L'Agence",                         base: 800,  frigo: 0   },
-      'Hangar':                         { article: 'Le Hangar',                        base: 500,  frigo: 0   },
-      'Entrepôt':                       { article: "L'Entrepôt",                       base: 600,  frigo: 0   },
-    };
-
-    const bien        = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0 };
-    const articleType = bien.article;
-    const stockage    = bien.base;
-    const frigo       = bien.frigo;
-
-    // Unités de stockage par taille de garage
-    const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400 };
+    const bien         = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
     const garageUnites = garage ? STOCKAGE_GARAGE[garage] : 0;
 
-    // ── Catégorie STOCKAGE (texte narratif) ──
+    // ── STOCKAGE (narratif) ──
     const lignesStockage = [];
-    if (frigo > 0) {
-      lignesStockage.push(`> ${articleType} dispose de **${stockage} unités** de stockage + **${frigo} unités** dans le frigo, soit **${stockage + frigo} unités** au total.`);
+    if (bien.frigo > 0) {
+      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** au total.`);
     } else {
-      lignesStockage.push(`> ${articleType} dispose de **${stockage} unités** de stockage.`);
+      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage.`);
     }
     if (garage) {
       lignesStockage.push(`> Le Garage ${garage} places dispose de **${garageUnites} unités** supplémentaires.`);
-      const total = stockage + frigo + garageUnites;
+      const total = bien.base + bien.frigo + garageUnites;
       lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
     }
 
-    // ── Catégorie CONFORT & ESPACE ──
-    const lignesConfort = [];
-    if (chambres)     lignesConfort.push(`> 🛏️ ${chambres} Chambre${chambres > 1 ? 's' : ''}`);
-    if (salons)       lignesConfort.push(`> 🛋️ ${salons} Salon${salons > 1 ? 's' : ''}`);
-    if (sallesDeBain) lignesConfort.push(`> 🚿 ${sallesDeBain} Salle${sallesDeBain > 1 ? 's' : ''} de bain`);
-    if (salleAManger) lignesConfort.push(`> 🍽️ Salle à manger`);
-    if (dressing)     lignesConfort.push(`> 🪞 Dressing`);
+    // ── CONFORT & ESPACE (auto selon le type) ──
+    const lignesConfort = bien.caracteristiques.map(c => `> ${c}`);
 
-    // ── Catégorie LES + ──
+    // ── LES + ──
     const lignesPlus = [];
     if (garage)   lignesPlus.push(`> 🚗 Garage ${garage} places`);
     if (jardin)   lignesPlus.push(`> 🌿 Jardin`);
@@ -214,13 +353,10 @@ module.exports = {
       ``,
       `**📍 EMPLACEMENT**`,
       `> 📍 ${quartier}`,
-      `> 💰 ${prix}`,
     ];
 
-    if (lignesStockage.length > 0) {
-      lignes.push(``, `**📦 STOCKAGE**`);
-      lignes.push(...lignesStockage);
-    }
+    lignes.push(``, `**📦 STOCKAGE**`);
+    lignes.push(...lignesStockage);
 
     if (lignesConfort.length > 0) {
       lignes.push(``, `**🛋️ CONFORT & ESPACE**`);
@@ -264,10 +400,10 @@ async function handleAnnonceButton(interaction) {
   const action = parts[1]; // 'acheter' ou 'visiter'
   const numero = parts.slice(2).join('_');
 
-  const isAchat      = action === 'acheter';
-  const emoji        = isAchat ? '🏠' : '👁️';
-  const actionLabel  = isAchat ? 'Acheter' : 'Visiter';
-  const channelName  = `${emoji}${toMathSansBold(numero)}_${toMathSansBold(actionLabel)}`;
+  const isAchat     = action === 'acheter';
+  const emoji       = isAchat ? '🏠' : '👁️';
+  const actionLabel = isAchat ? 'Acheter' : 'Visiter';
+  const channelName = `${emoji}${toMathSansBold(numero)}_${toMathSansBold(actionLabel)}`;
 
   const guild  = interaction.guild;
   const member = interaction.member;
