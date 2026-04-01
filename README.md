@@ -3,126 +3,118 @@
 
 ---
 
-## 📋 Fonctionnalités
+## 📋 Commandes disponibles
 
-| Commande | Description | Qui peut l'utiliser |
+| Commande | Description | Permission |
 |---|---|---|
-| `/panel-tickets` | Affiche le panel de tickets | Admins |
-| `/annonce` | Publie une annonce immobilière | Agentes |
-| `/client dossier` | Voir le dossier d'un client | Agentes |
-| `/client statut` | Mettre à jour un dossier | Agentes |
+| `/rdv créer` | Planifier un rendez-vous avec un client (rappels automatiques) | Agentes |
+| `/rdv liste` | Voir tous les rendez-vous à venir | Agentes |
+| `/rdv annuler` | Annuler un rendez-vous planifié | Agentes |
+| `/client dossier` | Voir le dossier complet d'un client | Agentes |
+| `/client statut` | Mettre à jour le statut d'un dossier | Agentes |
 | `/client liste` | Voir tous les dossiers actifs | Agentes |
+| `/rename` | Renommer un ticket avec agent, statut, numéro et nom client | Admins |
 
 ---
 
-## 🚀 INSTALLATION ÉTAPE PAR ÉTAPE
+## 🚀 Installation
 
 ### ÉTAPE 1 — Créer le bot sur Discord
 
 1. Va sur https://discord.com/developers/applications
-2. Clique sur **"New Application"** → donne-lui le nom **"Dynasty 8"**
-3. Va dans l'onglet **"Bot"** → clique **"Add Bot"**
-4. Clique **"Reset Token"** → copie le token (tu en auras besoin plus tard)
-5. Active ces options dans **"Privileged Gateway Intents"** :
+2. Clique **"New Application"** → donne-lui le nom **"Dynasty 8"**
+3. Va dans **"Bot"** → clique **"Reset Token"** → copie le token
+4. Active ces options dans **"Privileged Gateway Intents"** :
    - ✅ Server Members Intent
    - ✅ Message Content Intent
-6. Va dans **"OAuth2"** → **"URL Generator"**
+5. Va dans **"OAuth2"** → **"URL Generator"**
    - Coche : `bot` + `applications.commands`
-   - Dans Bot Permissions, coche : `Administrator`
-   - Copie le lien généré et ouvre-le pour inviter le bot sur ton serveur
+   - Permissions : `Administrator`
+   - Copie le lien et invite le bot sur ton serveur
 
 ---
 
-### ÉTAPE 2 — Récupérer les IDs Discord
+### ÉTAPE 2 — Créer la base de données MongoDB Atlas (gratuit)
 
-Pour récupérer un ID : **Paramètres Discord → Avancés → Active "Mode développeur"**
-Ensuite, fais **clic droit** sur un élément → **"Copier l'identifiant"**
+Les rendez-vous sont stockés sur MongoDB Atlas pour persister entre les redémarrages.
 
-Tu auras besoin de :
-- ✅ **ID du serveur** (clic droit sur le serveur)
-- ✅ **ID du bot** (depuis le Developer Portal → "Application ID")
-- ✅ **ID du canal #annonces** (où les annonces seront postées)
-- ✅ **ID du canal #tickets** (où le panel sera affiché)
-- ✅ **ID de la catégorie tickets** (la catégorie qui contiendra les salons de tickets)
-- ✅ **ID du rôle Agente** (le rôle de tes agentes)
-- ✅ **ID du canal #logs** (optionnel, pour les logs)
+1. Crée un compte sur https://www.mongodb.com/atlas
+2. Crée un **cluster gratuit M0**
+3. Dans **Database Access** → ajoute un utilisateur avec un mot de passe
+4. Dans **Network Access** → **Add IP Address** → **Allow Access from Anywhere** (`0.0.0.0/0`)
+5. Dans **Connect** → **Drivers** → copie l'URI de connexion :
+   ```
+   mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/
+   ```
 
 ---
 
-### ÉTAPE 3 — Héberger sur Railway (gratuit)
+### ÉTAPE 3 — Héberger sur Railway
 
 1. Crée un compte sur https://railway.app (connecte-toi avec GitHub)
-2. Clique **"New Project"** → **"Deploy from GitHub repo"**
-3. Upload les fichiers du bot sur GitHub (ou utilise Railway's file upload)
-4. Dans Railway, va dans **"Variables"** et ajoute toutes ces variables :
+2. Clique **"New Project"** → **"Deploy from GitHub repo"** → sélectionne ce dépôt
+3. Dans Railway → onglet **"Variables"** → ajoute :
 
 ```
-TOKEN          = (le token de ton bot)
-CLIENT_ID      = (l'Application ID de ton bot)
-GUILD_ID       = (l'ID de ton serveur)
-CHANNEL_ANNONCES_ID  = (ID du canal annonces)
-CHANNEL_TICKETS_ID   = (ID du canal tickets panel)
-CATEGORIE_TICKETS_ID = (ID de la catégorie tickets)
-ROLE_AGENTE_ID       = (ID du rôle agente)
-CHANNEL_LOGS_ID      = (ID du canal logs — optionnel)
+TOKEN         = (token de ton bot Discord)
+CLIENT_ID     = (Application ID depuis le Developer Portal)
+GUILD_ID      = (ID de ton serveur Discord)
+CHANNEL_LOGS_ID = (ID du canal logs agents — optionnel)
+MONGODB_URI   = (URI MongoDB Atlas avec user:password remplis)
+TZ            = Europe/Paris
 ```
 
-5. Railway va lancer le bot automatiquement !
+> ⚠️ La variable `TZ=Europe/Paris` est obligatoire pour que les rappels de RDV se déclenchent à la bonne heure.
 
-> 💡 **Alternative simple** : Tu peux aussi utiliser https://replit.com
-> Crée un Repl, uploade les fichiers, et ajoute les variables dans "Secrets"
+4. Railway lance le bot automatiquement à chaque push sur la branche principale.
 
 ---
 
-### ÉTAPE 4 — Configurer les canaux Discord
+### ÉTAPE 4 — Configurer les agents dans `/rename`
 
-Crée ces canaux sur ton serveur si ce n'est pas déjà fait :
+Ouvre `commands/rename.js` et remplis les IDs Discord de chaque agent :
 
-```
-📁 DYNASTY 8
-  ├── 📢 #annonces-immobilier
-  ├── 🎫 #ouvrir-un-ticket
-  └── 📋 #logs-bot (optionnel)
-
-📁 TICKETS (catégorie)
-  └── (les tickets seront créés ici automatiquement)
+```js
+const AGENTS = {
+  '123456789012345678': '🦊',  // Sacha Rollay
+  '234567890123456789': '🦦',  // Ely Rollay
+  '345678901234567890': '🐻',  // Marco Romanov
+};
 ```
 
----
-
-### ÉTAPE 5 — Lancer le panel de tickets
-
-Une fois le bot en ligne, tape dans ton salon `#ouvrir-un-ticket` :
-
-```
-/panel-tickets
-```
-
-Le bot va afficher le beau panel avec les boutons automatiquement ! 🎉
+Pour obtenir un ID : **Paramètres → Avancés → Mode développeur**, puis clic droit sur l'utilisateur → **Copier l'identifiant**.
 
 ---
 
 ## 🛠️ Utilisation quotidienne
 
-### Publier une annonce
+### Planifier un rendez-vous
 ```
-/annonce type:Maison transaction:Vente quartier:Rockford Hills prix:250 000$ pieces:5 description:Belle villa avec piscine...
+/rdv créer client:@Client date:aujourd'hui heure:18h30 description:Visite appartement rappel:30
+```
+→ Envoie une confirmation avec ping des deux parties, puis un rappel 30 min avant et à l'heure pile.
+
+### Gérer un rendez-vous
+```
+/rdv liste
+/rdv annuler id:rdv_1234567890
 ```
 
 ### Voir le dossier d'un client
 ```
-/client dossier membre:@NomDuClient
+/client dossier membre:@Client
 ```
 
-### Mettre à jour un statut
+### Mettre à jour un statut de dossier
 ```
-/client statut membre:@NomDuClient reference:ID_TICKET statut:Conclu note:Bien vendu !
+/client statut membre:@Client reference:ID_DOSSIER statut:Conclu note:Bien vendu !
 ```
 
-### Voir tous les dossiers actifs
+### Renommer un ticket
 ```
-/client liste
+/rename agent:@SachaRollay statut:vendu numero:1336 prenom:Norah nom:Kartelle
 ```
+→ Renomme le salon en : `🦊✅𝟭𝟯𝟯𝟲_𝗡𝗼𝗿𝗮𝗵-𝗞𝗮𝗿𝘁𝗲𝗹𝗹𝗲`
 
 ---
 
@@ -131,11 +123,14 @@ Le bot va afficher le beau panel avec les boutons automatiquement ! 🎉
 **Le bot ne répond pas aux commandes slash ?**
 → Attends 1-2 minutes après le démarrage, les commandes prennent du temps à s'enregistrer.
 
-**"Canal des annonces introuvable" ?**
-→ Vérifie que l'ID dans les variables correspond bien à ton canal.
+**Les rappels de RDV ne se déclenchent pas à la bonne heure ?**
+→ Vérifie que la variable `TZ=Europe/Paris` est bien configurée dans Railway.
 
-**Les tickets ne se créent pas ?**
-→ Vérifie que l'ID de la catégorie tickets est correct et que le bot a les permissions Administrator.
+**"Connecté à MongoDB" n'apparaît pas dans les logs ?**
+→ Vérifie que `MONGODB_URI` est correctement renseigné avec le bon user/password et que l'IP `0.0.0.0/0` est autorisée dans Atlas.
+
+**`@agent` non reconnu dans `/rename` ?**
+→ Son ID Discord n'est pas encore dans la liste `AGENTS` de `commands/rename.js`.
 
 ---
 
