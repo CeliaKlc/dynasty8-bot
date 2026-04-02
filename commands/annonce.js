@@ -335,7 +335,7 @@ module.exports = {
     }
 
     // ── INTÉRIEUR (auto selon le type) ──
-    const lignesInterieur = bien.caracteristiques.map(c => `• ${c}`);
+    const lignesInterieur = bien.caracteristiques.map(c => `- ${c}`);
 
     // ── LES + ──
     const lignesPlus = [];
@@ -346,9 +346,10 @@ module.exports = {
 
     // ── Construction du message ──
     const lignes = [
-      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
-      `${DYNASTY8} ✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
-      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
+      `━━━━━━━━━━━━━━━━━━━━━━━`,
+      `        ·         ${DYNASTY8}          ·`,
+      `━━━━━━━━━━━━━━━━━━━━━━━`,
+      `✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
       ``,
       `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
@@ -359,7 +360,7 @@ module.exports = {
     lignes.push(...lignesStockage);
 
     if (lignesInterieur.length > 0) {
-      lignes.push(``, `**🛋️ INTÉRIEUR**`);
+      lignes.push(``, `**🛋️ INTÉRIEUR**`, `Ce bien vous propose :`);
       lignes.push(...lignesInterieur);
     }
 
