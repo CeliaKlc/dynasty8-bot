@@ -7,6 +7,9 @@ const {
   ChannelType,
   PermissionFlagsBits,
   OverwriteType,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } = require('discord.js');
 
 const CATEGORIE_TICKETS_ID = '993616675670851659';
@@ -467,7 +470,7 @@ module.exports = {
     }
 
     // ── INTÉRIEUR (auto selon le type) ──
-    const lignesInterieur = bien.caracteristiques.map(c => `- ${c}`);
+    const lignesInterieur = bien.caracteristiques.map(c => `> - ${c}`);
 
     // ── LES + ──
     const lignesPlus = [];
@@ -510,7 +513,7 @@ module.exports = {
       ``,
       `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
-      `📍 **Emplacement :** ${quartier}`,
+      `📍 **Emplacement :** Situé ${quartier}`,
     ];
 
     lignes.push(``, `**📦 STOCKAGE**`);
@@ -554,13 +557,48 @@ module.exports = {
   },
 };
 
-// ─── Handler des boutons Acheter / Visiter ────────────────────────────────────
+// ─── Handler des boutons Acheter / Visiter → affiche le modal ────────────────
 async function handleAnnonceButton(interaction) {
+  const parts  = interaction.customId.split('_');
+  const action = parts[1]; // 'acheter' ou 'visiter'
+  const numero = parts.slice(2).join('_');
+
+  const modal = new ModalBuilder()
+    .setCustomId(`annonce_modal_${action}_${numero}`)
+    .setTitle(action === 'acheter' ? '🏠 Demande d\'achat' : '👁️ Demande de visite');
+
+  const nomPrenomInput = new TextInputBuilder()
+    .setCustomId('nom_prenom')
+    .setLabel('Nom Prénom')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('Ex : Jean Dupont')
+    .setRequired(true);
+
+  const telephoneInput = new TextInputBuilder()
+    .setCustomId('telephone')
+    .setLabel('Numéro de téléphone')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('Ex : 555-0123')
+    .setRequired(true);
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(nomPrenomInput),
+    new ActionRowBuilder().addComponents(telephoneInput),
+  );
+
+  await interaction.showModal(modal);
+}
+
+// ─── Handler du modal soumis → crée le ticket ────────────────────────────────
+async function handleAnnonceModal(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
-  const parts  = interaction.customId.split('_');
-  const action = parts[1];
-  const numero = parts.slice(2).join('_');
+  const parts  = interaction.customId.split('_'); // ['annonce','modal','acheter','1234']
+  const action = parts[2];
+  const numero = parts.slice(3).join('_');
+
+  const nomPrenom  = interaction.fields.getTextInputValue('nom_prenom');
+  const telephone  = interaction.fields.getTextInputValue('telephone');
 
   const isAchat     = action === 'acheter';
   const emoji       = isAchat ? '🏠' : '👁️';
@@ -606,13 +644,22 @@ async function handleAnnonceButton(interaction) {
       `Bonjour ${member} ! 👋\n\n` +
       `Ta demande concernant le bien **#${numero}** a bien été reçue.\n` +
       `Un agent va prendre en charge ta demande très prochainement.\n\n` +
-      `N'hésite pas à préciser ta demande ici.`
+      `**👤 Nom Prénom :** ${nomPrenom}\n` +
+      `**📞 Numéro de téléphone :** ${telephone}`
     )
     .setFooter({ text: 'Dynasty 8' })
     .setTimestamp();
 
-  await ticketChannel.send({ content: `${member}`, embeds: [embed] });
+  const clotureRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('ticket_cloturer')
+      .setLabel('🔒 Clôturer le ticket')
+      .setStyle(ButtonStyle.Danger),
+  );
+
+  await ticketChannel.send({ content: `${member}`, embeds: [embed], components: [clotureRow] });
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
 }
 
 module.exports.handleAnnonceButton = handleAnnonceButton;
+module.exports.handleAnnonceModal  = handleAnnonceModal;
