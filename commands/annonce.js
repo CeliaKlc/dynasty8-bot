@@ -467,7 +467,7 @@ module.exports = {
     }
 
     // ── INTÉRIEUR (auto selon le type) ──
-    const lignesInterieur = bien.caracteristiques.map(c => `> • ${c}`);
+    const lignesInterieur = bien.caracteristiques.map(c => `- ${c}`);
 
     // ── LES + ──
     const lignesPlus = [];
