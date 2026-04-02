@@ -14,9 +14,6 @@
 | `/rdv créer` | Planifier un rendez-vous avec un client (rappels automatiques) | Employé / Direction |
 | `/rdv liste` | Voir tous les rendez-vous à venir | Employé / Direction |
 | `/rdv annuler` | Annuler un rendez-vous planifié | Employé / Direction |
-| `/client dossier` | Voir le dossier complet d'un client | Employé / Direction |
-| `/client statut` | Mettre à jour le statut d'un dossier | Employé / Direction |
-| `/client liste` | Voir tous les dossiers actifs | Employé / Direction |
 
 ---
 
