@@ -348,7 +348,7 @@ module.exports = {
         { name: '🚗 6 places',         value: '6' },
         { name: '🚗 10 places',        value: '10' },
         { name: '🚗 10 places de luxe', value: '10l' },
-        { name: '🚗 26 places',        value: '26' },
+        { name: '🚗 26 places (Agence uniquement)', value: '26' },
         { name: '🚗 Loft Garage',      value: 'loft' },
       ))
     .addStringOption(opt => opt
@@ -360,7 +360,7 @@ module.exports = {
         { name: '🚗 6 places',         value: '6' },
         { name: '🚗 10 places',        value: '10' },
         { name: '🚗 10 places de luxe', value: '10l' },
-        { name: '🚗 26 places',        value: '26' },
+        { name: '🚗 26 places (Agence uniquement)', value: '26' },
         { name: '🚗 Loft Garage',      value: 'loft' },
       ))
     .addIntegerOption(opt => opt
@@ -411,6 +411,10 @@ module.exports = {
 
     if (garageLuxe && !isTypeLuxe) {
       return interaction.editReply({ content: `❌ L'option **garage_luxe** est réservée aux types **Villa de Luxe** et **Maison de Luxe**. Pour les autres biens, utilise **garage_1** et **garage_2**.` });
+    }
+
+    if ((garage1 === '26' || garage2 === '26') && type !== 'Agence') {
+      return interaction.editReply({ content: `❌ Le **Garage 26 places** est réservé au type **Agence**.` });
     }
     const jardin      = interaction.options.getBoolean('jardin');
     const piscine     = interaction.options.getBoolean('piscine');
