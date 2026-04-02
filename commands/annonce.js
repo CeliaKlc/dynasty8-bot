@@ -648,9 +648,9 @@ async function handleAnnonceModal(interaction) {
 
   const embed = new EmbedBuilder()
     .setColor(isAchat ? 0x2ECC71 : 0x3498DB)
-    .setTitle(`${emoji} Demande ${actionLabel.toLowerCase()} — Bien #${numero}`)
+    .setTitle(`${emoji} Demande pour ${actionLabel.toLowerCase()} — Bien #${numero}`)
     .setDescription(
-      `Bonjour ${member} ! 👋\n\n` +
+      `Bienvenue ${member} ! 👋\n\n` +
       `Ta demande concernant le bien **#${numero}** a bien été reçue.\n` +
       `Un agent va prendre en charge ta demande très prochainement.\n\n` +
       `**👤 Nom Prénom :** ${nomPrenom}\n` +
@@ -669,7 +669,7 @@ async function handleAnnonceModal(interaction) {
       .setStyle(ButtonStyle.Danger),
   );
 
-  await ticketChannel.send({ content: `${member}`, embeds: [embed], components: [clotureRow] });
+  await ticketChannel.send({ embeds: [embed], components: [clotureRow] });
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
 }
 
