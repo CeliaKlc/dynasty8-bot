@@ -70,24 +70,20 @@ module.exports = {
           // Embed "Ticket fermé"
           const embedFerme = new EmbedBuilder()
             .setColor(0xE74C3C)
-            .setTitle('🔒 Ticket fermé')
             .setDescription(`Ce ticket a été fermé par ${member}.`)
-            .setTimestamp()
-            .setFooter({ text: 'Dynasty 8' });
-
           // Embed "Support team ticket controls"
           const embedControls = new EmbedBuilder()
             .setColor(0x95A5A6)
-            .setTitle('🛠️ Support team ticket controls');
+            .setTitle('``Support team ticket controls``');
 
           const controlRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
               .setCustomId(`ticket_reouvrir_${member.id}`)
-              .setLabel('Ré-ouvrir le ticket')
+              .setLabel('🔓Ré-ouvrir le ticket')
               .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
               .setCustomId('ticket_supprimer')
-              .setLabel('Supprimer')
+              .setLabel('⛔Supprimer')
               .setStyle(ButtonStyle.Secondary),
           );
 
