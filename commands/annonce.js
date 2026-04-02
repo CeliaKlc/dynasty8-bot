@@ -365,7 +365,7 @@ module.exports = {
       ))
     .addIntegerOption(opt => opt
       .setName('garage_luxe')
-      .setDescription('Nombre de Garages 10 places de luxe (Villa de Luxe / Maison de Luxe uniquement)')
+      .setDescription('⚠️ Villa de Luxe / Maison de Luxe uniquement — Nombre de Garages 10 places de luxe (1 à 4)')
       .setRequired(false)
       .setMinValue(1)
       .setMaxValue(4))
@@ -408,6 +408,10 @@ module.exports = {
     const garageLuxe  = interaction.options.getInteger('garage_luxe');
     const salleASac   = interaction.options.getString('salle_a_sac');
     const isTypeLuxe  = type === 'Villa de Luxe' || type === 'Maison de Luxe';
+
+    if (garageLuxe && !isTypeLuxe) {
+      return interaction.editReply({ content: `❌ L'option **garage_luxe** est réservée aux types **Villa de Luxe** et **Maison de Luxe**. Pour les autres biens, utilise **garage_1** et **garage_2**.` });
+    }
     const jardin      = interaction.options.getBoolean('jardin');
     const piscine     = interaction.options.getBoolean('piscine');
     const terrasse    = interaction.options.getBoolean('terrasse');
