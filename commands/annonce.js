@@ -222,10 +222,68 @@ const BIENS = {
       'Des racks',
     ],
   },
+  'Garage 2 places': {
+    article: 'Le Garage 2 places',
+    base: 50, frigo: 0,
+    caracteristiques: [
+      '2 places véhicule'
+    ],
+  },
+  'Garage 6 places': {
+    article: 'Le Garage 6 places',
+    base: 200, frigo: 0,
+    caracteristiques: [
+      '6 places véhicules',
+      '2 porte vélo'
+    ],
+  },
+  'Garage 10 places': {
+    article: 'Le Garage 10 places',
+    base: 400, frigo: 0,
+    caracteristiques: [
+      '10 places véhicules',
+      '6 porte vélo'
+    ],
+  },
+  'Garage 26 places': {
+    article: 'Le Garage 26 places',
+    base: 500, frigo: 0,
+    caracteristiques: [
+      '26 places véhicules',
+      '3 étages',
+      'Intérieur modifiable'
+    ],
+  },
+  'Loft Garage': {
+    article: 'Le Loft Garage',
+    base: 500, frigo: 0,
+    caracteristiques: [
+      'Salon avec Dressing',
+      '4 places véhicules',
+      'Intérieur modifiable'
+    ],
+  },
 };
 
 // Unités de stockage par taille de garage
-const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400 };
+const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400, '10l': 500, '26': 500, 'loft': 500 };
+
+// Labels affichés pour chaque valeur de garage
+const GARAGE_LABELS = {
+  '2':    '2 places',
+  '6':    '6 places',
+  '10':   '10 places',
+  '10l':  '10 places de luxe',
+  '26':   '26 places',
+  'loft': 'Loft Garage',
+};
+
+// Labels affichés pour salle à sac
+const SALLE_A_SAC_LABELS = {
+  '1': 'Salle à sac',
+  '2': 'Salle à sac avec une extension',
+  '3': 'Salle à sac avec deux extensions',
+};
 
 const DYNASTY8 = toMathSansBold('DYNASTY 8');
 
@@ -259,6 +317,11 @@ module.exports = {
         { name: 'Agence',                         value: 'Agence' },
         { name: 'Hangar',                         value: 'Hangar' },
         { name: 'Entrepôt',                       value: 'Entrepôt' },
+        { name: 'Garage 2 places',                value: 'Garage 2 places' },
+        { name: 'Garage 6 places',                value: 'Garage 6 places' },
+        { name: 'Garage 10 places',               value: 'Garage 10 places' },
+        { name: 'Garage 26 places',               value: 'Garage 26 places' },
+        { name: 'Loft Garage',                    value: 'Loft Garage' },
       ))
     .addStringOption(opt => opt
       .setName('transaction')
@@ -277,13 +340,37 @@ module.exports = {
       .setDescription('Photo du bien (obligatoire)')
       .setRequired(true))
     .addStringOption(opt => opt
-      .setName('garage')
-      .setDescription('Garage inclus ? Si oui, combien de places ?')
+      .setName('garage_1')
+      .setDescription('1er garage inclus ?')
       .setRequired(false)
       .addChoices(
-        { name: '🚗 2 places',  value: '2' },
-        { name: '🚗 6 places',  value: '6' },
-        { name: '🚗 10 places', value: '10' },
+        { name: '🚗 2 places',         value: '2' },
+        { name: '🚗 6 places',         value: '6' },
+        { name: '🚗 10 places',        value: '10' },
+        { name: '🚗 10 places de luxe', value: '10l' },
+        { name: '🚗 26 places',        value: '26' },
+        { name: '🚗 Loft Garage',      value: 'loft' },
+      ))
+    .addStringOption(opt => opt
+      .setName('garage_2')
+      .setDescription('2ème garage inclus ?')
+      .setRequired(false)
+      .addChoices(
+        { name: '🚗 2 places',         value: '2' },
+        { name: '🚗 6 places',         value: '6' },
+        { name: '🚗 10 places',        value: '10' },
+        { name: '🚗 10 places de luxe', value: '10l' },
+        { name: '🚗 26 places',        value: '26' },
+        { name: '🚗 Loft Garage',      value: 'loft' },
+      ))
+    .addStringOption(opt => opt
+      .setName('salle_a_sac')
+      .setDescription('Salle à sac incluse ?')
+      .setRequired(false)
+      .addChoices(
+        { name: '🎒 Salle à sac',                    value: '1' },
+        { name: '🎒 Salle à sac + 1 extension',      value: '2' },
+        { name: '🎒 Salle à sac + 2 extensions',     value: '3' },
       ))
     .addBooleanOption(opt => opt
       .setName('jardin')
@@ -310,7 +397,9 @@ module.exports = {
     const transaction = interaction.options.getString('transaction');
     const quartier    = interaction.options.getString('quartier');
     const image       = interaction.options.getAttachment('image');
-    const garage      = interaction.options.getString('garage');
+    const garage1     = interaction.options.getString('garage_1');
+    const garage2     = interaction.options.getString('garage_2');
+    const salleASac   = interaction.options.getString('salle_a_sac');
     const jardin      = interaction.options.getBoolean('jardin');
     const piscine     = interaction.options.getBoolean('piscine');
     const terrasse    = interaction.options.getBoolean('terrasse');
@@ -318,8 +407,10 @@ module.exports = {
 
     const transactionLabel = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
 
-    const bien         = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
-    const garageUnites = garage ? STOCKAGE_GARAGE[garage] : 0;
+    const bien           = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
+    const garage1Unites  = garage1 ? STOCKAGE_GARAGE[garage1] : 0;
+    const garage2Unites  = garage2 ? STOCKAGE_GARAGE[garage2] : 0;
+    const totalGarageUnites = garage1Unites + garage2Unites;
 
     // ── STOCKAGE (narratif) ──
     const lignesStockage = [];
@@ -328,9 +419,14 @@ module.exports = {
     } else {
       lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage.`);
     }
-    if (garage) {
-      lignesStockage.push(`> Le Garage ${garage} places dispose de **${garageUnites} unités** supplémentaires.`);
-      const total = bien.base + bien.frigo + garageUnites;
+    if (garage1) {
+      lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage1]} dispose de **${garage1Unites} unités** supplémentaires.`);
+    }
+    if (garage2) {
+      lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage2]} dispose de **${garage2Unites} unités** supplémentaires.`);
+    }
+    if (garage1 || garage2) {
+      const total = bien.base + bien.frigo + totalGarageUnites;
       lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
     }
 
@@ -339,17 +435,25 @@ module.exports = {
 
     // ── LES + ──
     const lignesPlus = [];
-    if (garage)   lignesPlus.push(`> 🚗 Garage ${garage} places`);
-    if (jardin)   lignesPlus.push(`> 🌿 Jardin`);
-    if (terrasse) lignesPlus.push(`> ☀️ Terrasse`);
-    if (piscine)  lignesPlus.push(`> 🏊 Piscine`);
+    if (garage1)   lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage1]}`);
+    if (garage2)   lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage2]}`);
+    if (salleASac) lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
+    if (jardin)    lignesPlus.push(`> 🌿 Jardin`);
+    if (terrasse)  lignesPlus.push(`> ☀️ Terrasse`);
+    if (piscine)   lignesPlus.push(`> 🏊 Piscine`);
+
+    // ── Suffixe du titre avec les garages ──
+    const garagesTitre = [garage1, garage2]
+      .filter(Boolean)
+      .map(g => `Garage ${GARAGE_LABELS[g]}`)
+      .join(' & ');
 
     // ── Construction du message ──
     const lignes = [
       `━━━━━━━━━━━━━━━━━━━━━━━`,
       `        ·         ${DYNASTY8}          ·`,
       `━━━━━━━━━━━━━━━━━━━━━━━`,
-      `✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
+      `✨ **${transactionLabel} : ${type}${garagesTitre ? ` avec ${garagesTitre}` : ''}** ✨`,
       ``,
       `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
@@ -447,7 +551,7 @@ async function handleAnnonceButton(interaction) {
       `Un agent va prendre en charge ta demande très prochainement.\n\n` +
       `N'hésite pas à préciser ta demande ici.`
     )
-    .setFooter({ text: 'Dynasty 8 • Baylife RP' })
+    .setFooter({ text: 'Dynasty 8' })
     .setTimestamp();
 
   await ticketChannel.send({ content: `${member}`, embeds: [embed] });
