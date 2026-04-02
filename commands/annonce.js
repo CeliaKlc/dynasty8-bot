@@ -363,6 +363,12 @@ module.exports = {
         { name: '🚗 26 places',        value: '26' },
         { name: '🚗 Loft Garage',      value: 'loft' },
       ))
+    .addIntegerOption(opt => opt
+      .setName('garage_luxe')
+      .setDescription('Nombre de Garages 10 places de luxe (Villa de Luxe / Maison de Luxe uniquement)')
+      .setRequired(false)
+      .setMinValue(1)
+      .setMaxValue(4))
     .addStringOption(opt => opt
       .setName('salle_a_sac')
       .setDescription('Salle à sac incluse ?')
@@ -399,7 +405,9 @@ module.exports = {
     const image       = interaction.options.getAttachment('image');
     const garage1     = interaction.options.getString('garage_1');
     const garage2     = interaction.options.getString('garage_2');
+    const garageLuxe  = interaction.options.getInteger('garage_luxe');
     const salleASac   = interaction.options.getString('salle_a_sac');
+    const isTypeLuxe  = type === 'Villa de Luxe' || type === 'Maison de Luxe';
     const jardin      = interaction.options.getBoolean('jardin');
     const piscine     = interaction.options.getBoolean('piscine');
     const terrasse    = interaction.options.getBoolean('terrasse');
@@ -407,10 +415,11 @@ module.exports = {
 
     const transactionLabel = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
 
-    const bien           = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
-    const garage1Unites  = garage1 ? STOCKAGE_GARAGE[garage1] : 0;
-    const garage2Unites  = garage2 ? STOCKAGE_GARAGE[garage2] : 0;
-    const totalGarageUnites = garage1Unites + garage2Unites;
+    const bien                = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
+    const garageLuxeUnites    = isTypeLuxe && garageLuxe ? garageLuxe * STOCKAGE_GARAGE['10l'] : 0;
+    const garage1Unites       = !isTypeLuxe && garage1 ? STOCKAGE_GARAGE[garage1] : 0;
+    const garage2Unites       = !isTypeLuxe && garage2 ? STOCKAGE_GARAGE[garage2] : 0;
+    const totalGarageUnites   = isTypeLuxe ? garageLuxeUnites : garage1Unites + garage2Unites;
 
     // ── STOCKAGE (narratif) ──
     const lignesStockage = [];
@@ -419,15 +428,18 @@ module.exports = {
     } else {
       lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage.`);
     }
-    if (garage1) {
-      lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage1]} dispose de **${garage1Unites} unités** supplémentaires.`);
-    }
-    if (garage2) {
-      lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage2]} dispose de **${garage2Unites} unités** supplémentaires.`);
-    }
-    if (garage1 || garage2) {
-      const total = bien.base + bien.frigo + totalGarageUnites;
+    if (isTypeLuxe && garageLuxe) {
+      const label = garageLuxe === 1 ? 'Le Garage 10 places de luxe dispose' : `Les ${garageLuxe} Garages 10 places de luxe disposent`;
+      lignesStockage.push(`> ${label} de **${garageLuxeUnites} unités** supplémentaires.`);
+      const total = bien.base + bien.frigo + garageLuxeUnites;
       lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
+    } else {
+      if (garage1) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage1]} dispose de **${garage1Unites} unités** supplémentaires.`);
+      if (garage2) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage2]} dispose de **${garage2Unites} unités** supplémentaires.`);
+      if (garage1 || garage2) {
+        const total = bien.base + bien.frigo + totalGarageUnites;
+        lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
+      }
     }
 
     // ── INTÉRIEUR (auto selon le type) ──
@@ -435,18 +447,27 @@ module.exports = {
 
     // ── LES + ──
     const lignesPlus = [];
-    if (garage1)   lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage1]}`);
-    if (garage2)   lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage2]}`);
+    if (isTypeLuxe && garageLuxe) {
+      lignesPlus.push(`> 🚗 ${garageLuxe} × Garage 10 places de luxe`);
+    } else {
+      if (garage1) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage1]}`);
+      if (garage2) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage2]}`);
+    }
     if (salleASac) lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
     if (jardin)    lignesPlus.push(`> 🌿 Jardin`);
     if (terrasse)  lignesPlus.push(`> ☀️ Terrasse`);
     if (piscine)   lignesPlus.push(`> 🏊 Piscine`);
 
     // ── Suffixe du titre avec les garages ──
-    const garagesTitre = [garage1, garage2]
-      .filter(Boolean)
-      .map(g => `Garage ${GARAGE_LABELS[g]}`)
-      .join(' & ');
+    let garagesTitre = '';
+    if (isTypeLuxe && garageLuxe) {
+      garagesTitre = `${garageLuxe} × Garage 10 places de luxe`;
+    } else {
+      garagesTitre = [garage1, garage2]
+        .filter(Boolean)
+        .map(g => `Garage ${GARAGE_LABELS[g]}`)
+        .join(' & ');
+    }
 
     // ── Construction du message ──
     const lignes = [
