@@ -151,7 +151,7 @@ const BIENS = {
   },
   'Maison de Luxe': {
     article: 'La Maison de Luxe',
-    base: 2000, frigo: 0,
+    base: 2000, frigo: 0, modifiable: true,
     caracteristiques: [
       '2 Chambres avec dressing',
       '2 Salles de bain',
