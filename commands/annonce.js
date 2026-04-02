@@ -151,7 +151,7 @@ const BIENS = {
   },
   'Maison de Luxe': {
     article: 'La Maison de Luxe',
-    base: 2500, frigo: 0, modifiable: true, ordinateur: true,
+    base: 2500, frigo: 0, modifiable: true, ordinateur: true, cafe: true,
     caracteristiques: [
       '2 Chambres avec dressing',
       '2 Salles de bain',
@@ -487,6 +487,7 @@ module.exports = {
       lignesPlus.push(`> 👔 Vestiaire pour prise de service`);
     }
     if (bien.ordinateur && type !== 'Entrepôt') lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
+    if (bien.cafe)       lignesPlus.push(`> ☕ Machine à café`);
     if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
 
     // ── Suffixe du titre avec les garages ──
