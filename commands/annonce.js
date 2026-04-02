@@ -335,7 +335,7 @@ module.exports = {
     }
 
     // ── INTÉRIEUR (auto selon le type) ──
-    const lignesInterieur = bien.caracteristiques.map(c => `• ${c}`);
+    const lignesInterieur = bien.caracteristiques.map(c => `> • ${c}`);
 
     // ── LES + ──
     const lignesPlus = [];
@@ -346,9 +346,10 @@ module.exports = {
 
     // ── Construction du message ──
     const lignes = [
-      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
-      `${DYNASTY8} ✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
-      `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
+      `━━━━━━━━━━━━━━━━━━━━━━━`,
+      `        ·         ${DYNASTY8}          ·`,
+      `━━━━━━━━━━━━━━━━━━━━━━━`,
+      `✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
       ``,
       `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
@@ -372,7 +373,7 @@ module.exports = {
       lignes.push(``, `**📝 DÉTAILS**`, `> ${description}`);
     }
 
-    lignes.push(``, `*Dynasty 8 — Transformons vos projets immobiliers en réalité. 🏡*`);
+    lignes.push(``, `*<:Dynasty8:1489223936620236841> Dynasty 8 — Transformons vos projets immobiliers en réalité.*`);
 
     const contenu = lignes.join('\n');
 
