@@ -227,6 +227,8 @@ const BIENS = {
 // Unités de stockage par taille de garage
 const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400 };
 
+const DYNASTY8 = toMathSansBold('DYNASTY 8');
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('annonce')
@@ -314,8 +316,7 @@ module.exports = {
     const terrasse    = interaction.options.getBoolean('terrasse');
     const description = interaction.options.getString('description');
 
-    const isVente          = transaction === 'vente';
-    const transactionLabel = isVente ? 'À VENDRE' : 'À LOUER';
+    const transactionLabel = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
 
     const bien         = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
     const garageUnites = garage ? STOCKAGE_GARAGE[garage] : 0;
@@ -344,10 +345,9 @@ module.exports = {
     if (piscine)  lignesPlus.push(`> 🏊 Piscine`);
 
     // ── Construction du message ──
-    const dynasty8 = toMathSansBold('DYNASTY 8');
     const lignes = [
       `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
-      `${dynasty8} ✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
+      `${DYNASTY8} ✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
       `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
       ``,
       `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
@@ -397,7 +397,7 @@ async function handleAnnonceButton(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
   const parts  = interaction.customId.split('_');
-  const action = parts[1]; // 'acheter' ou 'visiter'
+  const action = parts[1];
   const numero = parts.slice(2).join('_');
 
   const isAchat     = action === 'acheter';
