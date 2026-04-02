@@ -581,9 +581,17 @@ async function handleAnnonceButton(interaction) {
     .setPlaceholder('Ex : 555-0123')
     .setRequired(true);
 
+  const disponibilitesInput = new TextInputBuilder()
+    .setCustomId('disponibilites')
+    .setLabel('Vos disponibilités')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('(le terme « maintenant » ne constitue pas une disponibilité)')
+    .setRequired(true);
+
   modal.addComponents(
     new ActionRowBuilder().addComponents(nomPrenomInput),
     new ActionRowBuilder().addComponents(telephoneInput),
+    new ActionRowBuilder().addComponents(disponibilitesInput),
   );
 
   await interaction.showModal(modal);
@@ -597,8 +605,9 @@ async function handleAnnonceModal(interaction) {
   const action = parts[2];
   const numero = parts.slice(3).join('_');
 
-  const nomPrenom  = interaction.fields.getTextInputValue('nom_prenom');
-  const telephone  = interaction.fields.getTextInputValue('telephone');
+  const nomPrenom       = interaction.fields.getTextInputValue('nom_prenom');
+  const telephone       = interaction.fields.getTextInputValue('telephone');
+  const disponibilites  = interaction.fields.getTextInputValue('disponibilites');
 
   const isAchat     = action === 'acheter';
   const emoji       = isAchat ? '🏠' : '👁️';
@@ -639,13 +648,14 @@ async function handleAnnonceModal(interaction) {
 
   const embed = new EmbedBuilder()
     .setColor(isAchat ? 0x2ECC71 : 0x3498DB)
-    .setTitle(`${emoji} Demande de ${actionLabel.toLowerCase()} — Bien #${numero}`)
+    .setTitle(`${emoji} Demande ${actionLabel.toLowerCase()} — Bien #${numero}`)
     .setDescription(
       `Bonjour ${member} ! 👋\n\n` +
       `Ta demande concernant le bien **#${numero}** a bien été reçue.\n` +
       `Un agent va prendre en charge ta demande très prochainement.\n\n` +
       `**👤 Nom Prénom :** ${nomPrenom}\n` +
-      `**📞 Numéro de téléphone :** ${telephone}\n\n` +
+      `**📞 Numéro de téléphone :** ${telephone}\n` +
+      `**🗓️ Disponibilités :** ${disponibilites}\n\n` +
       `⚠️ Important : Tout ticket ne comportant pas de formule de politesse **sera automatiquement clos**.\n\n` +
       `Vous avez changé d'avis ? Réagissez avec 🔒 pour annuler votre demande et fermer le ticket.`
     )
@@ -660,15 +670,6 @@ async function handleAnnonceModal(interaction) {
   );
 
   await ticketChannel.send({ content: `${member}`, embeds: [embed], components: [clotureRow] });
-
-  await ticketChannel.send(
-    `${member} Bienvenue,\n\n` +
-    `Êtes-vous intéressé par l'acquisition d'un bien via notre plateforme Le-Bon-Coin ?\n` +
-    `Merci de remplir l'information suivante :\n\n` +
-    `**\`\`\`\n- Vos disponibilités (le terme « maintenant » ne constitue pas une disponibilité) :\`\`\`**\n` +
-    `‎`
-  );
-
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
 }
 
