@@ -386,18 +386,6 @@ module.exports = {
       .setName('terrasse')
       .setDescription('Terrasse incluse ?')
       .setRequired(false))
-    .addBooleanOption(opt => opt
-      .setName('fontaine_eau')
-      .setDescription('Fontaine à eau incluse ?')
-      .setRequired(false))
-    .addBooleanOption(opt => opt
-      .setName('ordinateur')
-      .setDescription('Ordinateur pour gérer son entreprise inclus ?')
-      .setRequired(false))
-    .addBooleanOption(opt => opt
-      .setName('vestiaire')
-      .setDescription('Vestiaire pour prise de service inclus ?')
-      .setRequired(false))
     .addIntegerOption(opt => opt
       .setName('etageres')
       .setDescription('⚠️ Entrepôt uniquement — Nombre d\'étagères (1 à 25, 1 étagère = 600 unités)')
@@ -433,9 +421,6 @@ module.exports = {
     const jardin        = interaction.options.getBoolean('jardin');
     const piscine       = interaction.options.getBoolean('piscine');
     const terrasse      = interaction.options.getBoolean('terrasse');
-    const fontaineEau   = interaction.options.getBoolean('fontaine_eau');
-    const ordinateur    = interaction.options.getBoolean('ordinateur');
-    const vestiaire     = interaction.options.getBoolean('vestiaire');
     const etageres      = interaction.options.getInteger('etageres');
     const description   = interaction.options.getString('description');
 
@@ -496,9 +481,11 @@ module.exports = {
     if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
     if (terrasse)        lignesPlus.push(`> ☀️ Terrasse`);
     if (piscine)         lignesPlus.push(`> 🏊 Piscine`);
-    if (fontaineEau)     lignesPlus.push(`> 💧 Fontaine à eau`);
-    if (ordinateur)      lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
-    if (vestiaire)       lignesPlus.push(`> 👔 Vestiaire pour prise de service`);
+    if (type === 'Entrepôt') {
+      lignesPlus.push(`> 💧 Fontaine à eau`);
+      lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
+      lignesPlus.push(`> 👔 Vestiaire pour prise de service`);
+    }
     if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
 
     // ── Suffixe du titre avec les garages ──
