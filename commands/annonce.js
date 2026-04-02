@@ -127,7 +127,7 @@ const BIENS = {
   },
   'Appartement de Luxe Modifiable': {
     article: "L'Appartement de Luxe Modifiable",
-    base: 750, frigo: 0,
+    base: 750, frigo: 0, modifiable: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
@@ -135,7 +135,6 @@ const BIENS = {
       'Bureau',
       'Cafetière',
       'Télévision',
-      'Intérieur modifiable',
     ],
   },
   'Villa': {
@@ -180,19 +179,18 @@ const BIENS = {
   },
   'Bureau': {
     article: 'Le Bureau',
-    base: 750, frigo: 0,
+    base: 750, frigo: 0, modifiable: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
       'Bureau',
       'Salle de réunion',
       'Télévision',
-      'Intérieur modifiable',
     ],
   },
   'Agence': {
     article: "L'Agence",
-    base: 800, frigo: 0,
+    base: 800, frigo: 0, modifiable: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
@@ -202,7 +200,6 @@ const BIENS = {
       'Héliport',
       'Accueil',
       'Télévision',
-      'Intérieur modifiable',
     ],
   },
   'Hangar': {
@@ -214,11 +211,10 @@ const BIENS = {
   },
   'Entrepôt': {
     article: "L'Entrepôt",
-    base: 600, frigo: 0,
+    base: 600, frigo: 0, modifiable: true,
     caracteristiques: [
       'Bureau',
       'Dressing',
-      'Intérieur modifiable',
       'Des racks',
     ],
   },
@@ -461,10 +457,11 @@ module.exports = {
       if (garage1) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage1]}`);
       if (garage2) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage2]}`);
     }
-    if (salleASac) lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
-    if (jardin)    lignesPlus.push(`> 🌿 Jardin`);
-    if (terrasse)  lignesPlus.push(`> ☀️ Terrasse`);
-    if (piscine)   lignesPlus.push(`> 🏊 Piscine`);
+    if (salleASac)      lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
+    if (jardin)         lignesPlus.push(`> 🌿 Jardin`);
+    if (terrasse)       lignesPlus.push(`> ☀️ Terrasse`);
+    if (piscine)        lignesPlus.push(`> 🏊 Piscine`);
+    if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
 
     // ── Suffixe du titre avec les garages ──
     let garagesTitre = '';
