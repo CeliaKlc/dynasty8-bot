@@ -360,7 +360,7 @@ module.exports = {
     lignes.push(...lignesStockage);
 
     if (lignesInterieur.length > 0) {
-      lignes.push(``, `**🛋️ INTÉRIEUR**`, `Ce bien vous propose :`);
+      lignes.push(``, `**🛋️ INTÉRIEUR**`);
       lignes.push(...lignesInterieur);
     }
 
