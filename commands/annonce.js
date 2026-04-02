@@ -333,8 +333,8 @@ module.exports = {
       lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
     }
 
-    // ── CONFORT & ESPACE (auto selon le type) ──
-    const lignesConfort = bien.caracteristiques.map(c => `> ${c}`);
+    // ── INTÉRIEUR (auto selon le type) ──
+    const lignesInterieur = bien.caracteristiques.map(c => `• ${c}`);
 
     // ── LES + ──
     const lignesPlus = [];
@@ -344,23 +344,23 @@ module.exports = {
     if (piscine)  lignesPlus.push(`> 🏊 Piscine`);
 
     // ── Construction du message ──
+    const dynasty8 = toMathSansBold('DYNASTY 8');
     const lignes = [
       `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
-      `✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
+      `${dynasty8} ✨ **${transactionLabel} : ${type}${garage ? ` et son Garage ${garage} places` : ''}** ✨`,
       `**━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━**`,
       ``,
       `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
-      `**📍 EMPLACEMENT**`,
-      `> 📍 ${quartier}`,
+      `📍 **Emplacement :** ${quartier}`,
     ];
 
     lignes.push(``, `**📦 STOCKAGE**`);
     lignes.push(...lignesStockage);
 
-    if (lignesConfort.length > 0) {
-      lignes.push(``, `**🛋️ CONFORT & ESPACE**`);
-      lignes.push(...lignesConfort);
+    if (lignesInterieur.length > 0) {
+      lignes.push(``, `**🛋️ INTÉRIEUR**`);
+      lignes.push(...lignesInterieur);
     }
 
     if (lignesPlus.length > 0) {
