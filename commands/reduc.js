@@ -42,8 +42,8 @@ module.exports = {
     const duree    = dureeKey ? DUREES[dureeKey] : null;
 
     const contenu = duree
-      ? `# **⚠️ LE PRIX BAISSE ET PASSE À ${prix} PENDANT ${duree.label} ⚠️** <@&${ROLE_NOTIFICATIONS_LBC_ID}>`
-      : `# **⚠️ LE PRIX BAISSE ET PASSE À ${prix} ⚠️** <@&${ROLE_NOTIFICATIONS_LBC_ID}>`;
+      ? `# **<a:407265yellowsiren:1489238394826522664>OFFRE EXCEPTIONNEL : LE PRIX BAISSE ET PASSE À ${prix} PENDANT ${duree.label} <a:407265yellowsiren:1489238394826522664>** <@&${ROLE_NOTIFICATIONS_LBC_ID}>`
+      : `# **<a:407265yellowsiren:1489238394826522664>OFFRE EXCEPTIONNEL : LE PRIX BAISSE ET PASSE À ${prix} <a:407265yellowsiren:1489238394826522664>** <@&${ROLE_NOTIFICATIONS_LBC_ID}>`;
 
     const message = await interaction.channel.send({
       content: contenu,
