@@ -55,8 +55,8 @@ module.exports = {
     )
     .addStringOption(opt => opt
       .setName('description')
-      .setDescription('Description du dossier (ex: Norah-Kartelle, Vente-Appartement...)')
-      .setRequired(true)
+      .setDescription('Description du dossier (ex: Sacha-Rollay, Vente-Appartement...)')
+      .setRequired(false)
     ),
 
   async execute(interaction) {
