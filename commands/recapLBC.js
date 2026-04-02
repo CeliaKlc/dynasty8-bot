@@ -63,7 +63,24 @@ module.exports = {
     .addStringOption(opt => opt
       .setName('etage_2')
       .setDescription('Étage du 2ème bien (ex: 5)')
+      .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('type_3')
+      .setDescription('Type du 3ème bien (ex: Garage 2 places)')
+      .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('adresse_3')
+      .setDescription('Adresse du 2ème bien (ex: Rockford Hills - Olympic Freeway 1)')
+      .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('etage_3')
+      .setDescription('Étage du 2ème bien (ex: 5)')
+      .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('description')
+      .setDescription('Possède une salle à sac, garage possible, etc')
       .setRequired(false)),
+    
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
@@ -83,17 +100,22 @@ module.exports = {
     const type2        = interaction.options.getString('type_2');
     const adresse2     = interaction.options.getString('adresse_2');
     const etage2       = interaction.options.getString('etage_2');
+    const type3        = interaction.options.getString('type_3');
+    const adresse3     = interaction.options.getString('adresse_3');
+    const etage3       = interaction.options.getString('etage_3');
+    const description  = interaction.options.getString('description');
 
     // ── Construction du message ───────────────────────────────────────────────
     const lignes = [
       `======= **Annonce LBC : ${annonce}** ========`,
+      ``,
       `**Prix de départ :** ${prixDepart}`,
     ];
 
     if (negociation) lignes.push(`**Négociation :** ${negociation}`);
 
     lignes.push(`**Commission :** ${commission}`);
-    lignes.push(``);
+
     lignes.push(``);
 
     // ── Bien 1 ────────────────────────────────────────────────────────────────
@@ -104,13 +126,27 @@ module.exports = {
     // ── Bien 2 (optionnel) ────────────────────────────────────────────────────
     if (type2) {
       lignes.push(``);
-      lignes.push(``);
       lignes.push(`+`);
-      lignes.push(``);
       lignes.push(``);
       lignes.push(`**Type :** ${type2}`);
       if (adresse2) lignes.push(`**Adresse :** ${adresse2}`);
       if (etage2)   lignes.push(`**Étage :** ${etage2}`);
+    }
+
+    // ── Bien 3 (optionnel) ────────────────────────────────────────────────────
+    if (type3) {
+      lignes.push(``);
+      lignes.push(`+`);
+      lignes.push(``);
+      lignes.push(`**Type :** ${type3}`);
+      if (adresse3) lignes.push(`**Adresse :** ${adresse3}`);
+      if (etage3)   lignes.push(`**Étage :** ${etage3}`);
+    }
+
+    // ── Description (optionnel) ────────────────────────────────────────────────────
+    if (description) {
+      lignes.push(`**Description**`);
+      lignes.push(`${description}`);
     }
 
     lignes.push(``);
