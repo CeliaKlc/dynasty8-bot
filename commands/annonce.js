@@ -58,7 +58,7 @@ const BIENS = {
       'Chambre avec dressing',
       'Salle de bain',
       'Salon avec cuisine ouverte',
-      '2 Télévisions',
+      '1 Télévision',
       'Cafetière',
     ],
   },
