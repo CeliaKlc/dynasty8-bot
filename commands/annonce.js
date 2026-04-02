@@ -151,7 +151,7 @@ const BIENS = {
   },
   'Maison de Luxe': {
     article: 'La Maison de Luxe',
-    base: 2000, frigo: 0,
+    base: 2500, frigo: 0, modifiable: true,
     caracteristiques: [
       '2 Chambres avec dressing',
       '2 Salles de bain',
@@ -204,14 +204,14 @@ const BIENS = {
   },
   'Hangar': {
     article: 'Le Hangar',
-    base: 500, frigo: 0,
+    base: 500, frigo: 0, entrepriseOnly: true,
     caracteristiques: [
       'Machine à laver',
     ],
   },
   'Entrepôt': {
     article: "L'Entrepôt",
-    base: 600, frigo: 0, modifiable: true,
+    base: 600, frigo: 0, modifiable: true, entrepriseOnly: true,
     caracteristiques: [
       'Bureau',
       'Dressing',
@@ -386,6 +386,24 @@ module.exports = {
       .setName('terrasse')
       .setDescription('Terrasse incluse ?')
       .setRequired(false))
+    .addBooleanOption(opt => opt
+      .setName('fontaine_eau')
+      .setDescription('Fontaine à eau incluse ?')
+      .setRequired(false))
+    .addBooleanOption(opt => opt
+      .setName('ordinateur')
+      .setDescription('Ordinateur pour gérer son entreprise inclus ?')
+      .setRequired(false))
+    .addBooleanOption(opt => opt
+      .setName('vestiaire')
+      .setDescription('Vestiaire pour prise de service inclus ?')
+      .setRequired(false))
+    .addIntegerOption(opt => opt
+      .setName('etageres')
+      .setDescription('⚠️ Entrepôt uniquement — Nombre d\'étagères (1 à 25, 1 étagère = 600 unités)')
+      .setRequired(false)
+      .setMinValue(1)
+      .setMaxValue(25))
     .addStringOption(opt => opt
       .setName('description')
       .setDescription('Description libre (détails supplémentaires...)')
@@ -412,10 +430,18 @@ module.exports = {
     if ((garage1 === '26' || garage2 === '26') && type !== 'Agence') {
       return interaction.editReply({ content: `❌ Le **Garage 26 places** est réservé au type **Agence**.` });
     }
-    const jardin      = interaction.options.getBoolean('jardin');
-    const piscine     = interaction.options.getBoolean('piscine');
-    const terrasse    = interaction.options.getBoolean('terrasse');
-    const description = interaction.options.getString('description');
+    const jardin        = interaction.options.getBoolean('jardin');
+    const piscine       = interaction.options.getBoolean('piscine');
+    const terrasse      = interaction.options.getBoolean('terrasse');
+    const fontaineEau   = interaction.options.getBoolean('fontaine_eau');
+    const ordinateur    = interaction.options.getBoolean('ordinateur');
+    const vestiaire     = interaction.options.getBoolean('vestiaire');
+    const etageres      = interaction.options.getInteger('etageres');
+    const description   = interaction.options.getString('description');
+
+    if (etageres && type !== 'Entrepôt') {
+      return interaction.editReply({ content: `❌ L'option **etageres** est réservée au type **Entrepôt**.` });
+    }
 
     const transactionLabel = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
 
@@ -427,7 +453,16 @@ module.exports = {
 
     // ── STOCKAGE (narratif) ──
     const lignesStockage = [];
-    if (bien.frigo > 0) {
+    if (type === 'Entrepôt' && etageres) {
+      const totalEtageres = etageres * 600;
+      const MAX_ENTREPOT  = 25 * 600; // 15000
+      lignesStockage.push(`> L'Entrepôt dispose de **${etageres} étagère${etageres > 1 ? 's' : ''}**. (25 max)`);
+      if (etageres === 25) {
+        lignesStockage.push(`> ➡️ Soit un total de **${MAX_ENTREPOT} unités** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
+      } else {
+        lignesStockage.push(`> ➡️ Soit un total de **${totalEtageres} unités** de stockage disponibles (jusqu'à **${MAX_ENTREPOT} unités** possible), un vrai atout pour vos besoins de rangement !`);
+      }
+    } else if (bien.frigo > 0) {
       lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** au total.`);
     } else {
       lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage.`);
@@ -457,10 +492,13 @@ module.exports = {
       if (garage1) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage1]}`);
       if (garage2) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage2]}`);
     }
-    if (salleASac)      lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
-    if (jardin)         lignesPlus.push(`> 🌿 Jardin`);
-    if (terrasse)       lignesPlus.push(`> ☀️ Terrasse`);
-    if (piscine)        lignesPlus.push(`> 🏊 Piscine`);
+    if (salleASac)       lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
+    if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
+    if (terrasse)        lignesPlus.push(`> ☀️ Terrasse`);
+    if (piscine)         lignesPlus.push(`> 🏊 Piscine`);
+    if (fontaineEau)     lignesPlus.push(`> 💧 Fontaine à eau`);
+    if (ordinateur)      lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
+    if (vestiaire)       lignesPlus.push(`> 👔 Vestiaire pour prise de service`);
     if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
 
     // ── Suffixe du titre avec les garages ──
@@ -501,6 +539,10 @@ module.exports = {
 
     if (description) {
       lignes.push(``, `**📝 DÉTAILS**`, `> ${description}`);
+    }
+
+    if (bien.entrepriseOnly) {
+      lignes.push(``, `## <a:407265yellowsiren:1489238394826522664> Ce bien est disponible uniquement pour les *entreprises*. <a:407265yellowsiren:1489238394826522664>`);
     }
 
     lignes.push(``, `*<:Dynasty8:1489223936620236841> Dynasty 8 — Transformons vos projets immobiliers en réalité.*`);
