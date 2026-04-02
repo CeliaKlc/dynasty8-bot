@@ -373,7 +373,7 @@ module.exports = {
       lignes.push(``, `**📝 DÉTAILS**`, `> ${description}`);
     }
 
-    lignes.push(``, `*Dynasty 8 — Transformons vos projets immobiliers en réalité. 🏡*`);
+    lignes.push(``, `*<:Dynasty8:1489223936620236841> Dynasty 8 — Transformons vos projets immobiliers en réalité.*`);
 
     const contenu = lignes.join('\n');
 
