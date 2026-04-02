@@ -151,7 +151,7 @@ const BIENS = {
   },
   'Maison de Luxe': {
     article: 'La Maison de Luxe',
-    base: 2500, frigo: 0, modifiable: true,
+    base: 2500, frigo: 0, modifiable: true, ordinateur: true,
     caracteristiques: [
       '2 Chambres avec dressing',
       '2 Salles de bain',
@@ -179,7 +179,7 @@ const BIENS = {
   },
   'Bureau': {
     article: 'Le Bureau',
-    base: 750, frigo: 0, modifiable: true,
+    base: 750, frigo: 0, modifiable: true, ordinateur: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
@@ -190,7 +190,7 @@ const BIENS = {
   },
   'Agence': {
     article: "L'Agence",
-    base: 800, frigo: 0, modifiable: true,
+    base: 800, frigo: 0, modifiable: true, ordinateur: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
@@ -486,6 +486,7 @@ module.exports = {
       lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
       lignesPlus.push(`> 👔 Vestiaire pour prise de service`);
     }
+    if (bien.ordinateur && type !== 'Entrepôt') lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
     if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
 
     // ── Suffixe du titre avec les garages ──
