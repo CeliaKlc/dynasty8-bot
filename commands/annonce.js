@@ -470,7 +470,7 @@ module.exports = {
     }
 
     // ── INTÉRIEUR (auto selon le type) ──
-    const lignesInterieur = bien.caracteristiques.map(c => `- ${c}`);
+    const lignesInterieur = bien.caracteristiques.map(c => `> - ${c}`);
 
     // ── LES + ──
     const lignesPlus = [];
@@ -513,7 +513,7 @@ module.exports = {
       ``,
       `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
-      `📍 **Emplacement :** ${quartier}`,
+      `📍 **Emplacement :** Situé ${quartier}`,
     ];
 
     lignes.push(``, `**📦 STOCKAGE**`);
