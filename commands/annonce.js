@@ -553,7 +553,7 @@ module.exports = {
         .setStyle(ButtonStyle.Primary),
     );
 
-    await interaction.channel.send({ content: contenu, files: [image.url], components: [row] });
+    await interaction.channel.send({ content: contenu, files: [image.url], components: [row], allowedMentions: { parse: ['roles'] } });
     await interaction.editReply({ content: '✅ Annonce publiée !' });
   },
 };
