@@ -7,6 +7,11 @@ const AGENTS = {
   '314057285523472394': '🦊',  // Sacha Rollay
   '261956403546161152':   '🦦',  // Ely Rollay
   '1151865005239697449':'🐻',  // Marco Romanov
+  '922112971793133568':'🦍', // John Russet
+  '273565768355151874':'🐲', // Hain Ergy
+  '342355371941167126':'🐍', // Joy Lutz
+  '343731754311614465':'🦁', // Maksim Anatolyevich
+  '394751095932583937':'🐳', // John Macafey
 };
 
 // ─── Statuts et leurs emojis ──────────────────────────────────────────────────
@@ -55,8 +60,8 @@ module.exports = {
     )
     .addStringOption(opt => opt
       .setName('description')
-      .setDescription('Description du dossier (ex: Norah-Kartelle, Vente-Appartement...)')
-      .setRequired(true)
+      .setDescription('Description du dossier (ex: Sacha-Rollay, Vente-Appartement...)')
+      .setRequired(false)
     ),
 
   async execute(interaction) {

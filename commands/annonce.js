@@ -13,6 +13,7 @@ const {
 } = require('discord.js');
 
 const CATEGORIE_TICKETS_ID = '993616675670851659';
+const ROLE_NOTIFICATIONS_LBC_ID = '1489265656099639500';
 
 const ROLES_AUTORISES = [
   '917744433682849802', // Employé
@@ -511,7 +512,7 @@ module.exports = {
       `━━━━━━━━━━━━━━━━━━━━━━━`,
       `✨ **${transactionLabel} : ${type}${garagesTitre ? ` avec ${garagesTitre}` : ''}** ✨`,
       ``,
-      `Chers <@&${process.env.ROLE_NOTIFICATIONS_LBC_ID}>,`,
+      `Chers <@&${ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
       `📍 **Emplacement :** Situé ${quartier}`,
     ];
