@@ -537,7 +537,7 @@ module.exports = {
     if (bien.entrepriseOnly) {
       lignes.push(``, `## <a:407265yellowsiren:1489238394826522664> Ce bien est disponible uniquement pour les *entreprises*. <a:407265yellowsiren:1489238394826522664>`);
     }
-
+    lignes.push(``);
     lignes.push(``);
     lignes.push(`*Vous souhaitez être notifié pour chaque bien ? N'hésitez pas à activer votre rôle juste ici* → https://discord.com/channels/814919928233721856/915990552745500692`);
     lignes.push(``);

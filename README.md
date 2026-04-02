@@ -7,13 +7,90 @@
 
 | Commande | Description | Permission |
 |---|---|---|
-| `/rdv créer` | Planifier un rendez-vous avec un client (rappels automatiques) | Agentes |
-| `/rdv liste` | Voir tous les rendez-vous à venir | Agentes |
-| `/rdv annuler` | Annuler un rendez-vous planifié | Agentes |
-| `/client dossier` | Voir le dossier complet d'un client | Agentes |
-| `/client statut` | Mettre à jour le statut d'un dossier | Agentes |
-| `/client liste` | Voir tous les dossiers actifs | Agentes |
-| `/rename` | Renommer un ticket avec agent, statut, numéro et nom client | Admins |
+| `/annonce` | Publier une annonce immobilière (texte + boutons Acheter/Visiter) | Employé / Direction |
+| `/recaplbc` | Créer un récap de vente LBC (prix, type, adresse, frais, clés, GPS, CI) | Employé / Direction |
+| `/editrecaplbc` | Modifier un récap LBC déjà envoyé via son ID de message | Employé / Direction |
+| `/rename` | Renommer un ticket avec agent, statut, numéro et description | Employé / Direction |
+| `/rdv créer` | Planifier un rendez-vous avec un client (rappels automatiques) | Employé / Direction |
+| `/rdv liste` | Voir tous les rendez-vous à venir | Employé / Direction |
+| `/rdv annuler` | Annuler un rendez-vous planifié | Employé / Direction |
+| `/client dossier` | Voir le dossier complet d'un client | Employé / Direction |
+| `/client statut` | Mettre à jour le statut d'un dossier | Employé / Direction |
+| `/client liste` | Voir tous les dossiers actifs | Employé / Direction |
+
+---
+
+## 🏠 Commande `/annonce`
+
+Publie une annonce immobilière formatée dans le salon courant avec un ping `@Notification-LBC`.
+
+### Options
+
+| Option | Type | Requis | Description |
+|---|---|---|---|
+| `numero` | texte | ✅ | Numéro de référence de l'annonce |
+| `type` | choix | ✅ | Type de bien (22 choix disponibles) |
+| `transaction` | choix | ✅ | Vente ou Location |
+| `quartier` | texte | ✅ | Quartier / emplacement |
+| `image` | fichier | ✅ | Photo du bien |
+| `garage_1` | choix | ❌ | 1er garage inclus |
+| `garage_2` | choix | ❌ | 2ème garage inclus |
+| `garage_luxe` | nombre | ❌ | Garages luxe (Villa/Maison de Luxe uniquement, 1 à 4) |
+| `salle_a_sac` | choix | ❌ | Salle à sac (simple / +1 ext / +2 ext) |
+| `jardin` | booléen | ❌ | Jardin inclus |
+| `piscine` | booléen | ❌ | Piscine incluse |
+| `terrasse` | booléen | ❌ | Terrasse incluse |
+| `etageres` | nombre | ❌ | Étagères Entrepôt uniquement (1 à 25) |
+| `description` | texte | ❌ | Détails supplémentaires |
+
+### Système de tickets
+
+Quand un client clique sur **🏠 Acheter** ou **👁️ Visiter**, un formulaire s'ouvre avec :
+- Nom Prénom
+- Numéro de téléphone
+- Disponibilités
+
+Un salon ticket privé est créé automatiquement avec les infos du client. Dans ce salon :
+- **🔒 Fermer le ticket** (client ou agent) → confirmation éphémère → éjecte le client
+- **🔓 Ré-ouvrir le ticket** (agents uniquement) → remet l'accès au client
+- **Supprimer** (agents uniquement) → supprime le salon
+
+---
+
+## 📋 Commande `/recaplbc`
+
+Crée un récap de vente LBC formaté avec les pièces jointes.
+
+### Options
+
+| Option | Type | Requis | Description |
+|---|---|---|---|
+| `annonce` | texte | ✅ | Numéro d'annonce |
+| `prix_depart` | texte | ✅ | Prix de départ |
+| `commission` | texte | ✅ | Commission |
+| `type` | texte | ✅ | Type du bien |
+| `adresse` | texte | ✅ | Adresse du bien |
+| `frais_dossier` | booléen | ✅ | Frais de dossier effectués |
+| `double_cles` | booléen | ✅ | Double clés effectué |
+| `gps` | fichier | ✅ | Capture GPS |
+| `carte_identite` | fichier | ✅ | Carte d'identité du client |
+| `negociation` | texte | ❌ | Prix de négociation |
+| `etage` | texte | ❌ | Étage du bien |
+| `type_2` | texte | ❌ | Type du 2ème bien (ajoute un `+` entre les deux) |
+| `adresse_2` | texte | ❌ | Adresse du 2ème bien |
+| `etage_2` | texte | ❌ | Étage du 2ème bien |
+
+---
+
+## ✏️ Commande `/editrecaplbc`
+
+Modifie un récap LBC déjà envoyé. Seuls les champs fournis sont mis à jour, les autres sont conservés. Les pièces jointes (GPS, CI) sont automatiquement préservées.
+
+```
+/editrecaplbc message_id:123456789 prix_depart:220'000$
+```
+
+Pour obtenir l'ID du message : **clic droit sur le message → Copier l'identifiant** (mode développeur requis).
 
 ---
 
@@ -56,12 +133,12 @@ Les rendez-vous sont stockés sur MongoDB Atlas pour persister entre les redéma
 3. Dans Railway → onglet **"Variables"** → ajoute :
 
 ```
-TOKEN         = (token de ton bot Discord)
-CLIENT_ID     = (Application ID depuis le Developer Portal)
-GUILD_ID      = (ID de ton serveur Discord)
+TOKEN           = (token de ton bot Discord)
+CLIENT_ID       = (Application ID depuis le Developer Portal)
+GUILD_ID        = (ID de ton serveur Discord)
 CHANNEL_LOGS_ID = (ID du canal logs agents — optionnel)
-MONGODB_URI   = (URI MongoDB Atlas avec user:password remplis)
-TZ            = Europe/Paris
+MONGODB_URI     = (URI MongoDB Atlas avec user:password remplis)
+TZ              = Europe/Paris
 ```
 
 > ⚠️ La variable `TZ=Europe/Paris` est obligatoire pour que les rappels de RDV se déclenchent à la bonne heure.
@@ -86,7 +163,44 @@ Pour obtenir un ID : **Paramètres → Avancés → Mode développeur**, puis cl
 
 ---
 
+### ÉTAPE 5 — Configurer les IDs dans `/annonce`
+
+Ouvre `commands/annonce.js` et vérifie les constantes en haut du fichier :
+
+```js
+const CATEGORIE_TICKETS_ID       = 'ID_DE_LA_CATEGORIE_TICKETS';
+const ROLE_NOTIFICATIONS_LBC_ID  = 'ID_DU_ROLE_NOTIFICATIONS_LBC';
+const ROLES_AUTORISES = [
+  'ID_ROLE_EMPLOYE',
+  'ID_ROLE_DIRECTION',
+];
+```
+
+---
+
 ## 🛠️ Utilisation quotidienne
+
+### Publier une annonce
+```
+/annonce numero:1337 type:Appartement Simple transaction:vente quartier:Rockford Hills image:[photo]
+```
+→ Publie le message formaté avec ping `@Notification-LBC` et les boutons Acheter / Visiter.
+
+### Créer un récap LBC
+```
+/recaplbc annonce:1337 prix_depart:210'000$ commission:10% type:Garage 6 places adresse:Rockford Hills frais_dossier:true double_cles:true gps:[image] carte_identite:[image]
+```
+
+### Modifier un récap LBC
+```
+/editrecaplbc message_id:123456789012345678 prix_depart:220'000$ negociation:210'000$
+```
+
+### Renommer un ticket
+```
+/rename agent:@SachaRollay statut:vendu numero:1336 description:Sacha-Rollay
+```
+→ Renomme le salon en : `🦊✅𝟭𝟯𝟯𝟲_𝗦𝗮𝗰𝗵𝗮-𝗥𝗼𝗹𝗹𝗮𝘆`
 
 ### Planifier un rendez-vous
 ```
@@ -94,34 +208,15 @@ Pour obtenir un ID : **Paramètres → Avancés → Mode développeur**, puis cl
 ```
 → Envoie une confirmation avec ping des deux parties, puis un rappel 30 min avant et à l'heure pile.
 
-### Gérer un rendez-vous
-```
-/rdv liste
-/rdv annuler id:rdv_1234567890
-```
-
-### Voir le dossier d'un client
-```
-/client dossier membre:@Client
-```
-
-### Mettre à jour un statut de dossier
-```
-/client statut membre:@Client reference:ID_DOSSIER statut:Conclu note:Bien vendu !
-```
-
-### Renommer un ticket
-```
-/rename agent:@SachaRollay statut:vendu numero:1336 prenom:Norah nom:Kartelle
-```
-→ Renomme le salon en : `🦊✅𝟭𝟯𝟯𝟲_𝗡𝗼𝗿𝗮𝗵-𝗞𝗮𝗿𝘁𝗲𝗹𝗹𝗲`
-
 ---
 
 ## ❓ Problèmes fréquents
 
 **Le bot ne répond pas aux commandes slash ?**
 → Attends 1-2 minutes après le démarrage, les commandes prennent du temps à s'enregistrer.
+
+**`@Notification-LBC` ne ping pas dans les annonces ?**
+→ Vérifie que `ROLE_NOTIFICATIONS_LBC_ID` dans `commands/annonce.js` correspond bien à l'ID du rôle sur ton serveur.
 
 **Les rappels de RDV ne se déclenchent pas à la bonne heure ?**
 → Vérifie que la variable `TZ=Europe/Paris` est bien configurée dans Railway.
@@ -131,6 +226,9 @@ Pour obtenir un ID : **Paramètres → Avancés → Mode développeur**, puis cl
 
 **`@agent` non reconnu dans `/rename` ?**
 → Son ID Discord n'est pas encore dans la liste `AGENTS` de `commands/rename.js`.
+
+**`/editrecaplbc` ne trouve pas le message ?**
+→ Utilise la commande dans le même salon que le récap. Assure-toi que le mode développeur est activé pour copier l'ID du message.
 
 ---
 

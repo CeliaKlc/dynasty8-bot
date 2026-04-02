@@ -87,8 +87,6 @@ module.exports = {
     // ── Construction du message ───────────────────────────────────────────────
     const lignes = [
       `======= **Annonce LBC : ${annonce}** ========`,
-      ``,
-      ``,
       `**Prix de départ :** ${prixDepart}`,
     ];
 
