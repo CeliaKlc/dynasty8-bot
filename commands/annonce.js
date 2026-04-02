@@ -204,14 +204,14 @@ const BIENS = {
   },
   'Hangar': {
     article: 'Le Hangar',
-    base: 500, frigo: 0,
+    base: 500, frigo: 0, entrepriseOnly: true,
     caracteristiques: [
       'Machine à laver',
     ],
   },
   'Entrepôt': {
     article: "L'Entrepôt",
-    base: 600, frigo: 0, modifiable: true,
+    base: 600, frigo: 0, modifiable: true, entrepriseOnly: true,
     caracteristiques: [
       'Bureau',
       'Dressing',
@@ -539,6 +539,10 @@ module.exports = {
 
     if (description) {
       lignes.push(``, `**📝 DÉTAILS**`, `> ${description}`);
+    }
+
+    if (bien.entrepriseOnly) {
+      lignes.push(``, `## <a:407265yellowsiren:1489238394826522664> Ce bien est disponible uniquement pour les *entreprises*. <a:407265yellowsiren:1489238394826522664>`);
     }
 
     lignes.push(``, `*<:Dynasty8:1489223936620236841> Dynasty 8 — Transformons vos projets immobiliers en réalité.*`);
