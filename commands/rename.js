@@ -83,7 +83,9 @@ module.exports = {
     const statut = STATUTS[statutKey];
 
     // Format final : 🦊⌛𝟭𝟯𝟯𝟲_𝗗𝗲𝘀𝗰𝗿𝗶𝗽𝘁𝗶𝗼𝗻
-    const newName = `${agentEmoji}${statut.emoji}${toMathSansBold(numero)}_${toMathSansBold(description)}`;
+    const newName = description
+      ? `${agentEmoji}${statut.emoji}${toMathSansBold(numero)}_${toMathSansBold(description)}`
+      : `${agentEmoji}${statut.emoji}${toMathSansBold(numero)}`;
 
     try {
       await interaction.channel.setName(newName, `Renommé par ${interaction.user.tag}`);
@@ -108,7 +110,7 @@ module.exports = {
         { name: '👤 Agent',   value: `${agentEmoji} <@${agentUser.id}>`,      inline: true },
         { name: '📋 Statut',  value: `${statut.emoji} ${statut.label}`,        inline: true },
         { name: '🔢 Numéro',      value: numero,      inline: true },
-        { name: '📝 Description', value: description, inline: true },
+        { name: '📝 Description', value: description ?? '—', inline: true },
         { name: '🏷️ Résultat', value: `\`${newName}\``,                        inline: false },
       )
       .setFooter({ text: 'Dynasty 8 • Gestion des dossiers' })
