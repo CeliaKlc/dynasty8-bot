@@ -24,37 +24,112 @@ module.exports = {
         return;
       }
 
-      // Bouton clôture de ticket — accessible à tous, demande confirmation
-      if (interaction.customId === 'ticket_cloturer') {
+      // Bouton fermeture de ticket — accessible à tous, confirmation éphémère
+      if (interaction.customId === 'ticket_fermer') {
         const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
         try {
           const confirmRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-              .setCustomId('ticket_cloturer_confirmer')
-              .setLabel('✅ Clôturer définitivement')
+              .setCustomId('ticket_fermer_confirmer')
+              .setLabel('Fermer')
               .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId('ticket_fermer_annuler')
+              .setLabel('Annuler')
+              .setStyle(ButtonStyle.Secondary),
           );
           await interaction.reply({
-            content: `🔒 ${interaction.member} souhaite clôturer ce ticket.\n\nUn agent peut confirmer la clôture définitive ci-dessous.`,
+            content: '❓ Êtes-vous sûr de vouloir fermer ce ticket ?',
             components: [confirmRow],
+            ephemeral: true,
           });
         } catch (err) {
-          console.error('❌ Erreur demande clôture ticket :', err);
+          console.error('❌ Erreur demande fermeture ticket :', err);
         }
         return;
       }
 
-      // Bouton confirmation clôture définitive — agents uniquement
-      if (interaction.customId === 'ticket_cloturer_confirmer') {
+      // Bouton annulation fermeture — met à jour le message éphémère
+      if (interaction.customId === 'ticket_fermer_annuler') {
+        await interaction.update({ content: '✅ Action annulée.', components: [] });
+        return;
+      }
+
+      // Bouton confirmation fermeture — éjecte le client et envoie les contrôles agents
+      if (interaction.customId === 'ticket_fermer_confirmer') {
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        const member  = interaction.member;
+        const channel = interaction.channel;
+        try {
+          // Éjecter le client du salon
+          await channel.permissionOverwrites.edit(member.id, { ViewChannel: false });
+
+          // Mettre à jour le message éphémère
+          await interaction.update({ content: '🔒 Ticket fermé.', components: [] });
+
+          // Embed "Ticket fermé"
+          const embedFerme = new EmbedBuilder()
+            .setColor(0xE74C3C)
+            .setTitle('🔒 Ticket fermé')
+            .setDescription(`Ce ticket a été fermé par ${member}.`)
+            .setTimestamp()
+            .setFooter({ text: 'Dynasty 8' });
+
+          // Embed "Support team ticket controls"
+          const embedControls = new EmbedBuilder()
+            .setColor(0x95A5A6)
+            .setTitle('🛠️ Support team ticket controls');
+
+          const controlRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`ticket_reouvrir_${member.id}`)
+              .setLabel('Ré-ouvrir le ticket')
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId('ticket_supprimer')
+              .setLabel('Supprimer')
+              .setStyle(ButtonStyle.Secondary),
+          );
+
+          await channel.send({ embeds: [embedFerme, embedControls], components: [controlRow] });
+        } catch (err) {
+          console.error('❌ Erreur fermeture ticket :', err);
+        }
+        return;
+      }
+
+      // Bouton ré-ouverture — remet l'accès au client (agents uniquement)
+      if (interaction.customId.startsWith('ticket_reouvrir_')) {
         const aAcces = ROLES_AUTORISES.some(id => interaction.member.roles.cache.has(id));
         if (!aAcces) {
-          return interaction.reply({ content: '❌ Seuls les agents peuvent clôturer définitivement un ticket.', ephemeral: true });
+          return interaction.reply({ content: '❌ Seuls les agents peuvent ré-ouvrir un ticket.', ephemeral: true });
+        }
+        const memberId = interaction.customId.replace('ticket_reouvrir_', '');
+        try {
+          await interaction.channel.permissionOverwrites.edit(memberId, {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true,
+          });
+          await interaction.reply({ content: `✅ Ticket ré-ouvert. <@${memberId}> a de nouveau accès au salon.` });
+        } catch (err) {
+          console.error('❌ Erreur ré-ouverture ticket :', err);
+          await interaction.reply({ content: '❌ Impossible de ré-ouvrir le ticket.', ephemeral: true });
+        }
+        return;
+      }
+
+      // Bouton suppression définitive — agents uniquement
+      if (interaction.customId === 'ticket_supprimer') {
+        const aAcces = ROLES_AUTORISES.some(id => interaction.member.roles.cache.has(id));
+        if (!aAcces) {
+          return interaction.reply({ content: '❌ Seuls les agents peuvent supprimer un ticket.', ephemeral: true });
         }
         try {
-          await interaction.reply({ content: '🔒 Ticket clôturé. Le salon va être supprimé...' });
+          await interaction.reply({ content: '🗑️ Suppression du ticket...' });
           setTimeout(() => interaction.channel.delete().catch(console.error), 3000);
         } catch (err) {
-          console.error('❌ Erreur clôture définitive ticket :', err);
+          console.error('❌ Erreur suppression ticket :', err);
         }
         return;
       }

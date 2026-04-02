@@ -652,8 +652,8 @@ async function handleAnnonceModal(interaction) {
 
   const clotureRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('ticket_cloturer')
-      .setLabel('🔒 Clôturer le ticket')
+      .setCustomId('ticket_fermer')
+      .setLabel('🔒 Fermer le ticket')
       .setStyle(ButtonStyle.Danger),
   );
 
