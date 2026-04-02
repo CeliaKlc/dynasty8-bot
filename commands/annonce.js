@@ -645,7 +645,9 @@ async function handleAnnonceModal(interaction) {
       `Ta demande concernant le bien **#${numero}** a bien été reçue.\n` +
       `Un agent va prendre en charge ta demande très prochainement.\n\n` +
       `**👤 Nom Prénom :** ${nomPrenom}\n` +
-      `**📞 Numéro de téléphone :** ${telephone}`
+      `**📞 Numéro de téléphone :** ${telephone}\n\n` +
+      `⚠️ Important : Tout ticket ne comportant pas de formule de politesse **sera automatiquement clos**.\n\n` +
+      `Vous avez changé d'avis ? Réagissez avec 🔒 pour annuler votre demande et fermer le ticket.`
     )
     .setFooter({ text: 'Dynasty 8' })
     .setTimestamp();
@@ -658,6 +660,15 @@ async function handleAnnonceModal(interaction) {
   );
 
   await ticketChannel.send({ content: `${member}`, embeds: [embed], components: [clotureRow] });
+
+  await ticketChannel.send(
+    `${member} Bienvenue,\n\n` +
+    `Êtes-vous intéressé par l'acquisition d'un bien via notre plateforme Le-Bon-Coin ?\n` +
+    `Merci de remplir l'information suivante :\n\n` +
+    `**\`\`\`\n- Vos disponibilités (le terme « maintenant » ne constitue pas une disponibilité) :\`\`\`**\n` +
+    `‎`
+  );
+
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
 }
 
