@@ -702,7 +702,12 @@ async function handleAnnonceModal(interaction) {
 
   await ticketChannel.send({ embeds: [embed], components: [clotureRow] });
   await ticketChannel.send({
-    content: `Bonjour,\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, ${AGENT_FEMININ[agentId] ? 'elle' : 'il'} vous répondra quand ${AGENT_FEMININ[agentId] ? 'elle' : 'il'} sera disponible !\n\nEn vous souhaitant une bonne journée !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`,
+    content: (() => {
+      const heure      = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false });
+      const salutation = parseInt(heure) >= 18 ? 'une bonne soirée' : 'une bonne journée';
+      const pronom     = AGENT_FEMININ[agentId] ? 'elle' : 'il';
+      return `Bonjour,\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, ${pronom} vous répondra quand ${pronom} sera disponible !\n\nEn vous souhaitant ${salutation} !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`;
+    })(),
     allowedMentions: { users: [agentId] },
   });
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
