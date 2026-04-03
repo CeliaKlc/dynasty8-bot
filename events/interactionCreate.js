@@ -165,13 +165,22 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // Vérification des rôles autorisés
-    const aAcces = ROLES_AUTORISES.some(id => interaction.member.roles.cache.has(id));
-    if (!aAcces) {
-      return interaction.reply({
-        content: '❌ Tu dois avoir le rôle **Employé** ou **Direction** pour utiliser cette commande.',
-        ephemeral: true,
-      });
+    // /prepatchnote réservé à la Direction uniquement
+    if (interaction.commandName === 'prepatchnote') {
+      const isDirection = interaction.member.roles.cache.has('1375930527873368066');
+      const isAdmin     = interaction.member.permissions.has(8n); // Administrator
+      if (!isDirection && !isAdmin) {
+        return interaction.reply({ content: '❌ Cette commande est réservée à la Direction.', ephemeral: true });
+      }
+    } else {
+      // Toutes les autres commandes : Employé ou Direction
+      const aAcces = ROLES_AUTORISES.some(id => interaction.member.roles.cache.has(id));
+      if (!aAcces) {
+        return interaction.reply({
+          content: '❌ Tu dois avoir le rôle **Employé** ou **Direction** pour utiliser cette commande.',
+          ephemeral: true,
+        });
+      }
     }
 
     try {
