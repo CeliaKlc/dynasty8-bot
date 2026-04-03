@@ -35,6 +35,12 @@ const ROLES_AUTORISES = [
   '1375930527873368066', // Direction
 ];
 
+// ─── Rôles ayant accès aux tickets LBC ───────────────────────────────────────
+const ROLES_TICKETS_LBC = [
+  '1045639426170167358', // Gestionnaire-LBC
+  '1373792350991683687', // Responsable-LBC
+];
+
 function toMathSansBold(str) {
   return str.split('').map(char => {
     const code = char.charCodeAt(0);
@@ -665,7 +671,7 @@ async function handleAnnonceModal(interaction) {
           type: OverwriteType.Member,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
         },
-        ...ROLES_AUTORISES.map(roleId => ({
+        ...ROLES_TICKETS_LBC.map(roleId => ({
           id: roleId,
           type: OverwriteType.Role,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages],
