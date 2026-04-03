@@ -35,6 +35,12 @@ const ROLES_AUTORISES = [
   '1375930527873368066', // Direction
 ];
 
+// ─── Rôles ayant accès aux tickets LBC ───────────────────────────────────────
+const ROLES_TICKETS_LBC = [
+  '1045639426170167358', // Gestionnaire-LBC
+  '1373792350991683687', // Responsable-LBC
+];
+
 function toMathSansBold(str) {
   return str.split('').map(char => {
     const code = char.charCodeAt(0);
@@ -665,7 +671,7 @@ async function handleAnnonceModal(interaction) {
           type: OverwriteType.Member,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
         },
-        ...ROLES_AUTORISES.map(roleId => ({
+        ...ROLES_TICKETS_LBC.map(roleId => ({
           id: roleId,
           type: OverwriteType.Role,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages],
@@ -702,7 +708,13 @@ async function handleAnnonceModal(interaction) {
 
   await ticketChannel.send({ embeds: [embed], components: [clotureRow] });
   await ticketChannel.send({
-    content: `Bonjour,\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, ${AGENT_FEMININ[agentId] ? 'elle' : 'il'} vous répondra quand ${AGENT_FEMININ[agentId] ? 'elle' : 'il'} sera disponible !\n\nEn vous souhaitant une bonne journée !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`,
+    content: (() => {
+      const heure      = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false });
+      const salutation = parseInt(heure) >= 18 ? 'une bonne soirée' : 'une bonne journée';
+      const politesse = parseInt(heure) >= 18 ? 'Bonsoir' : 'Bonjour';
+      const pronom     = AGENT_FEMININ[agentId] ? 'elle' : 'il';
+      return `${politesse},\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, ${pronom} vous répondra quand ${pronom} sera disponible !\n\nEn vous souhaitant ${salutation} !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`;
+    })(),
     allowedMentions: { users: [agentId] },
   });
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
