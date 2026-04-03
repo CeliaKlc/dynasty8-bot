@@ -20,7 +20,6 @@ Il centralise la gestion des annonces LBC, des récapitulatifs de vente, des tic
 | `/rdv créer` | Planifier un rendez-vous avec rappels automatiques | Employé / Direction |
 | `/rdv liste` | Voir tous les rendez-vous à venir | Employé / Direction |
 | `/rdv annuler` | Annuler un rendez-vous planifié | Employé / Direction |
-| `/sacha` `/ely` `/marco` … | Afficher la carte de visite d'un agent | Tous |
 | `/prepatchnote` | Publier un pré-patchnote dans le salon dédié | Direction uniquement |
 
 ---
@@ -170,33 +169,6 @@ Publie une annonce de réduction de prix temporaire avec ping `@Notification-LBC
 |---|---|---|---|
 | `prix` | texte | ✅ | Nouveau prix réduit |
 | `duree` | choix | ✅ | 6h / 12h / 24h / 48h / 72h / 7 jours |
-
----
-
-## 🪪 Cartes de visite (`/sacha`, `/ely`, `/marco`…)
-
-Chaque agent dispose de sa propre commande slash qui affiche sa carte de visite sous forme d'embed Dynasty 8.
-
-**Informations affichées :**
-- Nom et grade
-- Numéro de téléphone in-game
-- Agrégations (spécialités)
-- Photo (thumbnail)
-
-### Agents disponibles
-
-| Commande | Agent | Emoji | Grade |
-|---|---|---|---|
-| `/sacha` | Sacha Rollay | 🦊 | Patronne |
-| `/ely` | Ely Rollay | 🦦 | — |
-| `/marco` | Marco Romanov | 🐻 | — |
-| `/john` | John Russet | 🦍 | — |
-| `/joy` | Joy Lutz | 🐍 | — |
-| `/hain` | Hain Ergy | 🐲 | — |
-| `/maksim` | Maksim Anatolyevich | 🦁 | — |
-| `/macafey` | John Macafey | 🐳 | — |
-
-> Pour ajouter un agent : ouvre `commands/cartevisite.js` et ajoute une entrée dans `AGENTS`.
 
 ---
 

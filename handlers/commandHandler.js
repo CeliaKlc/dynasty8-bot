@@ -11,17 +11,6 @@ async function loadCommands(client) {
   for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
 
-    // Support pour les fichiers exportant plusieurs commandes ({ commands: [...] })
-    if ('commands' in command && Array.isArray(command.commands)) {
-      for (const cmd of command.commands) {
-        if ('data' in cmd && 'execute' in cmd) {
-          client.commands.set(cmd.data.name, cmd);
-          commands.push(cmd.data.toJSON());
-        }
-      }
-      continue;
-    }
-
     if ('data' in command && 'execute' in command) {
       client.commands.set(command.data.name, command);
       commands.push(command.data.toJSON());

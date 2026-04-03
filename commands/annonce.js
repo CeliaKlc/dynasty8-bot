@@ -41,15 +41,7 @@ const ROLES_TICKETS_LBC = [
   '1373792350991683687', // Responsable-LBC
 ];
 
-function toMathSansBold(str) {
-  return str.split('').map(char => {
-    const code = char.charCodeAt(0);
-    if (code >= 65 && code <= 90)  return String.fromCodePoint(0x1D5D4 + (code - 65));
-    if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D5EE + (code - 97));
-    if (code >= 48 && code <= 57)  return String.fromCodePoint(0x1D7EC + (code - 48));
-    return char;
-  }).join('');
-}
+const { toMathSansBold } = require('../utils/formatters');
 
 // ── Données par type de bien ───────────────────────────────────────────────────
 const BIENS = {
@@ -74,13 +66,12 @@ const BIENS = {
   },
   'Maison Simple': {
     article: 'La Maison Simple',
-    base: 500, frigo: 0,
+    base: 500, frigo: 0, cafe: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
       'Salon avec cuisine ouverte',
       '1 Télévision',
-      'Cafetière',
     ],
   },
   'Caravane': {
@@ -152,13 +143,12 @@ const BIENS = {
   },
   'Appartement de Luxe Modifiable': {
     article: "L'Appartement de Luxe Modifiable",
-    base: 750, frigo: 0, modifiable: true,
+    base: 750, frigo: 0, modifiable: true, cafe: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
       'Salon avec cuisine ouverte',
       'Bureau',
-      'Cafetière',
       'Télévision',
     ],
   },
@@ -584,6 +574,10 @@ module.exports = {
         .setCustomId(`annonce_visiter_${numero}_${agentId}`)
         .setLabel('👁️ Visiter le bien')
         .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('annonce_notif')
+        .setLabel('🔔 Être notifié')
+        .setStyle(ButtonStyle.Secondary),
     );
 
     await interaction.channel.send({ content: contenu, files: [image.url], components: [row], allowedMentions: { parse: ['roles'] } });
@@ -606,7 +600,7 @@ async function handleAnnonceButton(interaction) {
     .setCustomId('nom_prenom')
     .setLabel('Nom Prénom')
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('Ex : Jean Dupont')
+    .setPlaceholder('Ex : Sacha Rollay')
     .setRequired(true);
 
   const telephoneInput = new TextInputBuilder()
