@@ -639,8 +639,9 @@ async function handleAnnonceModal(interaction) {
   const disponibilites  = interaction.fields.getTextInputValue('disponibilites');
 
   const isAchat     = action === 'acheter';
+  const emoji       = isAchat ? '🏠' : '👁️';
   const actionLabel = isAchat ? 'Acheter' : 'Visiter';
-  const agentEmoji  = AGENT_EMOJIS[agentId] ?? (isAchat ? '🏠' : '👁️');
+  const agentEmoji  = AGENT_EMOJIS[agentId] ?? emoji;
   const channelName = `${agentEmoji}⌛${toMathSansBold(numero)}_${toMathSansBold(actionLabel)}`;
 
   const guild  = interaction.guild;
