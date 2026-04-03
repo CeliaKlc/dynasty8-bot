@@ -109,12 +109,12 @@ module.exports = {
     const lignes = [
       `======= **Annonce LBC : ${annonce}** ========`,
       ``,
-      `**Prix de départ :** ${prixDepart}`,
+      `**Prix de départ :** ${prixDepart}$`,
     ];
 
-    if (negociation) lignes.push(`**Négociation :** ${negociation}`);
+    if (negociation) lignes.push(`**Négociation :** ${negociation}$`);
 
-    lignes.push(`**Commission :** ${commission}`);
+    lignes.push(`**Commission :** ${commission}%`);
 
     lignes.push(``);
 
@@ -144,6 +144,8 @@ module.exports = {
     }
 
     // ── Description (optionnel) ────────────────────────────────────────────────────
+    lignes.push(``);
+    lignes.push(``);
     if (description) {
       lignes.push(`**Description**`);
       lignes.push(`${description}`);
