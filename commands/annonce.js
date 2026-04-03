@@ -680,3 +680,7 @@ async function handleAnnonceModal(interaction) {
 
 module.exports.handleAnnonceButton = handleAnnonceButton;
 module.exports.handleAnnonceModal  = handleAnnonceModal;
+module.exports.BIENS               = BIENS;
+module.exports.STOCKAGE_GARAGE     = STOCKAGE_GARAGE;
+module.exports.GARAGE_LABELS       = GARAGE_LABELS;
+module.exports.SALLE_A_SAC_LABELS  = SALLE_A_SAC_LABELS;

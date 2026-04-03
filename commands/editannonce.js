@@ -5,50 +5,14 @@ const {
   ButtonStyle,
 } = require('discord.js');
 
-// ── Constantes (identiques à annonce.js) ─────────────────────────────────────
+// ── Constantes partagées (source unique : annonce.js) ─────────────────────────
 const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
 
-const BIENS = {
-  'Appartement Simple':             { article: "L'Appartement Simple",             base: 400,  frigo: 0   },
-  'Appartement Basique':            { article: "L'Appartement Basique",            base: 250,  frigo: 0   },
-  'Maison Simple':                  { article: 'La Maison Simple',                 base: 500,  frigo: 0   },
-  'Caravane':                       { article: 'La Caravane',                      base: 200,  frigo: 0   },
-  'Appartement Favelas':            { article: "L'Appartement Favelas",            base: 300,  frigo: 0   },
-  'Maison Favelas':                 { article: 'La Maison Favelas',                base: 500,  frigo: 0   },
-  'Studio de Luxe':                 { article: 'Le Studio de Luxe',                base: 500,  frigo: 100 },
-  'Appartement Moderne':            { article: "L'Appartement Moderne",            base: 500,  frigo: 0   },
-  'Duplex':                         { article: 'Le Duplex',                        base: 600,  frigo: 100 },
-  'Appartement de Luxe Modifiable': { article: "L'Appartement de Luxe Modifiable", base: 750,  frigo: 0,  modifiable: true },
-  'Villa':                          { article: 'La Villa',                         base: 800,  frigo: 100 },
-  'Maison de Luxe':                 { article: 'La Maison de Luxe',                base: 2500, frigo: 0,  modifiable: true, ordinateur: true, cafe: true },
-  'Villa de Luxe':                  { article: 'La Villa de Luxe',                 base: 2000, frigo: 0   },
-  'Bureau':                         { article: 'Le Bureau',                        base: 750,  frigo: 0,  modifiable: true, ordinateur: true },
-  'Agence':                         { article: "L'Agence",                         base: 800,  frigo: 0,  modifiable: true, ordinateur: true },
-  'Hangar':                         { article: 'Le Hangar',                        base: 500,  frigo: 0,  entrepriseOnly: true },
-  'Entrepôt':                       { article: "L'Entrepôt",                       base: 600,  frigo: 0,  modifiable: true, entrepriseOnly: true },
-  'Garage 2 places':                { article: 'Le Garage 2 places',               base: 50,   frigo: 0   },
-  'Garage 6 places':                { article: 'Le Garage 6 places',               base: 200,  frigo: 0   },
-  'Garage 10 places':               { article: 'Le Garage 10 places',              base: 400,  frigo: 0   },
-  'Garage 26 places':               { article: 'Le Garage 26 places',              base: 500,  frigo: 0   },
-  'Loft Garage':                    { article: 'Le Loft Garage',                   base: 500,  frigo: 0   },
-};
-
-const STOCKAGE_GARAGE = { '2': 50, '6': 200, '10': 400, '10l': 500, '26': 500, 'loft': 500 };
-
-const GARAGE_LABELS = {
-  '2': '2 places', '6': '6 places', '10': '10 places',
-  '10l': '10 places de luxe', '26': '26 places', 'loft': 'Loft Garage',
-};
+const { BIENS, STOCKAGE_GARAGE, GARAGE_LABELS, SALLE_A_SAC_LABELS } = require('./annonce');
 
 const GARAGE_LABEL_TO_VALUE = Object.fromEntries(
   Object.entries(GARAGE_LABELS).map(([k, v]) => [v, k])
 );
-
-const SALLE_A_SAC_LABELS = {
-  '1': 'Salle à sac',
-  '2': 'Salle à sac avec une extension',
-  '3': 'Salle à sac avec deux extensions',
-};
 
 const SALLE_A_SAC_LABEL_TO_VALUE = Object.fromEntries(
   Object.entries(SALLE_A_SAC_LABELS).map(([k, v]) => [v, k])
