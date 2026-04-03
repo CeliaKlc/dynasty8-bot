@@ -106,17 +106,17 @@ function buildAnnonceContent(p) {
       lignesStockage.push(`> ➡️ Soit un total de **${totalEtageres} unités** de stockage disponibles (jusqu'à **${MAX_ENTREPOT} unités** possible), un vrai atout pour vos besoins de rangement !`);
     }
   } else if (bien.frigo > 0) {
-    lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** au total.`);
+    lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** (HORS RSA) au total.`);
   } else {
-    lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage.`);
+    lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** (HORS RSA) de stockage.`);
   }
   if (isTypeLuxe && garageLuxe) {
     const label = garageLuxe === 1 ? 'Le Garage 10 places de luxe dispose' : `Les ${garageLuxe} Garages 10 places de luxe disposent`;
     lignesStockage.push(`> ${label} de **${garageLuxeUnites} unités** supplémentaires.`);
     lignesStockage.push(`> ➡️ Soit un total de **${bien.base + bien.frigo + garageLuxeUnites} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
   } else {
-    if (garage1) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage1]} dispose de **${garage1Unites} unités** supplémentaires.`);
-    if (garage2) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage2]} dispose de **${garage2Unites} unités** supplémentaires.`);
+    if (garage1) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage1]} dispose de **${garage1Unites} unités** (HORS RSA) supplémentaires.`);
+    if (garage2) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage2]} dispose de **${garage2Unites} unités** (HORS RSA) supplémentaires.`);
     if (garage1 || garage2) {
       lignesStockage.push(`> ➡️ Soit un total de **${bien.base + bien.frigo + totalGarageUnites} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
     }
