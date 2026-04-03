@@ -236,6 +236,10 @@ module.exports = {
       .setDescription('ID du message à modifier (clic droit → Copier l\'identifiant)')
       .setRequired(true))
     .addStringOption(opt => opt
+      .setName('quartier')
+      .setDescription('Nouveau quartier / emplacement')
+      .setRequired(false))
+    .addStringOption(opt => opt
       .setName('garage_1')
       .setDescription('1er garage inclus')
       .setRequired(false)
@@ -335,7 +339,7 @@ module.exports = {
       numero:      current.numero,
       type:        current.type,
       transaction: current.transaction,
-      quartier:    current.quartier,
+      quartier:    interaction.options.getString('quartier') ?? current.quartier,
       garage1:     resolveStr('garage_1',   current.garage1),
       garage2:     resolveStr('garage_2',   current.garage2),
       garageLuxe:  interaction.options.getInteger('garage_luxe') ?? current.garageLuxe,
