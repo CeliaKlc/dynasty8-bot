@@ -34,14 +34,7 @@ module.exports = {
       .setCustomId('contenu')
       .setLabel('Contenu du pré-patchnote')
       .setStyle(TextInputStyle.Paragraph)
-      .setPlaceholder(
-        '✨ Nouveautés\n' +
-        '• /cartevisite : carte de visite par agent\n\n' +
-        '🔧 Améliorations\n' +
-        '• ...\n\n' +
-        '🐛 Corrections\n' +
-        '• ...'
-      )
+      .setPlaceholder('✨ Nouveautés\n• ...\n\n🔧 Améliorations\n• ...\n\n🐛 Corrections\n• ...')
       .setRequired(true)
       .setMaxLength(4000);
 
