@@ -1,4 +1,5 @@
 const { handleAnnonceButton, handleAnnonceModal } = require('../commands/annonce');
+const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
 
 const ROLES_AUTORISES = [
   '917744433682849802', // Employé
@@ -141,6 +142,16 @@ module.exports = {
         } catch (err) {
           console.error('❌ Erreur modal annonce :', err);
           const msg = { content: '❌ Une erreur est survenue lors de la création du ticket.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+      }
+      if (interaction.customId === 'prepatchnote_modal') {
+        try {
+          await handlePrepatchnoteModal(interaction);
+        } catch (err) {
+          console.error('❌ Erreur modal prepatchnote :', err);
+          const msg = { content: '❌ Une erreur est survenue lors de la publication.', ephemeral: true };
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});
         }
