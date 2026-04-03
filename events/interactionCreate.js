@@ -1,3 +1,4 @@
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { handleAnnonceButton, handleAnnonceModal } = require('../commands/annonce');
 const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
 
@@ -27,7 +28,6 @@ module.exports = {
 
       // Bouton fermeture de ticket — accessible à tous, confirmation éphémère
       if (interaction.customId === 'ticket_fermer') {
-        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
         try {
           const confirmRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -58,7 +58,6 @@ module.exports = {
 
       // Bouton confirmation fermeture — éjecte le client et envoie les contrôles agents
       if (interaction.customId === 'ticket_fermer_confirmer') {
-        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
         const member  = interaction.member;
         const channel = interaction.channel;
         try {

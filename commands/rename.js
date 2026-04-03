@@ -20,16 +20,7 @@ const STATUTS = {
   'fin-de-contrat': { emoji: '❌', label: 'Fin de contrat' },
 };
 
-// ─── Conversion en Mathematical Sans-Serif Bold (Unicode) ────────────────────
-function toMathSansBold(str) {
-  return str.split('').map(char => {
-    const code = char.charCodeAt(0);
-    if (code >= 65 && code <= 90)  return String.fromCodePoint(0x1D5D4 + (code - 65));
-    if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D5EE + (code - 97));
-    if (code >= 48 && code <= 57)  return String.fromCodePoint(0x1D7EC + (code - 48));
-    return char;
-  }).join('');
-}
+const { toMathSansBold } = require('../utils/formatters');
 
 module.exports = {
   data: new SlashCommandBuilder()
