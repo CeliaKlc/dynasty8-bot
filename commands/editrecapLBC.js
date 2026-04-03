@@ -4,13 +4,13 @@ const { SlashCommandBuilder } = require('discord.js');
 function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, fraisDossier, doubleCles }) {
   const lignes = [
     `======= **Annonce LBC : ${annonce}** ========`,
-    `**Prix de départ :** ${prixDepart}`,
+    (``)
+    `**Prix de départ :** ${prixDepart}$`,
   ];
 
-  if (negociation) lignes.push(`**Négociation :** ${negociation}`);
+  if (negociation) lignes.push(`**Négociation :** ${negociation}$`);
 
-  lignes.push(`**Commission :** ${commission}`);
-  lignes.push(``);
+  lignes.push(`**Commission :** ${commission}%`);
   lignes.push(``);
 
   lignes.push(`**Type :** ${type}`);
@@ -19,9 +19,7 @@ function buildContenu({ annonce, prixDepart, negociation, commission, type, adre
 
   if (type2) {
     lignes.push(``);
-    lignes.push(``);
     lignes.push(`+`);
-    lignes.push(``);
     lignes.push(``);
     lignes.push(`**Type :** ${type2}`);
     if (adresse2) lignes.push(`**Adresse :** ${adresse2}`);
