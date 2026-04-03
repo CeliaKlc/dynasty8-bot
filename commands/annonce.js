@@ -574,6 +574,10 @@ module.exports = {
         .setCustomId(`annonce_visiter_${numero}_${agentId}`)
         .setLabel('👁️ Visiter le bien')
         .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('annonce_notif')
+        .setLabel('🔔 Être notifié')
+        .setStyle(ButtonStyle.Secondary),
     );
 
     await interaction.channel.send({ content: contenu, files: [image.url], components: [row], allowedMentions: { parse: ['roles'] } });
@@ -596,7 +600,7 @@ async function handleAnnonceButton(interaction) {
     .setCustomId('nom_prenom')
     .setLabel('Nom Prénom')
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('Ex : Jean Dupont')
+    .setPlaceholder('Ex : Sacha Rollay')
     .setRequired(true);
 
   const telephoneInput = new TextInputBuilder()

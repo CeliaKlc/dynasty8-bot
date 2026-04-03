@@ -26,6 +26,25 @@ module.exports = {
         return;
       }
 
+      // Bouton notification LBC — toggle rôle @Notification-LBC
+      if (interaction.customId === 'annonce_notif') {
+        const roleId = '1345415367333380156';
+        try {
+          const hasRole = interaction.member.roles.cache.has(roleId);
+          if (hasRole) {
+            await interaction.member.roles.remove(roleId);
+            await interaction.reply({ content: '🔕 Tu ne recevras plus les notifications LBC.', ephemeral: true });
+          } else {
+            await interaction.member.roles.add(roleId);
+            await interaction.reply({ content: '🔔 Tu recevras maintenant les notifications LBC !', ephemeral: true });
+          }
+        } catch (err) {
+          console.error('❌ Erreur toggle notification LBC :', err);
+          await interaction.reply({ content: '❌ Impossible de modifier ton rôle. Contacte un administrateur.', ephemeral: true });
+        }
+        return;
+      }
+
       // Bouton fermeture de ticket — accessible à tous, confirmation éphémère
       if (interaction.customId === 'ticket_fermer') {
         try {
