@@ -1,11 +1,12 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
+// ─── Logo Dynasty 8 (icône author + footer) ──────────────────────────────────
+const DYNASTY8_LOGO = 'https://cdn.discordapp.com/emojis/1489223936620236841.png';
+
 // ─── Configuration des agents ────────────────────────────────────────────────
-// Ajouter les autres agents ici au fur et à mesure
 const AGENTS = {
   sacha: {
     nom: 'Sacha Rollay',
-    emoji: '🦊',
     grade: 'Patronne',
     telephone: '50.93.60',
     aggregations: ['Las Venturas', 'Gestionnaire LBC'],
@@ -15,38 +16,40 @@ const AGENTS = {
 
 // ─── Couleur Dynasty 8 ───────────────────────────────────────────────────────
 const DYNASTY8_COLOR = 0xF5A623;
-const BLANK = '\u2800'; // caractère braille invisible — Discord ne supprime pas les lignes vides avec lui
 
 // ─── Construction de l'embed carte de visite ─────────────────────────────────
 function buildCarteEmbed(agent) {
-  const lines = [
-    BLANK,
-    `${agent.emoji}  **${agent.nom}**`,
-    BLANK,
-    `**💼  G R A D E**`,
-    `${agent.grade}`,
-    BLANK,
-    `**📞  T É L É P H O N E**`,
-    `${agent.telephone}`,
+  const sep = '━━━━━━━━━━━━━━━━━━━━━━';
+
+  const descLines = [
+    `${sep}`,
+    `**${agent.nom}**`,
+    `*${agent.grade}*`,
+    `${sep}`,
+    '',
+    `> 📞  \`${agent.telephone}\``,
   ];
 
   if (agent.aggregations && agent.aggregations.length > 0) {
-    lines.push(BLANK);
-    lines.push(`**🎖️  A G R É G A T I O N S**`);
-    lines.push(agent.aggregations.join('  ·  '));
+    descLines.push('');
+    descLines.push(`> 🎖️  ${agent.aggregations.join('  ·  ')}`);
   }
 
-  lines.push(BLANK);
+  const authorOptions = { name: 'Dynasty 8 Real Estate' };
+  if (DYNASTY8_LOGO) authorOptions.iconURL = DYNASTY8_LOGO;
+
+  const footerOptions = { text: '◈  Dynasty 8  ◈' };
+  if (DYNASTY8_LOGO) footerOptions.iconURL = DYNASTY8_LOGO;
 
   const embed = new EmbedBuilder()
-    .setTitle('✦   C A R T E   D E   V I S I T E   ✦')
+    .setAuthor(authorOptions)
+    .setTitle('◈  CARTE DE VISITE  ◈')
     .setColor(DYNASTY8_COLOR)
-    .setDescription(lines.join('\n'))
-    .setFooter({ text: 'Dynasty 8 Real Estate' });
+    .setDescription(descLines.join('\n'))
+    .setFooter(footerOptions)
+    .setTimestamp();
 
-  if (agent.photo) {
-    embed.setImage(agent.photo);
-  }
+  if (agent.photo) embed.setThumbnail(agent.photo);
 
   return embed;
 }

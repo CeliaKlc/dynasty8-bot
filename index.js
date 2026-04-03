@@ -1,8 +1,8 @@
+require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
 const { connectDB } = require('./utils/db');
-require('dotenv').config();
 
 const client = new Client({
   intents: [
