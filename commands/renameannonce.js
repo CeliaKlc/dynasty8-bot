@@ -1,9 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 const STATUTS = {
-  'vendu':      { emoji: '✅', label: 'Vendu' },
-  'loue':       { emoji: '✅', label: 'Loué' },
-  'disponible': { emoji: '❌', label: 'Disponible' },
+  'disponible':      { emoji: '✅', label: 'disponible' },
+  'vendu': { emoji: '❌', label: 'vendu' },
 };
 
 function toMathSansBold(str) {
@@ -25,9 +24,8 @@ module.exports = {
       .setDescription('Statut de l\'annonce')
       .setRequired(true)
       .addChoices(
-        { name: '✅ Vendu',      value: 'vendu'      },
-        { name: '✅ Loué',       value: 'loue'       },
-        { name: '❌ Disponible', value: 'disponible' },
+        { name: '✅ A vendre',      value: 'disponible'      },
+        { name: '❌ Vendu', value: 'vendu' },
       ))
     .addStringOption(opt => opt
       .setName('numero')
