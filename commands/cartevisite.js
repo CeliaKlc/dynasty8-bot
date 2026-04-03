@@ -7,10 +7,12 @@ const DYNASTY8_LOGO = 'https://cdn.discordapp.com/emojis/1489223936620236841.png
 const AGENTS = {
   sacha: {
     nom: 'Sacha Rollay',
+    emoji: '🦊',
     grade: 'Patronne',
     telephone: '50.93.60',
     aggregations: ['Las Venturas', 'Gestionnaire LBC'],
-    photo: 'https://i.goopics.net/ostegf.png',
+    photo: 'https://i.goopics.net/ostegf.png',    // grande photo en bas
+    thumbnail: 'https://i.goopics.net/s4vqap.png', // image haut droite
   },
 };
 
@@ -19,20 +21,20 @@ const DYNASTY8_COLOR = 0xF5A623;
 
 // ─── Construction de l'embed carte de visite ─────────────────────────────────
 function buildCarteEmbed(agent) {
-  const sep = '━━━━━━━━━━━━━━━━━━━━━━';
-
   const descLines = [
-    `${sep}`,
-    `**${agent.nom}**`,
-    `*${agent.grade}*`,
-    `${sep}`,
+    `# ${agent.emoji}  ${agent.nom}`,
+    `### ${agent.grade}`,
     '',
-    `> 📞  \`${agent.telephone}\``,
+    '━━━━━━━━━━━━━━━━━━━━━━',
+    '',
+    '**📞  TÉLÉPHONE**',
+    `## ${agent.telephone}`,
   ];
 
   if (agent.aggregations && agent.aggregations.length > 0) {
     descLines.push('');
-    descLines.push(`> 🎖️  ${agent.aggregations.join('  ·  ')}`);
+    descLines.push('**🎖️  AGRÉGATIONS**');
+    descLines.push(agent.aggregations.map(a => `・${a}`).join('  '));
   }
 
   const authorOptions = { name: 'Dynasty 8 Real Estate' };
@@ -49,7 +51,7 @@ function buildCarteEmbed(agent) {
     .setFooter(footerOptions)
     .setTimestamp();
 
-  if (agent.photo) embed.setThumbnail(agent.photo);
+  if (agent.thumbnail) embed.setThumbnail(agent.thumbnail);
 
   return embed;
 }
