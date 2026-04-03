@@ -17,17 +17,18 @@ const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
 
 // ─── Agents (ID Discord → emoji) ─────────────────────────────────────────────
 const AGENTS = [
-  { name: 'Sacha Rollay',         id: '314057285523472394',  emoji: '🦊' },
-  { name: 'Ely Rollay',           id: '261956403546161152',  emoji: '🦦' },
-  { name: 'Marco Romanov',        id: '1151865005239697449', emoji: '🐻' },
-  { name: 'John Russet',          id: '922112971793133568',  emoji: '🦍' },
-  { name: 'Joy Lutz',             id: '342355371941167126',  emoji: '🐍' },
-  { name: 'Hain Ergy',            id: '273565768355151874',  emoji: '🐲' },
-  { name: 'Maksim Anatolyevich',  id: '343731754311614465',  emoji: '🦁' },
-  { name: 'John Macafey',         id: '394751095932583937',  emoji: '🐳' },
+  { name: 'Sacha Rollay',         id: '314057285523472394',  emoji: '🦊', feminin: true  },
+  { name: 'Ely Rollay',           id: '261956403546161152',  emoji: '🦦', feminin: false },
+  { name: 'Marco Romanov',        id: '1151865005239697449', emoji: '🐻', feminin: false },
+  { name: 'John Russet',          id: '922112971793133568',  emoji: '🦍', feminin: false },
+  { name: 'Joy Lutz',             id: '342355371941167126',  emoji: '🐍', feminin: true  },
+  { name: 'Hain Ergy',            id: '273565768355151874',  emoji: '🐲', feminin: false },
+  { name: 'Maksim Anatolyevich',  id: '343731754311614465',  emoji: '🦁', feminin: false },
+  { name: 'John Macafey',         id: '394751095932583937',  emoji: '🐳', feminin: false },
 ];
 
-const AGENT_EMOJIS = Object.fromEntries(AGENTS.map(a => [a.id, a.emoji]));
+const AGENT_EMOJIS   = Object.fromEntries(AGENTS.map(a => [a.id, a.emoji]));
+const AGENT_FEMININ  = Object.fromEntries(AGENTS.map(a => [a.id, a.feminin]));
 
 const ROLES_AUTORISES = [
   '917744433682849802', // Employé
@@ -701,7 +702,7 @@ async function handleAnnonceModal(interaction) {
 
   await ticketChannel.send({ embeds: [embed], components: [clotureRow] });
   await ticketChannel.send({
-    content: `Bonjour,\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, il vous répondra quand il sera disponible !\n\nEn vous souhaitant une bonne journée !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`,
+    content: `Bonjour,\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, ${AGENT_FEMININ[agentId] ? 'elle' : 'il'} vous répondra quand ${AGENT_FEMININ[agentId] ? 'elle' : 'il'} sera disponible !\n\nEn vous souhaitant une bonne journée !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`,
     allowedMentions: { users: [agentId] },
   });
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
