@@ -10,11 +10,7 @@ const {
 
 const SALON_PREPATCHNOTE_ID = '1489647875955753200';
 const DYNASTY8_COLOR        = 0xF5A623;
-
-const ROLES_AUTORISES = [
-  '917744433682849802', // Employé
-  '1375930527873368066', // Direction
-];
+const ROLE_DIRECTION_ID     = '1375930527873368066';
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,10 +18,11 @@ module.exports = {
     .setDescription('📋 Publier un pré-patchnote dans le salon dédié'),
 
   async execute(interaction) {
-    // Vérification des rôles
-    const hasRole = interaction.member.roles.cache.some(r => ROLES_AUTORISES.includes(r.id));
-    if (!hasRole) {
-      return interaction.reply({ content: '❌ Tu n\'as pas la permission d\'utiliser cette commande.', ephemeral: true });
+    // Réservé à la Direction (ou administrateurs)
+    const isAdmin     = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
+    const isDirection = interaction.member.roles.cache.has(ROLE_DIRECTION_ID);
+    if (!isAdmin && !isDirection) {
+      return interaction.reply({ content: '❌ Cette commande est réservée à la Direction.', ephemeral: true });
     }
 
     const modal = new ModalBuilder()
@@ -71,8 +68,10 @@ async function handlePrepatchnoteModal(interaction) {
   const version = interaction.fields.getTextInputValue('version');
   const contenu = interaction.fields.getTextInputValue('contenu');
 
-  const salon = interaction.guild.channels.cache.get(SALON_PREPATCHNOTE_ID);
-  if (!salon) {
+  let salon;
+  try {
+    salon = await interaction.guild.channels.fetch(SALON_PREPATCHNOTE_ID);
+  } catch {
     return interaction.editReply({ content: '❌ Salon pré-patchnote introuvable. Vérifie l\'ID.' });
   }
 
