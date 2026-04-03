@@ -15,6 +15,20 @@ const {
 const CATEGORIE_TICKETS_ID = '993616675670851659';
 const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
 
+// ─── Agents (ID Discord → emoji) ─────────────────────────────────────────────
+const AGENTS = [
+  { name: 'Sacha Rollay',         id: '314057285523472394',  emoji: '🦊' },
+  { name: 'Ely Rollay',           id: '261956403546161152',  emoji: '🦦' },
+  { name: 'Marco Romanov',        id: '1151865005239697449', emoji: '🐻' },
+  { name: 'John Russet',          id: '922112971793133568',  emoji: '🦍' },
+  { name: 'Joy Lutz',             id: '342355371941167126',  emoji: '🐍' },
+  { name: 'Hain Ergy',            id: '273565768355151874',  emoji: '🐲' },
+  { name: 'Maksim Anatolyevich',  id: '343731754311614465',  emoji: '🦁' },
+  { name: 'John Macafey',         id: '394751095932583937',  emoji: '🐳' },
+];
+
+const AGENT_EMOJIS = Object.fromEntries(AGENTS.map(a => [a.id, a.emoji]));
+
 const ROLES_AUTORISES = [
   '917744433682849802', // Employé
   '1375930527873368066', // Direction
@@ -342,6 +356,13 @@ module.exports = {
       .setName('image')
       .setDescription('Photo du bien (obligatoire)')
       .setRequired(true))
+    .addStringOption(opt => {
+      opt.setName('agent')
+        .setDescription('Agent en charge de cette annonce')
+        .setRequired(true);
+      AGENTS.forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      return opt;
+    })
     .addStringOption(opt => opt
       .setName('garage_1')
       .setDescription('1er garage inclus ?')
@@ -546,7 +567,7 @@ module.exports = {
 
     const contenu = lignes.join('\n');
 
-    const agentId = interaction.user.id;
+    const agentId = interaction.options.getString('agent');
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`annonce_acheter_${numero}_${agentId}`)
@@ -618,9 +639,9 @@ async function handleAnnonceModal(interaction) {
   const disponibilites  = interaction.fields.getTextInputValue('disponibilites');
 
   const isAchat     = action === 'acheter';
-  const emoji       = isAchat ? '🏠' : '👁️';
   const actionLabel = isAchat ? 'Acheter' : 'Visiter';
-  const channelName = `${emoji}${toMathSansBold(numero)}_${toMathSansBold(actionLabel)}`;
+  const agentEmoji  = AGENT_EMOJIS[agentId] ?? (isAchat ? '🏠' : '👁️');
+  const channelName = `${agentEmoji}⌛${toMathSansBold(numero)}_${toMathSansBold(actionLabel)}`;
 
   const guild  = interaction.guild;
   const member = interaction.member;
