@@ -546,13 +546,14 @@ module.exports = {
 
     const contenu = lignes.join('\n');
 
+    const agentId = interaction.user.id;
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`annonce_acheter_${numero}`)
+        .setCustomId(`annonce_acheter_${numero}_${agentId}`)
         .setLabel('🏠 Acheter ce bien')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
-        .setCustomId(`annonce_visiter_${numero}`)
+        .setCustomId(`annonce_visiter_${numero}_${agentId}`)
         .setLabel('👁️ Visiter le bien')
         .setStyle(ButtonStyle.Primary),
     );
@@ -564,12 +565,13 @@ module.exports = {
 
 // ─── Handler des boutons Acheter / Visiter → affiche le modal ────────────────
 async function handleAnnonceButton(interaction) {
-  const parts  = interaction.customId.split('_');
-  const action = parts[1]; // 'acheter' ou 'visiter'
-  const numero = parts.slice(2).join('_');
+  const parts   = interaction.customId.split('_');
+  const action  = parts[1]; // 'acheter' ou 'visiter'
+  const agentId = parts[parts.length - 1]; // dernier segment = ID agent
+  const numero  = parts.slice(2, parts.length - 1).join('_');
 
   const modal = new ModalBuilder()
-    .setCustomId(`annonce_modal_${action}_${numero}`)
+    .setCustomId(`annonce_modal_${action}_${numero}_${agentId}`)
     .setTitle(action === 'acheter' ? '🏠 Demande d\'achat' : '👁️ Demande de visite');
 
   const nomPrenomInput = new TextInputBuilder()
@@ -606,9 +608,10 @@ async function handleAnnonceButton(interaction) {
 async function handleAnnonceModal(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
-  const parts  = interaction.customId.split('_'); // ['annonce','modal','acheter','1234']
-  const action = parts[2];
-  const numero = parts.slice(3).join('_');
+  const parts   = interaction.customId.split('_'); // ['annonce','modal','acheter','1234','agentId']
+  const action  = parts[2];
+  const agentId = parts[parts.length - 1]; // dernier segment = ID agent
+  const numero  = parts.slice(3, parts.length - 1).join('_');
 
   const nomPrenom       = interaction.fields.getTextInputValue('nom_prenom');
   const telephone       = interaction.fields.getTextInputValue('telephone');
@@ -675,6 +678,10 @@ async function handleAnnonceModal(interaction) {
   );
 
   await ticketChannel.send({ embeds: [embed], components: [clotureRow] });
+  await ticketChannel.send({
+    content: `Bonjour,\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, il vous répondra quand il sera disponible !\n\nEn vous souhaitant une bonne journée !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`,
+    allowedMentions: { users: [agentId] },
+  });
   await interaction.editReply({ content: `✅ Ton ticket a été créé : ${ticketChannel}` });
 }
 
