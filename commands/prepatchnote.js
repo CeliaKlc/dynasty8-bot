@@ -18,13 +18,6 @@ module.exports = {
     .setDescription('📋 Publier un pré-patchnote dans le salon dédié'),
 
   async execute(interaction) {
-    // Réservé à la Direction (ou administrateurs)
-    const isAdmin     = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
-    const isDirection = interaction.member.roles.cache.has(ROLE_DIRECTION_ID);
-    if (!isAdmin && !isDirection) {
-      return interaction.reply({ content: '❌ Cette commande est réservée à la Direction.', ephemeral: true });
-    }
-
     const modal = new ModalBuilder()
       .setCustomId('prepatchnote_modal')
       .setTitle('📋 Pré-Patchnote');
