@@ -74,13 +74,12 @@ const BIENS = {
   },
   'Maison Simple': {
     article: 'La Maison Simple',
-    base: 500, frigo: 0,
+    base: 500, frigo: 0, cafe: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
       'Salon avec cuisine ouverte',
       '1 Télévision',
-      'Cafetière',
     ],
   },
   'Caravane': {
@@ -152,13 +151,12 @@ const BIENS = {
   },
   'Appartement de Luxe Modifiable': {
     article: "L'Appartement de Luxe Modifiable",
-    base: 750, frigo: 0, modifiable: true,
+    base: 750, frigo: 0, modifiable: true, cafe: true,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
       'Salon avec cuisine ouverte',
       'Bureau',
-      'Cafetière',
       'Télévision',
     ],
   },
