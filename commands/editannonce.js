@@ -33,8 +33,12 @@ const DYNASTY8 = toMathSansBold('DYNASTY 8');
 // ── Parse un message annonce existant ────────────────────────────────────────
 function parseAnnonceMessage(content, components) {
   // Numero depuis le customId du bouton Acheter
-  const btn    = components?.[0]?.components?.[0];
-  const numero = btn?.customId?.replace('annonce_acheter_', '') ?? null;
+  const btn         = components?.[0]?.components?.[0];
+  const rawCustomId = btn?.customId ?? '';
+  // format: annonce_acheter_${numero}_${agentId}
+  const customParts = rawCustomId.replace('annonce_acheter_', '').split('_');
+  const agentId     = customParts.length > 1 ? customParts[customParts.length - 1] : null;
+  const numero      = customParts.slice(0, customParts.length - 1).join('_') || rawCustomId.replace('annonce_acheter_', '') || null;
 
   // Transaction
   const transaction = content.includes('À VENDRE') ? 'vente' : 'location';
@@ -74,7 +78,7 @@ function parseAnnonceMessage(content, components) {
   const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n> (.+)/);
   const description = descMatch ? descMatch[1].trim() : null;
 
-  return { numero, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description };
+  return { numero, agentId, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description };
 }
 
 // ── Reconstruction du contenu (identique à annonce.js) ───────────────────────
@@ -199,6 +203,15 @@ module.exports = {
       .setName('message_id')
       .setDescription('ID du message à modifier (clic droit → Copier l\'identifiant)')
       .setRequired(true))
+    .addStringOption(opt => {
+      opt.setName('type').setDescription('Type de bien').setRequired(false);
+      Object.keys(BIENS).forEach(t => opt.addChoices({ name: t, value: t }));
+      return opt;
+    })
+    .addStringOption(opt => opt
+      .setName('image')
+      .setDescription('URL de l\'image à afficher sur l\'annonce (laisser vide = conserver)')
+      .setRequired(false))
     .addStringOption(opt => opt
       .setName('quartier')
       .setDescription('Nouveau quartier / emplacement')
@@ -299,9 +312,12 @@ module.exports = {
       return val ?? currentVal;
     };
 
+    const newType  = interaction.options.getString('type') ?? current.type;
+    const imageUrl = interaction.options.getString('image');
+
     const merged = {
       numero:      current.numero,
-      type:        current.type,
+      type:        newType,
       transaction: current.transaction,
       quartier:    interaction.options.getString('quartier') ?? current.quartier,
       garage1:     resolveStr('garage_1',   current.garage1),
@@ -317,19 +333,25 @@ module.exports = {
 
     const newContent = buildAnnonceContent(merged);
 
-    // Reconstruit les boutons avec le bon numero
+    // Reconstruit les boutons en préservant le numero et l'agentId
+    const suffix = current.agentId ? `${current.numero}_${current.agentId}` : current.numero;
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`annonce_acheter_${current.numero}`)
+        .setCustomId(`annonce_acheter_${suffix}`)
         .setLabel('🏠 Acheter ce bien')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
-        .setCustomId(`annonce_visiter_${current.numero}`)
+        .setCustomId(`annonce_visiter_${suffix}`)
         .setLabel('👁️ Visiter le bien')
         .setStyle(ButtonStyle.Primary),
     );
 
-    await message.edit({ content: newContent, components: [row], allowedMentions: { parse: ['roles'] } });
+    const editPayload = { content: newContent, components: [row], allowedMentions: { parse: ['roles'] } };
+    if (imageUrl !== null) {
+      editPayload.files       = [imageUrl];
+      editPayload.attachments = [];
+    }
+    await message.edit(editPayload);
     await interaction.editReply({ content: '✅ Annonce mise à jour !' });
   },
 };
