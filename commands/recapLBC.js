@@ -15,6 +15,10 @@ module.exports = {
       .setDescription('Prix de départ (ex: 210\'000$)')
       .setRequired(true))
     .addStringOption(opt => opt
+      .setName('negociation')
+      .setDescription('Prix de négociation (ex: 200\'000$), si pas mettre N/A')
+      .setRequired(true))
+    .addStringOption(opt => opt
       .setName('commission')
       .setDescription('Commission (ex: 10%)')
       .setRequired(true))
@@ -25,6 +29,10 @@ module.exports = {
     .addStringOption(opt => opt
       .setName('adresse')
       .setDescription('Adresse du bien (ex: Rockford Hills - Olympic Freeway 3)')
+      .setRequired(true))
+    .addStringOption(opt => opt
+      .setName('etage')
+      .setDescription('Étage du bien (ex: 3) si pas mettre N/A')
       .setRequired(true))
     .addBooleanOption(opt => opt
       .setName('frais_dossier')
@@ -44,14 +52,6 @@ module.exports = {
       .setRequired(true))
 
     // ── Optionnels ────────────────────────────────────────────────────────────
-    .addStringOption(opt => opt
-      .setName('negociation')
-      .setDescription('Prix de négociation (ex: 200\'000$)')
-      .setRequired(false))
-    .addStringOption(opt => opt
-      .setName('etage')
-      .setDescription('Étage du bien (ex: 3)')
-      .setRequired(false))
     .addStringOption(opt => opt
       .setName('type_2')
       .setDescription('Type du 2ème bien (ex: Garage 2 places)')
@@ -87,16 +87,16 @@ module.exports = {
 
     const annonce      = interaction.options.getString('annonce');
     const prixDepart   = interaction.options.getString('prix_depart');
+    const negociation  = interaction.options.getString('negociation');
     const commission   = interaction.options.getString('commission');
     const type         = interaction.options.getString('type');
     const adresse      = interaction.options.getString('adresse');
+    const etage        = interaction.options.getString('etage');
     const fraisDossier = interaction.options.getBoolean('frais_dossier');
     const doubleCles   = interaction.options.getBoolean('double_cles');
     const gps          = interaction.options.getAttachment('gps');
     const carteId      = interaction.options.getAttachment('carte_identite');
 
-    const negociation  = interaction.options.getString('negociation');
-    const etage        = interaction.options.getString('etage');
     const type2        = interaction.options.getString('type_2');
     const adresse2     = interaction.options.getString('adresse_2');
     const etage2       = interaction.options.getString('etage_2');

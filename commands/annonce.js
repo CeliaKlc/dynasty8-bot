@@ -114,7 +114,7 @@ const BIENS = {
       'Salle de bain',
       'Salon avec cuisine ouverte',
       'Bureau',
-      'Télévision',
+      '2 Télévisions',
     ],
   },
   'Duplex': {
@@ -189,6 +189,7 @@ const BIENS = {
       'Salle de bain',
       'Bureau',
       'Salle de réunion',
+      'Accueil',
       'Télévision',
     ],
   },
@@ -196,13 +197,15 @@ const BIENS = {
     article: "L'Agence",
     base: 800, frigo: 0, modifiable: true, ordinateur: true,
     caracteristiques: [
-      'Chambre avec dressing',
-      'Salle de bain',
+      'Espace personnel, avec salon, dressing et lit',
+      'Grande entrée',
       'Salon avec cuisine ouverte',
-      '3 Bureaux',
-      'Salle de réunion',
+      '2 Bureaux personnels tout équipés',
+      'Grande salle de réunion',
       'Héliport',
       'Accueil',
+      "2 Etages",
+      "Étage de bureaux",
       'Télévision',
     ],
   },
@@ -347,9 +350,8 @@ module.exports = {
         { name: '🚗 2 places',         value: '2' },
         { name: '🚗 6 places',         value: '6' },
         { name: '🚗 10 places',        value: '10' },
-        { name: '🚗 10 places de luxe', value: '10l' },
-        { name: '🚗 26 places (Agence uniquement)', value: '26' },
         { name: '🚗 Loft Garage',      value: 'loft' },
+        { name: '🚗 26 places (Agence uniquement)', value: '26' },
       ))
     .addStringOption(opt => opt
       .setName('garage_2')
@@ -359,9 +361,8 @@ module.exports = {
         { name: '🚗 2 places',         value: '2' },
         { name: '🚗 6 places',         value: '6' },
         { name: '🚗 10 places',        value: '10' },
-        { name: '🚗 10 places de luxe', value: '10l' },
-        { name: '🚗 26 places (Agence uniquement)', value: '26' },
         { name: '🚗 Loft Garage',      value: 'loft' },
+        { name: '🚗 26 places (Agence uniquement)', value: '26' },
       ))
     .addIntegerOption(opt => opt
       .setName('garage_luxe')
@@ -452,9 +453,9 @@ module.exports = {
         lignesStockage.push(`> ➡️ Soit un total de **${totalEtageres} unités** de stockage disponibles (jusqu'à **${MAX_ENTREPOT} unités** possible), un vrai atout pour vos besoins de rangement !`);
       }
     } else if (bien.frigo > 0) {
-      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** au total.`);
+      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** (HORS RSA) au total.`);
     } else {
-      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage.`);
+      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** (HORS RSA) de stockage.`);
     }
     if (isTypeLuxe && garageLuxe) {
       const label = garageLuxe === 1 ? 'Le Garage 10 places de luxe dispose' : `Les ${garageLuxe} Garages 10 places de luxe disposent`;
