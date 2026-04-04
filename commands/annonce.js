@@ -299,6 +299,23 @@ const SALLE_A_SAC_LABELS = {
   '3': 'Salle à sac avec deux extensions',
 };
 
+// Types de biens qui ne peuvent PAS posséder de salle à sac
+const TYPES_SANS_SALLE_A_SAC = new Set([
+  'Caravane',
+  'Appartement Basique',
+  'Appartement Simple',
+  'Appartement Favelas',
+  'Maison Favelas',
+  'Bureau',
+  'Loft Garage',
+  'Garage 2 places',
+  'Garage 6 places',
+  'Garage 10 places',
+  'Garage 26 places',
+  'Entrepôt',
+  'Hangar',
+]);
+
 const DYNASTY8 = toMathSansBold('DYNASTY 8');
 
 module.exports = {
@@ -549,8 +566,14 @@ module.exports = {
       lignes.push(...lignesPlus);
     }
 
-    if (description) {
-      lignes.push(``, `**📝 DÉTAILS**`, `> ${description}`);
+    const lignesDetails = [];
+    if (!salleASac && !TYPES_SANS_SALLE_A_SAC.has(type)) {
+      lignesDetails.push(`> 👜 Peut posséder une salle à sac`);
+    }
+    if (description) lignesDetails.push(`> ${description}`);
+    if (lignesDetails.length > 0) {
+      lignes.push(``, `**📝 DÉTAILS**`);
+      lignes.push(...lignesDetails);
     }
 
     if (bien.entrepriseOnly) {
@@ -576,7 +599,7 @@ module.exports = {
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('annonce_notif')
-        .setLabel('🔔 Être notifié')
+        .setLabel('🔔 Être notifié des prochaines annonces')
         .setStyle(ButtonStyle.Secondary),
     );
 
@@ -720,3 +743,4 @@ module.exports.BIENS               = BIENS;
 module.exports.STOCKAGE_GARAGE     = STOCKAGE_GARAGE;
 module.exports.GARAGE_LABELS       = GARAGE_LABELS;
 module.exports.SALLE_A_SAC_LABELS  = SALLE_A_SAC_LABELS;
+module.exports.TYPES_SANS_SALLE_A_SAC = TYPES_SANS_SALLE_A_SAC;

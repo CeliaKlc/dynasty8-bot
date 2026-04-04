@@ -8,7 +8,7 @@ const {
 // ── Constantes partagées (source unique : annonce.js) ─────────────────────────
 const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
 
-const { BIENS, STOCKAGE_GARAGE, GARAGE_LABELS, SALLE_A_SAC_LABELS } = require('./annonce');
+const { BIENS, STOCKAGE_GARAGE, GARAGE_LABELS, SALLE_A_SAC_LABELS, TYPES_SANS_SALLE_A_SAC } = require('./annonce');
 
 const GARAGE_LABEL_TO_VALUE = Object.fromEntries(
   Object.entries(GARAGE_LABELS).map(([k, v]) => [v, k])
@@ -66,8 +66,8 @@ function parseAnnonceMessage(content, components) {
   const etagMatch = content.match(/dispose de \*\*(\d+) étagère/);
   const etageres  = etagMatch ? parseInt(etagMatch[1]) : null;
 
-  // Description
-  const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n> (.+)/);
+  // Description (la ligne "Peut posséder une salle à sac" est ignorée)
+  const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n(?:> 👜 Peut posséder une salle à sac\n)?> (.+)/);
   const description = descMatch ? descMatch[1].trim() : null;
 
   return { numero, agentId, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description };
@@ -171,7 +171,15 @@ function buildAnnonceContent(p) {
     lignes.push(...lignesPlus);
   }
 
-  if (description) lignes.push(``, `**📝 DÉTAILS**`, `> ${description}`);
+  const lignesDetails = [];
+  if (!salleASac && !TYPES_SANS_SALLE_A_SAC.has(type)) {
+    lignesDetails.push(`> 👜 Peut posséder une salle à sac`);
+  }
+  if (description) lignesDetails.push(`> ${description}`);
+  if (lignesDetails.length > 0) {
+    lignes.push(``, `**📝 DÉTAILS**`);
+    lignes.push(...lignesDetails);
+  }
 
   if (bien.entrepriseOnly) {
     lignes.push(``, `## <a:407265yellowsiren:1489238394826522664> Ce bien est disponible uniquement pour les *entreprises*. <a:407265yellowsiren:1489238394826522664>`);
@@ -336,6 +344,10 @@ module.exports = {
         .setCustomId(`annonce_visiter_${suffix}`)
         .setLabel('👁️ Visiter le bien')
         .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('annonce_notif')
+        .setLabel('🔔 Être notifié des prochaines annonces')
+        .setStyle(ButtonStyle.Secondary),
     );
 
     const editPayload = { content: newContent, components: [row], allowedMentions: { parse: ['roles'] } };
