@@ -25,8 +25,6 @@ function buildContenu({ annonce, prixDepart, negociation, commission, type, adre
     if (adresse2) lignes.push(`**Adresse :** ${adresse2}`);
     if (etage2)   lignes.push(`**Étage :** ${etage2}`);
   }
-
-  lignes.push(``);
   lignes.push(``);
   lignes.push(`**Frais de dossier :** ${fraisDossier ? '✅' : '❌'}`);
   lignes.push(`**Double clés effectué :** ${doubleCles ? '✅' : '❌'}`);

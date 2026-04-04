@@ -145,13 +145,11 @@ module.exports = {
 
     // ── Description (optionnel) ────────────────────────────────────────────────────
     lignes.push(``);
-    lignes.push(``);
     if (description) {
       lignes.push(`**Description**`);
       lignes.push(`${description}`);
     }
 
-    lignes.push(``);
     lignes.push(``);
     lignes.push(`**Frais de dossier :** ${fraisDossier ? '✅' : '❌'}`);
     lignes.push(`**Double clés effectué :** ${doubleCles ? '✅' : '❌'}`);
