@@ -336,6 +336,10 @@ module.exports = {
         .setCustomId(`annonce_visiter_${suffix}`)
         .setLabel('👁️ Visiter le bien')
         .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('annonce_notif')
+        .setLabel('🔔 Être notifié')
+        .setStyle(ButtonStyle.Secondary),
     );
 
     const editPayload = { content: newContent, components: [row], allowedMentions: { parse: ['roles'] } };
