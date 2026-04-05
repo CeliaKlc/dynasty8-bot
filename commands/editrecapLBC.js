@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 
 // ── Reconstruction du contenu (même logique que recapLBC.js) ─────────────────
-function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, fraisDossier, doubleCles }) {
+function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, type3, adresse3, etage3, description, fraisDossier, doubleCles }) {
   const lignes = [
     `======= **Annonce LBC : ${annonce}** ========`,
     ``,
@@ -25,6 +25,22 @@ function buildContenu({ annonce, prixDepart, negociation, commission, type, adre
     if (adresse2) lignes.push(`**Adresse :** ${adresse2}`);
     if (etage2)   lignes.push(`**Étage :** ${etage2}`);
   }
+
+  if (type3) {
+    lignes.push(``);
+    lignes.push(`+`);
+    lignes.push(``);
+    lignes.push(`**Type :** ${type3}`);
+    if (adresse3) lignes.push(`**Adresse :** ${adresse3}`);
+    if (etage3)   lignes.push(`**Étage :** ${etage3}`);
+  }
+
+  lignes.push(``);
+  if (description) {
+    lignes.push(`**Description**`);
+    lignes.push(`${description}`);
+  }
+
   lignes.push(``);
   lignes.push(`**Frais de dossier :** ${fraisDossier ? '✅' : '❌'}`);
   lignes.push(`**Double clés effectué :** ${doubleCles ? '✅' : '❌'}`);
@@ -43,17 +59,26 @@ function parseContenu(content) {
   const adresseAll = [...content.matchAll(/\*\*Adresse :\*\* (.+)/g)].map(m => m[1].trim());
   const etageAll   = [...content.matchAll(/\*\*Étage :\*\* (.+)/g)].map(m => m[1].trim());
 
+  // Description — ligne(s) suivant **Description**
+  const descMatch  = content.match(/\*\*Description\*\*\n(.+)/);
+  const description = descMatch ? descMatch[1].trim() : null;
+
   return {
     annonce:      get(/======= \*\*Annonce LBC : (.+?)\*\* ========/),
-    prixDepart:   get(/\*\*Prix de départ :\*\* (.+)/),
-    negociation:  get(/\*\*Négociation :\*\* (.+)/),
-    commission:   get(/\*\*Commission :\*\* (.+)/),
-    type:         typeAll[0] ?? null,
+    // Capturer SANS le suffixe $ ou % pour éviter le doublement lors de la reconstruction
+    prixDepart:   get(/\*\*Prix de départ :\*\* (.+?)\$/),
+    negociation:  get(/\*\*Négociation :\*\* (.+?)\$/),
+    commission:   get(/\*\*Commission :\*\* (.+?)%/),
+    type:         typeAll[0]    ?? null,
     adresse:      adresseAll[0] ?? null,
-    etage:        etageAll[0] ?? null,
-    type2:        typeAll[1] ?? null,
+    etage:        etageAll[0]   ?? null,
+    type2:        typeAll[1]    ?? null,
     adresse2:     adresseAll[1] ?? null,
-    etage2:       etageAll[1] ?? null,
+    etage2:       etageAll[1]   ?? null,
+    type3:        typeAll[2]    ?? null,
+    adresse3:     adresseAll[2] ?? null,
+    etage3:       etageAll[2]   ?? null,
+    description,
     fraisDossier: content.includes('**Frais de dossier :** ✅'),
     doubleCles:   content.includes('**Double clés effectué :** ✅'),
   };
@@ -75,15 +100,15 @@ module.exports = {
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('prix_depart')
-      .setDescription('Nouveau prix de départ')
+      .setDescription('Nouveau prix de départ (sans $)')
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('negociation')
-      .setDescription('Nouveau prix de négociation')
+      .setDescription('Nouveau prix de négociation (sans $)')
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('commission')
-      .setDescription('Nouvelle commission')
+      .setDescription('Nouvelle commission (sans %)')
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('type')
@@ -106,6 +131,10 @@ module.exports = {
       .setDescription('Double clés effectué ?')
       .setRequired(false))
     .addStringOption(opt => opt
+      .setName('description')
+      .setDescription('Nouvelle description')
+      .setRequired(false))
+    .addStringOption(opt => opt
       .setName('type_2')
       .setDescription('Nouveau type du 2ème bien')
       .setRequired(false))
@@ -116,6 +145,18 @@ module.exports = {
     .addStringOption(opt => opt
       .setName('etage_2')
       .setDescription('Nouvel étage du 2ème bien')
+      .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('type_3')
+      .setDescription('Nouveau type du 3ème bien')
+      .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('adresse_3')
+      .setDescription('Nouvelle adresse du 3ème bien')
+      .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('etage_3')
+      .setDescription('Nouvel étage du 3ème bien')
       .setRequired(false)),
 
   async execute(interaction) {
@@ -151,6 +192,10 @@ module.exports = {
       type2:        interaction.options.getString('type_2')       ?? current.type2,
       adresse2:     interaction.options.getString('adresse_2')    ?? current.adresse2,
       etage2:       interaction.options.getString('etage_2')      ?? current.etage2,
+      type3:        interaction.options.getString('type_3')       ?? current.type3,
+      adresse3:     interaction.options.getString('adresse_3')    ?? current.adresse3,
+      etage3:       interaction.options.getString('etage_3')      ?? current.etage3,
+      description:  interaction.options.getString('description')  ?? current.description,
       fraisDossier: interaction.options.getBoolean('frais_dossier') ?? current.fraisDossier,
       doubleCles:   interaction.options.getBoolean('double_cles')   ?? current.doubleCles,
     };
