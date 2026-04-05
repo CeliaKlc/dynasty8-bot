@@ -2,6 +2,9 @@ const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = re
 
 const AVIS_CLIENTS_CHANNEL_ID = '915921133260386335';
 
+// URL de la bannière "Good Bye Dynasty 8" — à mettre à jour si elle expire
+const GOODBYE_IMAGE_URL = 'https://cdn.discordapp.com/attachments/1306898207808163890/1490418151609995454/Orange_Modern_Good_Bye_April_Instagram_Post_.png';
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('bye')
@@ -9,17 +12,12 @@ module.exports = {
     .addUserOption(opt => opt
       .setName('client')
       .setDescription('Mentionner le client')
-      .setRequired(true))
-    .addAttachmentOption(opt => opt
-      .setName('image')
-      .setDescription('Image à joindre (ex: bannière Good Bye Dynasty 8)')
-      .setRequired(false)),
+      .setRequired(true)),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const client  = interaction.options.getUser('client');
-    const image   = interaction.options.getAttachment('image');
+    const client = interaction.options.getUser('client');
 
     const contenu = [
       `Cher ${client} ,`,
@@ -47,10 +45,7 @@ module.exports = {
         .setStyle(ButtonStyle.Danger),
     );
 
-    const payload = { content: contenu, components: [row] };
-    if (image) payload.files = [image.url];
-
-    await interaction.channel.send(payload);
+    await interaction.channel.send({ content: contenu, components: [row], files: [GOODBYE_IMAGE_URL] });
     await interaction.editReply({ content: '✅ Message de fin envoyé !' });
   },
 };
