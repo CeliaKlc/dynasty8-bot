@@ -3,7 +3,7 @@ const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = re
 const AVIS_CLIENTS_CHANNEL_ID = '915921133260386335';
 
 // URL de la bannière "Good Bye Dynasty 8" — à mettre à jour si elle expire
-const GOODBYE_IMAGE_URL = 'https://cdn.discordapp.com/attachments/1306898207808163890/1490418151609995454/Orange_Modern_Good_Bye_April_Instagram_Post_.png';
+const GOODBYE_IMAGE_URL = 'https://i.goopics.net/8t3ju4.png';
 
 module.exports = {
   data: new SlashCommandBuilder()
