@@ -1,5 +1,6 @@
 const { initScheduler } = require('../utils/rdvScheduler');
 const { initReducScheduler } = require('../utils/reducScheduler');
+const { initSupScheduler } = require('../utils/supScheduler');
 
 module.exports = {
   name: 'ready',
@@ -14,5 +15,6 @@ module.exports = {
     client.user.setActivity('Dynasty 8 | Baylife RP', { type: 3 });
     initScheduler(client);
     initReducScheduler(client);
+    initSupScheduler(client);
   },
 };
