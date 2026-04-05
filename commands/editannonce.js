@@ -35,10 +35,22 @@ function parseAnnonceMessage(content, components) {
   // Transaction
   const transaction = content.includes('À VENDRE') ? 'vente' : 'location';
 
-  // Type — cherche le nom de bien connu dans la ligne de titre
+  // Type — cherche le nom de bien connu dans la ligne de titre (supporte bien.titre)
   const titleMatch = content.match(/✨ \*\*(?:À VENDRE|À LOUER) : (.+?)\*\* ✨/);
   const titlePart  = titleMatch ? titleMatch[1] : '';
-  const type       = Object.keys(BIENS).find(t => titlePart.startsWith(t)) ?? null;
+
+  const matchingTypes = Object.keys(BIENS).filter(t => {
+    const displayName = BIENS[t].titre ?? t;
+    return titlePart === displayName || titlePart.startsWith(displayName + ' ');
+  });
+
+  let type = matchingTypes[0] ?? null;
+
+  // Disambiguïser les variantes Duplex selon la présence du frigo dans le stockage
+  if (matchingTypes.length > 1) {
+    const hasFrigo = content.includes('dans le frigo');
+    type = matchingTypes.find(t => (BIENS[t].frigo > 0) === hasFrigo) ?? matchingTypes[0];
+  }
 
   // Quartier
   const quartierMatch = content.match(/📍 \*\*Emplacement :\*\* Situé (.+)/);
