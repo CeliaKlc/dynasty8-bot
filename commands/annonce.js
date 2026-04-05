@@ -129,9 +129,23 @@ const BIENS = {
       '2 Télévisions',
     ],
   },
-  'Duplex': {
+  'Duplex (avec Frigo)': {
+    titre: 'Duplex',
     article: 'Le Duplex',
     base: 600, frigo: 100,
+    caracteristiques: [
+      'Chambre avec dressing',
+      'Salle de bain',
+      'Salon avec cuisine ouverte',
+      'Bureau',
+      '2 Étages',
+      'Télévision',
+    ],
+  },
+  'Duplex (sans Frigo)': {
+    titre: 'Duplex',
+    article: 'Le Duplex',
+    base: 600, frigo: 0,
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
@@ -339,7 +353,8 @@ module.exports = {
         { name: 'Maison Favelas',                 value: 'Maison Favelas' },
         { name: 'Studio de Luxe',                 value: 'Studio de Luxe' },
         { name: 'Appartement Moderne',            value: 'Appartement Moderne' },
-        { name: 'Duplex',                         value: 'Duplex' },
+        { name: 'Duplex (avec Frigo)',            value: 'Duplex (avec Frigo)' },
+        { name: 'Duplex (sans Frigo)',            value: 'Duplex (sans Frigo)' },
         { name: 'Appartement de Luxe Modifiable', value: 'Appartement de Luxe Modifiable' },
         { name: 'Villa',                          value: 'Villa' },
         { name: 'Maison de Luxe',                 value: 'Maison de Luxe' },
@@ -546,7 +561,7 @@ module.exports = {
       `━━━━━━━━━━━━━━━━━━━━━━━`,
       `        ·         ${DYNASTY8}          ·`,
       `━━━━━━━━━━━━━━━━━━━━━━━`,
-      `✨ **${transactionLabel} : ${type}${garagesTitre ? ` avec ${garagesTitre}` : ''}** ✨`,
+      `✨ **${transactionLabel} : ${bien.titre ?? type}${garagesTitre ? ` avec ${garagesTitre}` : ''}** ✨`,
       ``,
       `Chers <@&${ROLE_NOTIFICATIONS_LBC_ID}>,`,
       ``,
