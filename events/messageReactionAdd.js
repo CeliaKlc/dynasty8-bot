@@ -28,6 +28,11 @@ module.exports = {
         allowedMentions: { roles: [ROLE_GESTIONNAIRE_LBC], users: [user.id] },
       });
 
+      // Renommer le salon en ajoutant ⏳ au début
+      if (!channel.name.startsWith('⏳')) {
+        await channel.setName(`⏳${channel.name}`);
+      }
+
       // Retirer le message de la liste d'attente pour éviter les pings multiples
       lbcPendingMessages.delete(reaction.message.id);
     } catch (err) {
