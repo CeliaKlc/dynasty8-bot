@@ -4,7 +4,7 @@ const { SlashCommandBuilder } = require('discord.js');
 function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, fraisDossier, doubleCles }) {
   const lignes = [
     `======= **Annonce LBC : ${annonce}** ========`,
-    (``)
+    ``,
     `**Prix de départ :** ${prixDepart}$`,
   ];
 
