@@ -1,4 +1,6 @@
 const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
+const { getDB } = require('../utils/db');
+const { scheduleBye } = require('../utils/byeScheduler');
 
 const AVIS_CLIENTS_CHANNEL_ID = '915921133260386335';
 const GOODBYE_IMAGE_URL = 'https://i.goopics.net/8t3ju4.png';
@@ -47,6 +49,23 @@ module.exports = {
     );
 
     await interaction.channel.send({ embeds: [embed], components: [row] });
-    await interaction.editReply({ content: '✅ Message de fin envoyé !' });
+
+    // Planifier la fermeture automatique dans 24h si le client ne laisse pas d'avis
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const doc = {
+      clientId:  client.id,
+      channelId: interaction.channel.id,
+      expiresAt,
+    };
+
+    // Upsert : remplace une éventuelle entrée précédente pour ce client
+    await getDB().collection('bye_pending').replaceOne(
+      { clientId: client.id },
+      doc,
+      { upsert: true }
+    );
+    scheduleBye(interaction.client, doc);
+
+    await interaction.editReply({ content: '✅ Message de fin envoyé. Le ticket sera fermé dans **24h** si le client ne laisse pas d\'avis.' });
   },
 };

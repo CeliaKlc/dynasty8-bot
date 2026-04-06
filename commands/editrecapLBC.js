@@ -157,6 +157,14 @@ module.exports = {
     .addStringOption(opt => opt
       .setName('etage_3')
       .setDescription('Nouvel étage du 3ème bien')
+      .setRequired(false))
+    .addAttachmentOption(opt => opt
+      .setName('gps')
+      .setDescription('Nouvelle photo GPS')
+      .setRequired(false))
+    .addAttachmentOption(opt => opt
+      .setName('carte_identite')
+      .setDescription('Nouvelle carte d\'identité')
       .setRequired(false)),
 
   async execute(interaction) {
@@ -200,7 +208,22 @@ module.exports = {
       doubleCles:   interaction.options.getBoolean('double_cles')   ?? current.doubleCles,
     };
 
-    await message.edit({ content: buildContenu(merged) });
+    const newGps      = interaction.options.getAttachment('gps');
+    const newCarteId  = interaction.options.getAttachment('carte_identite');
+
+    const editPayload = { content: buildContenu(merged) };
+
+    if (newGps || newCarteId) {
+      // Récupérer les pièces jointes existantes (ordre : GPS en premier, carteId en second)
+      const existing = [...message.attachments.values()];
+      const gpsSource     = newGps     ? newGps.url     : existing[0]?.url;
+      const carteIdSource = newCarteId ? newCarteId.url : existing[1]?.url;
+
+      editPayload.attachments = [];  // Supprimer les pièces jointes actuelles
+      editPayload.files = [gpsSource, carteIdSource].filter(Boolean);
+    }
+
+    await message.edit(editPayload);
     await interaction.editReply({ content: '✅ Récap LBC modifié avec succès !' });
   },
 };

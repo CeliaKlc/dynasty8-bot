@@ -107,6 +107,7 @@ module.exports = {
           );
 
           await channel.send({ embeds: [embedFerme, embedControls], components: [controlRow] });
+          await channel.setName('closed').catch(console.error);
         } catch (err) {
           console.error('❌ Erreur fermeture ticket :', err);
         }

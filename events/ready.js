@@ -1,6 +1,7 @@
 const { initScheduler } = require('../utils/rdvScheduler');
 const { initReducScheduler } = require('../utils/reducScheduler');
 const { initSupScheduler } = require('../utils/supScheduler');
+const { initByeScheduler } = require('../utils/byeScheduler');
 
 module.exports = {
   name: 'ready',
@@ -16,5 +17,6 @@ module.exports = {
     initScheduler(client);
     initReducScheduler(client);
     initSupScheduler(client);
+    initByeScheduler(client);
   },
 };
