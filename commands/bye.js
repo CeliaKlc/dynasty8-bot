@@ -1,8 +1,6 @@
-const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
 
 const AVIS_CLIENTS_CHANNEL_ID = '915921133260386335';
-
-// URL de la bannière "Good Bye Dynasty 8" — à mettre à jour si elle expire
 const GOODBYE_IMAGE_URL = 'https://i.goopics.net/8t3ju4.png';
 
 module.exports = {
@@ -19,20 +17,23 @@ module.exports = {
 
     const client = interaction.options.getUser('client');
 
-    const contenu = [
-      `Cher ${client} ,`,
-      `Vous avez eu recours aux services du Dynasty 8, et nous vous en exprimons notre gratitude. Nous formulons le vœu que votre expérience en tant que client ait été optimale.`,
-      ``,
-      `N'hésitez pas à nous faire un retour sur votre expérience via <#${AVIS_CLIENTS_CHANNEL_ID}>`,
-      `Ce dernier nous est précieux !`,
-      ``,
-      `Si vous n'avez pas d'autres demandes, vous pouvez fermer votre ticket.`,
-      ``,
-      `À bientôt !`,
-      ``,
-      `Cordialement,`,
-      `Dynasty 8 <:Dynasty8:1489223936620236841>`,
-    ].join('\n');
+    const embed = new EmbedBuilder()
+      .setColor(0xE67E22)
+      .setDescription(
+        `Cher ${client} ,\n` +
+        `Vous avez eu recours aux services du Dynasty 8, et nous vous en exprimons notre gratitude. Nous formulons le vœu que votre expérience en tant que client ait été optimale.\n` +
+        `\n` +
+        `N'hésitez pas à nous faire un retour sur votre expérience via <#${AVIS_CLIENTS_CHANNEL_ID}>\n` +
+        `Ce dernier nous est précieux !\n` +
+        `\n` +
+        `Si vous n'avez pas d'autres demandes, vous pouvez fermer votre ticket.\n` +
+        `\n` +
+        `À bientôt !\n` +
+        `\n` +
+        `Cordialement,\n` +
+        `Dynasty 8 <:Dynasty8:1489223936620236841>`
+      )
+      .setImage(GOODBYE_IMAGE_URL);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -45,7 +46,7 @@ module.exports = {
         .setStyle(ButtonStyle.Danger),
     );
 
-    await interaction.channel.send({ content: contenu, components: [row], files: [GOODBYE_IMAGE_URL] });
+    await interaction.channel.send({ embeds: [embed], components: [row] });
     await interaction.editReply({ content: '✅ Message de fin envoyé !' });
   },
 };
