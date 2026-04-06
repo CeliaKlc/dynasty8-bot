@@ -166,6 +166,19 @@ const BIENS = {
       'Télévision',
     ],
   },
+  // Entrée legacy pour les annonces publiées avant le renommage en Villa Blanche/Rouge
+  'Villa': {
+    article: 'La Villa',
+    base: 800, frigo: 100,
+    caracteristiques: [
+      'Chambre avec dressing',
+      'Salle de bain',
+      'Salon avec cuisine ouverte',
+      'Bureau',
+      '3 Étages',
+      'Télévision',
+    ],
+  },
   'Villa Blanche': {
     article: 'La Villa',
     base: 800, frigo: 100, couleur: '⚪ Intérieur Blanc',
