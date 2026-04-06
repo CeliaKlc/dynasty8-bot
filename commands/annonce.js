@@ -168,7 +168,7 @@ const BIENS = {
   },
   'Villa Blanche': {
     article: 'La Villa',
-    base: 800, frigo: 100,
+    base: 800, frigo: 100, couleur: '⚪ Intérieur Blanc',
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
@@ -180,7 +180,7 @@ const BIENS = {
   },
   'Villa Rouge': {
     article: 'La Villa',
-    base: 800, frigo: 100,
+    base: 800, frigo: 100, couleur: '🔴 Intérieur Rouge',
     caracteristiques: [
       'Chambre avec dressing',
       'Salle de bain',
@@ -557,6 +557,7 @@ module.exports = {
     if (bien.ordinateur && type !== 'Entrepôt') lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
     if (bien.cafe)       lignesPlus.push(`> ☕ Machine à café`);
     if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
+    if (bien.couleur)    lignesPlus.push(`> ${bien.couleur}`);
 
     // ── Suffixe du titre avec les garages ──
     let garagesTitre = '';
