@@ -166,7 +166,19 @@ const BIENS = {
       'Télévision',
     ],
   },
-  'Villa': {
+  'Villa Blanche': {
+    article: 'La Villa',
+    base: 800, frigo: 100,
+    caracteristiques: [
+      'Chambre avec dressing',
+      'Salle de bain',
+      'Salon avec cuisine ouverte',
+      'Bureau',
+      '3 Étages',
+      'Télévision',
+    ],
+  },
+  'Villa Rouge': {
     article: 'La Villa',
     base: 800, frigo: 100,
     caracteristiques: [
@@ -356,7 +368,8 @@ module.exports = {
         { name: 'Duplex (avec Frigo)',            value: 'Duplex (avec Frigo)' },
         { name: 'Duplex (sans Frigo)',            value: 'Duplex (sans Frigo)' },
         { name: 'Appartement de Luxe Modifiable', value: 'Appartement de Luxe Modifiable' },
-        { name: 'Villa',                          value: 'Villa' },
+        { name: 'Villa Blanche',                  value: 'Villa Blanche' },
+        { name: 'Villa Rouge',                    value: 'Villa Rouge' },
         { name: 'Maison de Luxe',                 value: 'Maison de Luxe' },
         { name: 'Villa de Luxe',                  value: 'Villa de Luxe' },
         { name: 'Bureau',                         value: 'Bureau' },
@@ -379,7 +392,7 @@ module.exports = {
       ))
     .addStringOption(opt => opt
       .setName('quartier')
-      .setDescription('Quartier / emplacement du bien')
+      .setDescription('Situé ex : (à ....., proche de ...')
       .setRequired(true))
     .addAttachmentOption(opt => opt
       .setName('image')
