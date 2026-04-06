@@ -12,15 +12,15 @@ module.exports = {
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('prix_depart')
-      .setDescription('Prix de départ (ex: 210\'000$)')
+      .setDescription('Prix de départ (ex: 210\'000)')
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('negociation')
-      .setDescription('Prix de négociation (ex: 200\'000$), si pas mettre N/A')
+      .setDescription('Prix de négociation (ex: 200\'000), si pas mettre N/A')
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('commission')
-      .setDescription('Commission (ex: 10%)')
+      .setDescription('Commission (ex: 10)')
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('type')

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getDB } = require('../utils/db');
 const { scheduleSup } = require('../utils/supScheduler');
 
@@ -16,12 +16,14 @@ module.exports = {
 
     const client = interaction.options.getUser('client');
 
-    const contenu = [
-      `**Si vous ne réagissez pas dans les 24 heures, votre ticket sera automatiquement fermé.**`,
-      `${client} 🔴`,
-    ].join('\n');
+    const embed = new EmbedBuilder()
+      .setColor(0xE74C3C)
+      .setDescription(
+        `## Si vous ne réagissez pas dans les 24 heures, votre ticket sera automatiquement fermé.\n` +
+        `${client} <a:407265yellowsiren:1489238394826522664>`
+      );
 
-    const msg = await interaction.channel.send({ content: contenu });
+    const msg = await interaction.channel.send({ embeds: [embed] });
 
     // Planifier la fermeture dans 24h (persisté en MongoDB)
     const closeAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
