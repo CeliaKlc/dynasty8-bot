@@ -19,8 +19,8 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(0xE74C3C)
       .setDescription(
-        `**Si vous ne réagissez pas dans les 24 heures, votre ticket sera automatiquement fermé.**\n` +
-        `${client} 🔴`
+        `## Si vous ne réagissez pas dans les 24 heures, votre ticket sera automatiquement fermé.\n` +
+        `${client} <a:407265yellowsiren:1489238394826522664>`
       );
 
     const msg = await interaction.channel.send({ embeds: [embed] });
