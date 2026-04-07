@@ -79,7 +79,8 @@ function parseAnnonceMessage(content, components) {
   const etageres  = etagMatch ? parseInt(etagMatch[1]) : null;
 
   // Description (la ligne "Peut posséder une salle à sac" est ignorée)
-  const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n(?:> 👜 Peut posséder une salle à sac\n)?> (.+)/);
+  // Lookahead négatif pour éviter de capturer la ligne "Peut posséder une salle à sac" comme description
+  const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n(?:> 👜 Peut posséder une salle à sac\n)?> (?!👜 Peut posséder une salle à sac)(.+)/);
   const description = descMatch ? descMatch[1].trim() : null;
 
   return { numero, agentId, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description };
