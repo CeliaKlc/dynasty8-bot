@@ -8,7 +8,7 @@ const {
 // ── Constantes partagées (source unique : annonce.js) ─────────────────────────
 const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
 
-const { BIENS, STOCKAGE_GARAGE, GARAGE_LABELS, SALLE_A_SAC_LABELS, TYPES_SANS_SALLE_A_SAC } = require('./annonce');
+const { BIENS, STOCKAGE_GARAGE, GARAGE_LABELS, SALLE_A_SAC_LABELS, TYPES_SANS_SALLE_A_SAC, AGENTS } = require('./annonce');
 
 const GARAGE_LABEL_TO_VALUE = Object.fromEntries(
   Object.entries(GARAGE_LABELS).map(([k, v]) => [v, k])
@@ -218,6 +218,11 @@ module.exports = {
       .setDescription('ID du message à modifier (clic droit → Copier l\'identifiant)')
       .setRequired(true))
     .addStringOption(opt => {
+      opt.setName('agent').setDescription('Nouvel agent en charge de l\'annonce').setRequired(false);
+      AGENTS.forEach(a => opt.addChoices({ name: a.name, value: a.id }));
+      return opt;
+    })
+    .addStringOption(opt => {
       opt.setName('type').setDescription('Type de bien').setRequired(false);
       Object.keys(BIENS).forEach(t => opt.addChoices({ name: t, value: t }));
       return opt;
@@ -347,8 +352,9 @@ module.exports = {
 
     const newContent = buildAnnonceContent(merged);
 
-    // Reconstruit les boutons en préservant le numero et l'agentId
-    const suffix = current.agentId ? `${current.numero}_${current.agentId}` : current.numero;
+    // Reconstruit les boutons en préservant (ou mettant à jour) le numero et l'agentId
+    const newAgentId = interaction.options.getString('agent') ?? current.agentId;
+    const suffix = newAgentId ? `${current.numero}_${newAgentId}` : current.numero;
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`annonce_acheter_${suffix}`)

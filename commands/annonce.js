@@ -786,3 +786,4 @@ module.exports.STOCKAGE_GARAGE     = STOCKAGE_GARAGE;
 module.exports.GARAGE_LABELS       = GARAGE_LABELS;
 module.exports.SALLE_A_SAC_LABELS  = SALLE_A_SAC_LABELS;
 module.exports.TYPES_SANS_SALLE_A_SAC = TYPES_SANS_SALLE_A_SAC;
+module.exports.AGENTS                 = AGENTS;
