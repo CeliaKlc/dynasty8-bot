@@ -1,6 +1,9 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { handleAnnonceButton, handleAnnonceModal } = require('../commands/annonce');
 const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
+const { buildListeDetaillee } = require('../utils/attenteManager');
+const { handleAttenteSelect, handleAttenteConfirm, handleAttenteUpdateConfirm, handleAttenteResetTypes } = require('../commands/attente');
+const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
   '917744433682849802', // Employé
@@ -43,6 +46,49 @@ module.exports = {
           await interaction.reply({ content: '❌ Impossible de modifier ton rôle. Contacte un administrateur.', ephemeral: true });
         }
         return;
+      }
+
+      // Bouton retour sélection des types (add + update)
+      if (interaction.customId === 'attente_reset_types') {
+        try { await handleAttenteResetTypes(interaction); } catch (err) {
+          console.error('❌ Erreur attente_reset_types :', err);
+          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
+        }
+        return;
+      }
+
+      // Bouton confirmer l'ajout en liste d'attente
+      if (interaction.customId === 'attente_add_confirm') {
+        try { await handleAttenteConfirm(interaction); } catch (err) {
+          console.error('❌ Erreur attente_add_confirm :', err);
+          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
+        }
+        return;
+      }
+
+      // Bouton confirmer la mise à jour en liste d'attente
+      if (interaction.customId === 'attente_upd_confirm') {
+        try { await handleAttenteUpdateConfirm(interaction); } catch (err) {
+          console.error('❌ Erreur attente_upd_confirm :', err);
+          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
+        }
+        return;
+      }
+
+      // Bouton "Voir la liste" du dashboard liste d'attente — éphémère
+      if (interaction.customId.startsWith('attente_voir_')) {
+        const type = interaction.customId.replace('attente_voir_', '');
+        try {
+          const db = getDB();
+          const embed = await buildListeDetaillee(db, type);
+          if (!embed) {
+            return interaction.reply({ content: `📋 Aucun client en attente pour les **${type}s**.`, ephemeral: true });
+          }
+          return interaction.reply({ embeds: [embed], ephemeral: true });
+        } catch (err) {
+          console.error('❌ Erreur bouton attente_voir :', err);
+          return interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true });
+        }
       }
 
       // Bouton fermeture de ticket — accessible à tous, confirmation éphémère
@@ -150,6 +196,18 @@ module.exports = {
         return;
       }
 
+      return;
+    }
+
+    // === SELECT MENUS (liste d'attente) ===
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'attente_sel_types' || interaction.customId.startsWith('attente_sel_zone_')) {
+        try { await handleAttenteSelect(interaction); } catch (err) {
+          console.error('❌ Erreur select attente :', err);
+          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
+        }
+        return;
+      }
       return;
     }
 
