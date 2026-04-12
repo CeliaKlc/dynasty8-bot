@@ -31,9 +31,9 @@ function buildTypeSelector(pending) {
   const selectRow = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('attente_sel_types')
-      .setPlaceholder('Type(s) de bien recherché(s)... (max 4)')
+      .setPlaceholder('Type(s) de bien recherché(s)... (max 5)')
       .setMinValues(1)
-      .setMaxValues(Math.min(4, TYPES.length))
+      .setMaxValues(Math.min(5, TYPES.length))
       .addOptions(TYPES.map(t => ({
         label:   t,
         value:   t,
