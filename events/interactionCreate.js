@@ -2,7 +2,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('
 const { handleAnnonceButton, handleAnnonceModal } = require('../commands/annonce');
 const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
 const { buildListeDetaillee } = require('../utils/attenteManager');
-const { handleAttenteSelect, handleAttenteConfirm, handleAttenteUpdateConfirm, handleAttenteResetTypes } = require('../commands/attente');
+const { handleAttenteSelect, handleAttenteSaisirZones, handleAttenteZonesModal } = require('../commands/attente');
 const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
@@ -48,28 +48,10 @@ module.exports = {
         return;
       }
 
-      // Bouton retour sélection des types (add + update)
-      if (interaction.customId === 'attente_reset_types') {
-        try { await handleAttenteResetTypes(interaction); } catch (err) {
-          console.error('❌ Erreur attente_reset_types :', err);
-          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
-        }
-        return;
-      }
-
-      // Bouton confirmer l'ajout en liste d'attente
-      if (interaction.customId === 'attente_add_confirm') {
-        try { await handleAttenteConfirm(interaction); } catch (err) {
-          console.error('❌ Erreur attente_add_confirm :', err);
-          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
-        }
-        return;
-      }
-
-      // Bouton confirmer la mise à jour en liste d'attente
-      if (interaction.customId === 'attente_upd_confirm') {
-        try { await handleAttenteUpdateConfirm(interaction); } catch (err) {
-          console.error('❌ Erreur attente_upd_confirm :', err);
+      // Bouton saisir les secteurs (liste d'attente)
+      if (interaction.customId === 'attente_saisir_zones') {
+        try { await handleAttenteSaisirZones(interaction); } catch (err) {
+          console.error('❌ Erreur attente_saisir_zones :', err);
           await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
         }
         return;
@@ -201,7 +183,7 @@ module.exports = {
 
     // === SELECT MENUS (liste d'attente) ===
     if (interaction.isStringSelectMenu()) {
-      if (interaction.customId === 'attente_sel_types' || interaction.customId.startsWith('attente_sel_zone_')) {
+      if (interaction.customId === 'attente_sel_types') {
         try { await handleAttenteSelect(interaction); } catch (err) {
           console.error('❌ Erreur select attente :', err);
           await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
@@ -213,6 +195,15 @@ module.exports = {
 
     // === MODALS ===
     if (interaction.isModalSubmit()) {
+      if (interaction.customId === 'attente_modal_zones') {
+        try { await handleAttenteZonesModal(interaction); } catch (err) {
+          console.error('❌ Erreur attente_modal_zones :', err);
+          const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+        return;
+      }
       if (interaction.customId.startsWith('annonce_modal_')) {
         try {
           await handleAnnonceModal(interaction);

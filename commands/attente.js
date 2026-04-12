@@ -5,6 +5,9 @@ const {
   StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   ChannelType,
 } = require('discord.js');
 const { getDB } = require('../utils/db');
@@ -18,105 +21,53 @@ const TYPES = [
   'Garage 2 places', 'Garage 6 places', 'Garage 10 places', 'Garage 26 places', 'Loft Garage',
 ];
 
-const ZONES = ['Nord', 'Sud', 'Roxwood', 'Las Venturas', 'Mirror Park', 'Chumash', 'Canaux de Vespucci', 'Del Perro'];
-
-// Pending en mémoire (TTL 10 min) — utilisé pour add ET update
-// { mode: 'add'|'update', clientId, ticketId, budgetMax, notes, agentId, selectedTypes[], bienZones{} }
+// Pending en mémoire (TTL 10 min)
+// { mode, clientId, ticketId, budgetMax, notes, agentId, selectedTypes[], bienZones{} }
 const pendingBienSelect = new Map();
 
-// ─── UI helpers ───────────────────────────────────────────────────────────────
+// ─── Sélecteur de types (Phase unique) ───────────────────────────────────────
 
-function buildComponents(pending) {
-  const rows      = [];
-  const confirmId = pending.mode === 'update' ? 'attente_upd_confirm' : 'attente_add_confirm';
-
-  if (pending.selectedTypes.length === 0) {
-    // Phase 1 — sélection des types
-    rows.push(new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('attente_sel_types')
-        .setPlaceholder('Type(s) de bien recherché(s)... (max 4)')
-        .setMinValues(1)
-        .setMaxValues(Math.min(4, TYPES.length))
-        .addOptions(TYPES.map(t => ({
-          label: t,
-          value: t,
-          ...(TYPE_EMOJIS[t] ? { emoji: TYPE_EMOJIS[t] } : {}),
-        }))),
-    ));
-  } else {
-    // Phase 2 — un select de secteur par type
-    for (const type of pending.selectedTypes) {
-      rows.push(new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId(`attente_sel_zone_${type}`)
-          .setPlaceholder(`${TYPE_EMOJIS[type] ?? '🏠'} ${type} — Secteur...`)
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addOptions(ZONES.map(z => ({
-            label:   z,
-            value:   z,
-            default: pending.bienZones[type] === z,
-          }))),
-      ));
-    }
-  }
-
-  const allReady = pending.selectedTypes.length > 0
-    && pending.selectedTypes.every(t => pending.bienZones[t] != null);
-
-  const lastRow = [
-    new ButtonBuilder()
-      .setCustomId(confirmId)
-      .setLabel('✅ Confirmer')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(!allReady),
-  ];
-
-  // En Phase 2, ajouter un bouton pour revenir à la sélection des types
-  if (pending.selectedTypes.length > 0) {
-    lastRow.push(
-      new ButtonBuilder()
-        .setCustomId('attente_reset_types')
-        .setLabel('↩️ Changer les types')
-        .setStyle(ButtonStyle.Secondary),
-    );
-  }
-
-  rows.push(new ActionRowBuilder().addComponents(lastRow));
-  return rows;
+function buildTypeSelector(pending) {
+  const selectRow = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('attente_sel_types')
+      .setPlaceholder('Type(s) de bien recherché(s)... (max 4)')
+      .setMinValues(1)
+      .setMaxValues(Math.min(4, TYPES.length))
+      .addOptions(TYPES.map(t => ({
+        label:   t,
+        value:   t,
+        ...(TYPE_EMOJIS[t] ? { emoji: TYPE_EMOJIS[t] } : {}),
+        default: pending.selectedTypes.includes(t),
+      }))),
+  );
+  return [selectRow];
 }
 
-function buildSummaryContent(pending) {
-  const titre = pending.mode === 'update'
-    ? `✏️ **Modification de <@${pending.clientId}>**`
-    : `📋 **Ajout de <@${pending.clientId}>** en liste d'attente`;
+// ─── Modal de saisie des secteurs ─────────────────────────────────────────────
 
-  const lines = [
-    titre,
-    `> 🎫 Ticket : <#${pending.ticketId}>`,
-    `> 💰 Budget max : **${pending.budgetMax.toLocaleString('fr-FR')} $**`,
-    ...(pending.notes ? [`> 📝 Notes : ${pending.notes}`] : []),
-    '',
-  ];
+function buildZonesModal(pending) {
+  const modal = new ModalBuilder()
+    .setCustomId('attente_modal_zones')
+    .setTitle('Secteurs recherchés');
 
-  if (pending.selectedTypes.length === 0) {
-    lines.push('Sélectionne le ou les type(s) de bien recherché(s) :');
-  } else {
-    lines.push('**Biens recherchés :**');
-    for (const type of pending.selectedTypes) {
-      const zone  = pending.bienZones[type];
-      const emoji = TYPE_EMOJIS[type] ?? '🏠';
-      lines.push(`> ${emoji} **${type}** — 📍 ${zone ?? '*Secteur à sélectionner*'}`);
-    }
-    lines.push('');
-    const allReady = pending.selectedTypes.every(t => pending.bienZones[t] != null);
-    lines.push(allReady
-      ? '✅ Prêt à confirmer !'
-      : '⚠️ Sélectionne un secteur pour chaque type de bien.');
+  for (const type of pending.selectedTypes) {
+    const input = new TextInputBuilder()
+      .setCustomId(`zone_${type}`)
+      .setLabel(type)
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('Ex: Vinewood, Rockford Hills, Nord...')
+      .setRequired(true)
+      .setMaxLength(100);
+
+    // Pré-remplir si zone déjà définie (mode update)
+    const existingZone = pending.bienZones[type];
+    if (existingZone) input.setValue(existingZone);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
   }
 
-  return lines.join('\n');
+  return modal;
 }
 
 // ─── Command ──────────────────────────────────────────────────────────────────
@@ -153,7 +104,7 @@ module.exports = {
       .setName('list')
       .setDescription('Lister les clients en attente')
       .addStringOption(opt => opt.setName('type').setDescription('Filtrer par type de bien').setRequired(false).addChoices(...TYPES.map(t => ({ name: t, value: t }))))
-      .addStringOption(opt => opt.setName('zone').setDescription('Filtrer par secteur').setRequired(false).addChoices(...ZONES.map(z => ({ name: z, value: z })))),
+      .addStringOption(opt => opt.setName('zone').setDescription('Filtrer par secteur').setRequired(false)),
     ),
 
   async execute(interaction) {
@@ -178,15 +129,18 @@ module.exports = {
       }
 
       const pending = {
-        mode: 'add',
-        clientId: clientUser.id, ticketId: ticket.id,
+        mode: 'add', clientId: clientUser.id, ticketId: ticket.id,
         budgetMax, notes, agentId: interaction.user.id,
         selectedTypes: [], bienZones: {},
       };
       pendingBienSelect.set(interaction.user.id, pending);
       setTimeout(() => pendingBienSelect.delete(interaction.user.id), 10 * 60 * 1000);
 
-      return interaction.reply({ content: buildSummaryContent(pending), components: buildComponents(pending), ephemeral: true });
+      return interaction.reply({
+        content:    `📋 **Ajout de <@${clientUser.id}>** — Sélectionne le ou les type(s) de bien :`,
+        components: buildTypeSelector(pending),
+        ephemeral:  true,
+      });
     }
 
     // ── REMOVE ────────────────────────────────────────────────────────────────
@@ -211,24 +165,24 @@ module.exports = {
         return interaction.reply({ content: `❌ <@${clientUser.id}> n'est pas en liste d'attente.`, ephemeral: true });
       }
 
-      // Pré-remplir avec les biens existants
-      const selectedTypes = (doc.biens ?? []).map(b => b.type);
-      const bienZones     = Object.fromEntries((doc.biens ?? []).map(b => [b.type, b.zone]));
-
       const pending = {
-        mode: 'update',
+        mode:          'update',
         clientId:      clientUser.id,
         ticketId:      doc.ticketId,
         budgetMax:     newBudgetMax   ?? doc.budget.max,
         notes:         nouvellesNotes ?? doc.notes,
         agentId:       interaction.user.id,
-        selectedTypes,
-        bienZones,
+        selectedTypes: (doc.biens ?? []).map(b => b.type),
+        bienZones:     Object.fromEntries((doc.biens ?? []).map(b => [b.type, b.zone])),
       };
       pendingBienSelect.set(interaction.user.id, pending);
       setTimeout(() => pendingBienSelect.delete(interaction.user.id), 10 * 60 * 1000);
 
-      return interaction.reply({ content: buildSummaryContent(pending), components: buildComponents(pending), ephemeral: true });
+      return interaction.reply({
+        content:    `✏️ **Modification de <@${clientUser.id}>** — Modifie ou confirme les types de bien :`,
+        components: buildTypeSelector(pending),
+        ephemeral:  true,
+      });
     }
 
     // ── LIST ──────────────────────────────────────────────────────────────────
@@ -239,7 +193,7 @@ module.exports = {
       const query = { status: { $ne: 'terminé' } };
       if (typeFilter && zoneFilter) query.biens = { $elemMatch: { type: typeFilter, zone: zoneFilter } };
       else if (typeFilter)          query['biens.type'] = typeFilter;
-      else if (zoneFilter)          query['biens.zone'] = zoneFilter;
+      else if (zoneFilter)          query['biens.zone'] = { $regex: zoneFilter, $options: 'i' };
 
       const clients = await db.collection('waiting_list').find(query).sort({ createdAt: 1 }).toArray();
 
@@ -258,7 +212,7 @@ module.exports = {
         const budget      = `max ${c.budget.max.toLocaleString('fr-FR')} $`;
         const statut      = STATUT_EMOJI[c.status] ?? '⚪';
         const biensFiltres = (c.biens ?? []).filter(b =>
-          (!typeFilter || b.type === typeFilter) && (!zoneFilter || b.zone === zoneFilter)
+          (!typeFilter || b.type === typeFilter) && (!zoneFilter || b.zone.toLowerCase().includes(zoneFilter.toLowerCase()))
         );
         const biensAffich = biensFiltres.length > 0 ? biensFiltres : (c.biens ?? []);
         const biensStr    = biensAffich.map(b => `${TYPE_EMOJIS[b.type] ?? '🏠'} ${b.type} (${b.zone})`).join(', ');
@@ -271,19 +225,7 @@ module.exports = {
     }
   },
 
-  // ─── Handler bouton "Changer les types" — retour Phase 1 ─────────────────
-
-  async handleAttenteResetTypes(interaction) {
-    const pending = pendingBienSelect.get(interaction.user.id);
-    if (!pending) {
-      return interaction.update({ content: '❌ Session expirée. Relance la commande.', components: [] });
-    }
-    pending.selectedTypes = [];
-    pending.bienZones     = {};
-    return interaction.update({ content: buildSummaryContent(pending), components: buildComponents(pending) });
-  },
-
-  // ─── Handler select menus (partagé add + update) ──────────────────────────
+  // ─── Handler select types → affiche un bouton pour ouvrir le modal ─────────
 
   async handleAttenteSelect(interaction) {
     const pending = pendingBienSelect.get(interaction.user.id);
@@ -292,111 +234,110 @@ module.exports = {
     }
 
     if (interaction.customId === 'attente_sel_types') {
+      // Conserver les zones existantes pour les types re-sélectionnés
       const newZones = {};
       for (const type of interaction.values) {
-        newZones[type] = pending.bienZones[type] ?? null;
+        newZones[type] = pending.bienZones[type] ?? '';
       }
       pending.selectedTypes = interaction.values;
       pending.bienZones     = newZones;
-    } else if (interaction.customId.startsWith('attente_sel_zone_')) {
-      const type = interaction.customId.replace('attente_sel_zone_', '');
-      pending.bienZones[type] = interaction.values[0];
-    }
 
-    return interaction.update({ content: buildSummaryContent(pending), components: buildComponents(pending) });
+      const typesStr = interaction.values.map(t => `> ${TYPE_EMOJIS[t] ?? '🏠'} **${t}**`).join('\n');
+      const btnRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('attente_saisir_zones')
+          .setLabel('✏️ Saisir les secteurs')
+          .setStyle(ButtonStyle.Primary),
+      );
+
+      return interaction.update({
+        content: `📋 Type(s) sélectionné(s) :\n${typesStr}\n\nClique sur le bouton pour saisir les secteurs.`,
+        components: [btnRow],
+      });
+    }
   },
 
-  // ─── Handler bouton confirmer — ajout ─────────────────────────────────────
+  // ─── Handler bouton → ouvre le modal de saisie des secteurs ──────────────
 
-  async handleAttenteConfirm(interaction) {
+  async handleAttenteSaisirZones(interaction) {
     const pending = pendingBienSelect.get(interaction.user.id);
-    if (!pending || pending.mode !== 'add') {
-      return interaction.update({ content: '❌ Session expirée. Relance `/attente add`.', components: [] });
+    if (!pending) {
+      return interaction.update({ content: '❌ Session expirée. Relance la commande.', components: [] });
     }
+    return interaction.showModal(buildZonesModal(pending));
+  },
 
-    const allReady = pending.selectedTypes.length > 0
-      && pending.selectedTypes.every(t => pending.bienZones[t] != null);
-    if (!allReady) {
-      return interaction.update({ content: '❌ Sélectionne un secteur pour chaque type.', components: buildComponents(pending) });
+  // ─── Handler modal zones → enregistrement en DB ───────────────────────────
+
+  async handleAttenteZonesModal(interaction) {
+    const pending = pendingBienSelect.get(interaction.user.id);
+    if (!pending) {
+      return interaction.reply({ content: '❌ Session expirée. Relance la commande.', ephemeral: true });
     }
 
     pendingBienSelect.delete(interaction.user.id);
 
-    const biens = pending.selectedTypes.map(type => ({ type, zone: pending.bienZones[type] }));
-    const db    = getDB();
+    const biens = pending.selectedTypes.map(type => ({
+      type,
+      zone: interaction.fields.getTextInputValue(`zone_${type}`).trim(),
+    }));
 
-    await db.collection('waiting_list').insertOne({
-      clientId:  pending.clientId,
-      ticketId:  pending.ticketId,
-      agentId:   pending.agentId,
-      biens,
-      budget:    { max: pending.budgetMax },
-      notes:     pending.notes,
-      status:    'active',
-      createdAt: new Date(),
-    });
+    const db = getDB();
 
-    await updateDashboard(interaction.client);
+    if (pending.mode === 'add') {
+      await db.collection('waiting_list').insertOne({
+        clientId:  pending.clientId,
+        ticketId:  pending.ticketId,
+        agentId:   pending.agentId,
+        biens,
+        budget:    { max: pending.budgetMax },
+        notes:     pending.notes,
+        status:    'active',
+        createdAt: new Date(),
+      });
 
-    // Récap dans le ticket
-    try {
-      const ch = await interaction.client.channels.fetch(pending.ticketId);
-      if (ch) {
-        await ch.send({ embeds: [
-          new EmbedBuilder()
-            .setColor(0x2ECC71)
-            .setTitle('📋 Ajouté en liste d\'attente')
-            .setDescription(`<@${pending.clientId}> a bien été noté(e) en liste d'attente.`)
-            .addFields(
-              { name: '🏠 Bien(s) recherché(s)', value: biens.map(b => `> ${TYPE_EMOJIS[b.type] ?? '🏠'} **${b.type}** — 📍 ${b.zone}`).join('\n') },
-              { name: '💰 Budget maximum', value: `${pending.budgetMax.toLocaleString('fr-FR')} $`, inline: true },
-              ...(pending.notes ? [{ name: '📝 Notes', value: pending.notes }] : []),
-            )
-            .setFooter({ text: `Ajouté par ${interaction.user.username}` })
-            .setTimestamp(),
-        ] });
+      // Récap dans le ticket du client
+      try {
+        const ch = await interaction.client.channels.fetch(pending.ticketId);
+        if (ch) {
+          await ch.send({ embeds: [
+            new EmbedBuilder()
+              .setColor(0x2ECC71)
+              .setTitle('📋 Ajouté en liste d\'attente')
+              .setDescription(`<@${pending.clientId}> a bien été noté(e) en liste d'attente.`)
+              .addFields(
+                { name: '🏠 Bien(s) recherché(s)', value: biens.map(b => `> ${TYPE_EMOJIS[b.type] ?? '🏠'} **${b.type}** — 📍 ${b.zone}`).join('\n') },
+                { name: '💰 Budget maximum', value: `${pending.budgetMax.toLocaleString('fr-FR')} $`, inline: true },
+                ...(pending.notes ? [{ name: '📝 Notes', value: pending.notes }] : []),
+              )
+              .setFooter({ text: `Ajouté par ${interaction.user.username}` })
+              .setTimestamp(),
+          ] });
+        }
+      } catch (err) {
+        console.error('[ATTENTE] Impossible d\'envoyer le récap dans le ticket :', err);
       }
-    } catch (err) {
-      console.error('[ATTENTE] Impossible d\'envoyer le récap dans le ticket :', err);
+    } else {
+      await db.collection('waiting_list').updateOne(
+        { clientId: pending.clientId },
+        { $set: { biens, 'budget.max': pending.budgetMax, notes: pending.notes } },
+      );
     }
-
-    const biensStr = biens.map(b => `> ${TYPE_EMOJIS[b.type] ?? '🏠'} **${b.type}** — 📍 ${b.zone}`).join('\n');
-    return interaction.update({
-      content: [`✅ <@${pending.clientId}> ajouté(e) en liste d'attente !`, `> 🎫 <#${pending.ticketId}>`, biensStr, `> 💰 max ${pending.budgetMax.toLocaleString('fr-FR')} $`, ...(pending.notes ? [`> 📝 ${pending.notes}`] : [])].join('\n'),
-      components: [],
-    });
-  },
-
-  // ─── Handler bouton confirmer — mise à jour ───────────────────────────────
-
-  async handleAttenteUpdateConfirm(interaction) {
-    const pending = pendingBienSelect.get(interaction.user.id);
-    if (!pending || pending.mode !== 'update') {
-      return interaction.update({ content: '❌ Session expirée. Relance `/attente update`.', components: [] });
-    }
-
-    const allReady = pending.selectedTypes.length > 0
-      && pending.selectedTypes.every(t => pending.bienZones[t] != null);
-    if (!allReady) {
-      return interaction.update({ content: '❌ Sélectionne un secteur pour chaque type.', components: buildComponents(pending) });
-    }
-
-    pendingBienSelect.delete(interaction.user.id);
-
-    const biens = pending.selectedTypes.map(type => ({ type, zone: pending.bienZones[type] }));
-    const db    = getDB();
-
-    await db.collection('waiting_list').updateOne(
-      { clientId: pending.clientId },
-      { $set: { biens, 'budget.max': pending.budgetMax, notes: pending.notes } },
-    );
 
     await updateDashboard(interaction.client);
 
     const biensStr = biens.map(b => `> ${TYPE_EMOJIS[b.type] ?? '🏠'} **${b.type}** — 📍 ${b.zone}`).join('\n');
-    return interaction.update({
-      content: [`✅ Fiche de <@${pending.clientId}> mise à jour !`, biensStr, `> 💰 max ${pending.budgetMax.toLocaleString('fr-FR')} $`, ...(pending.notes ? [`> 📝 ${pending.notes}`] : [])].join('\n'),
-      components: [],
+    const verb = pending.mode === 'add' ? 'ajouté(e) en liste d\'attente' : 'mis(e) à jour';
+
+    return interaction.reply({
+      content: [
+        `✅ <@${pending.clientId}> ${verb} !`,
+        `> 🎫 Ticket : <#${pending.ticketId}>`,
+        biensStr,
+        `> 💰 Budget max : ${pending.budgetMax.toLocaleString('fr-FR')} $`,
+        ...(pending.notes ? [`> 📝 ${pending.notes}`] : []),
+      ].join('\n'),
+      ephemeral: true,
     });
   },
 };
