@@ -10,8 +10,6 @@ const TYPES = [
   'Garage 2 places', 'Garage 6 places', 'Garage 10 places', 'Garage 26 places', 'Loft Garage',
 ];
 
-const ZONES = ['Nord', 'Sud', 'Roxwood', 'Las Venturas', 'Mirror Park', 'Chumash', 'Canaux de Vespucci', 'Del Perro'];
-
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('bien')
@@ -23,9 +21,8 @@ module.exports = {
       .addChoices(...TYPES.map(t => ({ name: t, value: t }))))
     .addStringOption(opt => opt
       .setName('zone')
-      .setDescription('Secteur du bien')
-      .setRequired(true)
-      .addChoices(...ZONES.map(z => ({ name: z, value: z }))))
+      .setDescription('Secteur du bien (ex: Vinewood, Rockford Hills, Nord...)')
+      .setRequired(true))
     .addIntegerOption(opt => opt
       .setName('prix')
       .setDescription('Prix du bien ($)')
@@ -47,7 +44,7 @@ module.exports = {
     // Clients dont un bien correspond exactement au type + secteur
     // et dont le budget max est suffisant
     const matches = await db.collection('waiting_list').find({
-      biens:        { $elemMatch: { type, zone } },
+      biens:        { $elemMatch: { type, zone: { $regex: zone, $options: 'i' } } },
       status:       'active',
       'budget.max': { $gte: prix },
     }).sort({ createdAt: 1 }).toArray();

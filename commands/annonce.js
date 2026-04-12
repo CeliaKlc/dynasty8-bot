@@ -21,7 +21,6 @@ const AGENTS = [
   { name: 'Ely Rollay',           id: '261956403546161152',  emoji: '🦦', feminin: false },
   { name: 'Marco Romanov',        id: '1151865005239697449', emoji: '🐻', feminin: false },
   { name: 'John Russet',          id: '922112971793133568',  emoji: '🦍', feminin: false },
-  { name: 'Joy Lutz',             id: '342355371941167126',  emoji: '🐍', feminin: true  },
   { name: 'Hain Ergy',            id: '273565768355151874',  emoji: '🐲', feminin: false },
   { name: 'Maksim Anatolyevich',  id: '343731754311614465',  emoji: '🦁', feminin: false },
   { name: 'John Macafey',         id: '394751095932583937',  emoji: '🐳', feminin: false },
