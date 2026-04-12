@@ -644,8 +644,7 @@ module.exports = {
         .setStyle(ButtonStyle.Secondary),
     );
 
-    const imageEmbed = new EmbedBuilder().setImage(image.url);
-    await interaction.channel.send({ content: contenu, embeds: [imageEmbed], components: [row], allowedMentions: { parse: ['roles'] } });
+    await interaction.channel.send({ content: contenu, files: [{ attachment: image.url, name: image.name }], components: [row], allowedMentions: { parse: ['roles'] } });
     await interaction.editReply({ content: '✅ Annonce publiée !' });
   },
 };
