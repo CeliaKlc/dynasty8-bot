@@ -644,7 +644,7 @@ module.exports = {
         .setStyle(ButtonStyle.Secondary),
     );
 
-    await interaction.channel.send({ content: contenu, files: [image.url], components: [row], allowedMentions: { parse: ['roles'] } });
+    await interaction.channel.send({ content: contenu + '\n' + image.url, components: [row], allowedMentions: { parse: ['roles'] } });
     await interaction.editReply({ content: '✅ Annonce publiée !' });
   },
 };
