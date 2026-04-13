@@ -13,7 +13,21 @@ module.exports = {
 ║   Connecté en tant que ${client.user.tag.padEnd(15)}║
 ╚═══════════════════════════════════════╝
     `);
-    client.user.setActivity('Dynasty 8 | Baylife RP', { type: 3 });
+    const activites = [
+      { name: 'Votre bien est en cours de recherche',       type: 3 }, // Watching
+      { name: 'Regarde des villas hors budget',             type: 3 }, // Watching
+      { name: 'Cherche un acheteur sérieux',                type: 2 }, // Listening
+      { name: 'Compte les zéros sur les chèques',           type: 3 }, // Watching
+      { name: 'En visite avec un client',                   type: 1 }, // Playing
+      { name: 'Sélection d’opportunités en cours',          type: 3 }, // Watching
+    ];
+
+    let index = 0;
+    client.user.setActivity(activites[0].name, { type: activites[0].type });
+    setInterval(() => {
+      index = (index + 1) % activites.length;
+      client.user.setActivity(activites[index].name, { type: activites[index].type });
+    }, 15_000); // change toutes les 15 secondes
     initScheduler(client);
     initReducScheduler(client);
     initSupScheduler(client);
