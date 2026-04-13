@@ -12,4 +12,14 @@ function toMathSansBold(str) {
   }).join('');
 }
 
-module.exports = { toMathSansBold };
+function toMathSans(str) {
+  return str.split('').map(char => {
+    const code = char.charCodeAt(0);
+    if (code >= 65 && code <= 90)  return String.fromCodePoint(0x1D5A0 + (code - 65));
+    if (code >= 97 && code <= 122) return String.fromCodePoint(0x1D5BA + (code - 97));
+    if (code >= 48 && code <= 57)  return String.fromCodePoint(0x1D7E2 + (code - 48));
+    return char;
+  }).join('');
+}
+
+module.exports = { toMathSansBold, toMathSans };

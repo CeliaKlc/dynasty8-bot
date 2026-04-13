@@ -21,6 +21,13 @@ Il centralise la gestion des annonces LBC, des récapitulatifs de vente, des tic
 | `/rdv liste` | Voir tous les rendez-vous à venir | Employé / Direction |
 | `/rdv annuler` | Annuler un rendez-vous planifié | Employé / Direction |
 | `/prepatchnote` | Publier un pré-patchnote dans le salon dédié | Direction uniquement |
+| `/attente add` | Ajouter un client en liste d'attente | Employé / Direction |
+| `/attente update` | Modifier la fiche d'un client | Employé / Direction |
+| `/attente remove` | Retirer un client de la liste | Employé / Direction |
+| `/attente list` | Lister les clients en attente | Employé / Direction |
+| `/bien` | Enregistrer un bien disponible et trouver les clients correspondants | Employé / Direction |
+| `/carte` | Afficher sa carte d'agent Dynasty 8 en service | Employé / Direction |
+| `/adduser` | Ajouter un membre dans le ticket actuel | Employé / Direction |
 
 ---
 
@@ -203,6 +210,72 @@ Gère les rendez-vous agents/clients avec rappels automatiques.
 ### `/rdv liste` — Affiche tous les rendez-vous à venir triés par date.
 
 ### `/rdv annuler` — Annule un rendez-vous via son identifiant.
+
+---
+
+## 📋 `/attente`
+
+Gère la liste d'attente des clients recherchant un bien. Le dashboard est automatiquement mis à jour dans le salon configuré.
+
+### `/attente add`
+
+| Option | Type | Requis | Description |
+|---|---|---|---|
+| `client` | mention | ✅ | Le client à ajouter |
+| `ticket` | mention salon | ✅ | Le salon ticket du client |
+| `budget_max` | nombre | ✅ | Budget maximum du client |
+| `notes` | texte | ❌ | Notes complémentaires |
+
+→ Ouvre un sélecteur de types de bien (max 5), puis un modal pour saisir le secteur de chaque type librement. Un récap est envoyé dans le ticket.
+
+### `/attente update`
+
+Modifie la fiche d'un client existant (budget, notes, types de bien et secteurs).
+
+### `/attente remove`
+
+Retire un client de la liste d'attente et met à jour le dashboard.
+
+### `/attente list`
+
+| Option | Type | Description |
+|---|---|---|
+| `type` | choix | Filtrer par type de bien |
+| `zone` | texte | Filtrer par secteur (recherche partielle) |
+
+---
+
+## 🏠 `/bien`
+
+Enregistre un bien disponible et affiche automatiquement les clients en liste d'attente dont le budget et les critères correspondent.
+
+| Option | Type | Requis | Description |
+|---|---|---|---|
+| `type` | choix | ✅ | Type de bien (22 choix) |
+| `zone` | texte | ✅ | Secteur du bien (texte libre) |
+| `prix` | nombre | ✅ | Prix du bien |
+
+→ Affiche les clients dont le budget max ≥ prix et dont un bien recherché correspond au type + secteur (recherche insensible à la casse).
+
+---
+
+## 🪪 `/carte`
+
+Affiche la carte d'agent Dynasty 8 de l'agent qui exécute la commande. La carte est détectée automatiquement via le Discord ID.
+
+La carte contient : nom, titre, numéro de téléphone RP (en bloc de code), habilitations en liste, et photo de l'agent.
+
+> Pour ajouter ou modifier un agent, éditer le tableau `CARTES` dans `commands/carte.js`.
+
+---
+
+## ➕ `/adduser`
+
+Ajoute un membre au salon ticket courant avec les permissions **Voir le salon**, **Envoyer des messages** et **Voir l'historique**.
+
+| Option | Type | Requis | Description |
+|---|---|---|---|
+| `membre` | mention | ✅ | Le membre à ajouter |
 
 ---
 
