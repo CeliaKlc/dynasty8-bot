@@ -60,19 +60,25 @@ async function supprimerSession(userId) {
 // ─── Suppression de la carte ───────────────────────────────────────────────────
 
 async function executerSuppression(client, session) {
+  console.log(`[CARTE] Suppression de la carte de ${session.userId} (phase: ${session.phase})`);
+
   try {
     const ch  = await client.channels.fetch(session.cardChannelId);
     const msg = await ch.messages.fetch(session.cardMessageId);
     await msg.delete();
-  } catch { /* déjà supprimé */ }
+    console.log(`[CARTE] Carte supprimée avec succès (msgId: ${session.cardMessageId})`);
+  } catch (err) {
+    console.error(`[CARTE] Impossible de supprimer la carte :`, err.message);
+  }
 
-  // Si c'est une suppression suite à un rappel sans réponse, mettre à jour le message bunker
   if (session.phase === 'suppression' && session.rappelMessageId) {
     try {
-      const bunker     = await client.channels.fetch(session.bunkerChannelId);
-      const rappelMsg  = await bunker.messages.fetch(session.rappelMessageId);
+      const bunker    = await client.channels.fetch(session.bunkerChannelId);
+      const rappelMsg = await bunker.messages.fetch(session.rappelMessageId);
       await rappelMsg.edit({ content: `<@${session.userId}> ❌ Pas de réponse — ta carte a été supprimée.`, components: [] });
-    } catch { /* introuvable */ }
+    } catch (err) {
+      console.error(`[CARTE] Impossible de modifier le message bunker :`, err.message);
+    }
   }
 
   clearTimers(session.userId);
