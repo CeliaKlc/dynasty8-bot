@@ -2,6 +2,7 @@ const { initScheduler } = require('../utils/rdvScheduler');
 const { initReducScheduler } = require('../utils/reducScheduler');
 const { initSupScheduler } = require('../utils/supScheduler');
 const { initByeScheduler } = require('../utils/byeScheduler');
+const { restaurerSessions } = require('../commands/carte');
 
 module.exports = {
   name: 'ready',
@@ -28,6 +29,7 @@ module.exports = {
       index = (index + 1) % activites.length;
       client.user.setActivity(activites[index].name, { type: activites[index].type });
     }, 15_000); // change toutes les 15 secondes
+    restaurerSessions(client).catch(console.error);
     initScheduler(client);
     initReducScheduler(client);
     initSupScheduler(client);

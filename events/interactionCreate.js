@@ -3,6 +3,7 @@ const { handleAnnonceButton, handleAnnonceModal } = require('../commands/annonce
 const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
 const { buildListeDetaillee } = require('../utils/attenteManager');
 const { handleAttenteSelect, handleAttenteSaisirZones, handleAttenteZonesModal } = require('../commands/attente');
+const { handleCarteCheck } = require('../commands/carte');
 const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
@@ -44,6 +45,15 @@ module.exports = {
         } catch (err) {
           console.error('❌ Erreur toggle notification LBC :', err);
           await interaction.reply({ content: '❌ Impossible de modifier ton rôle. Contacte un administrateur.', ephemeral: true });
+        }
+        return;
+      }
+
+      // Bouton confirmation carte en service
+      if (interaction.customId.startsWith('carte_check_')) {
+        try { await handleCarteCheck(interaction); } catch (err) {
+          console.error('❌ Erreur carte_check :', err);
+          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
         }
         return;
       }
