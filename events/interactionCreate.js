@@ -4,6 +4,7 @@ const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
 const { buildListeDetaillee } = require('../utils/attenteManager');
 const { handleAttenteSelect, handleAttenteSaisirZones, handleAttenteZonesModal } = require('../commands/attente');
 const { handleCarteCheck } = require('../commands/carte');
+const { handleEmbedModal } = require('../commands/embed');
 const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
@@ -230,6 +231,16 @@ module.exports = {
         } catch (err) {
           console.error('❌ Erreur modal prepatchnote :', err);
           const msg = { content: '❌ Une erreur est survenue lors de la publication.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+      }
+      if (interaction.customId === 'embed_modal') {
+        try {
+          await handleEmbedModal(interaction);
+        } catch (err) {
+          console.error('❌ Erreur embed_modal :', err);
+          const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});
         }
