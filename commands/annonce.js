@@ -165,19 +165,6 @@ const BIENS = {
       'Télévision',
     ],
   },
-  // Entrée legacy pour les annonces publiées avant le renommage en Villa Blanche/Rouge
-  'Villa': {
-    article: 'La Villa',
-    base: 800, frigo: 100,
-    caracteristiques: [
-      'Chambre avec dressing',
-      'Salle de bain',
-      'Salon avec cuisine ouverte',
-      'Bureau',
-      '3 Étages',
-      'Télévision',
-    ],
-  },
   'Villa Blanche': {
     article: 'La Villa',
     base: 800, frigo: 100, couleur: '⚪ Intérieur Blanc',
@@ -516,6 +503,11 @@ module.exports = {
     const garage2Unites       = !isTypeLuxe && garage2 ? STOCKAGE_GARAGE[garage2] : 0;
     const totalGarageUnites   = isTypeLuxe ? garageLuxeUnites : garage1Unites + garage2Unites;
 
+    // Regrouper les garages identiques (ex: garage1=2 et garage2=2 → { '2': 2 })
+    const garageGroupes = !isTypeLuxe
+      ? Object.entries([garage1, garage2].filter(Boolean).reduce((acc, g) => { acc[g] = (acc[g] || 0) + 1; return acc; }, {}))
+      : [];
+
     // ── STOCKAGE (narratif) ──
     const lignesStockage = [];
     if (type === 'Entrepôt' && etageres) {
@@ -538,8 +530,13 @@ module.exports = {
       const total = bien.base + bien.frigo + garageLuxeUnites;
       lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
     } else {
-      if (garage1) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage1]} dispose de **${garage1Unites} unités** supplémentaires.`);
-      if (garage2) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage2]} dispose de **${garage2Unites} unités** supplémentaires.`);
+      garageGroupes.forEach(([g, n]) => {
+        const unites = n * STOCKAGE_GARAGE[g];
+        const label  = n > 1
+          ? `Les ${n} Garages ${GARAGE_LABELS[g]} disposent de **${STOCKAGE_GARAGE[g]} unités chacun**, soit **${unites} unités** supplémentaires.`
+          : `Le Garage ${GARAGE_LABELS[g]} dispose de **${unites} unités** supplémentaires.`;
+        lignesStockage.push(`> ${label}`);
+      });
       if (garage1 || garage2) {
         const total = bien.base + bien.frigo + totalGarageUnites;
         lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
@@ -554,8 +551,9 @@ module.exports = {
     if (isTypeLuxe && garageLuxe) {
       lignesPlus.push(`> 🚗 ${garageLuxe} × Garage 10 places de luxe`);
     } else {
-      if (garage1) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage1]}`);
-      if (garage2) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage2]}`);
+      garageGroupes.forEach(([g, n]) => {
+        lignesPlus.push(`> 🚗 ${n > 1 ? `${n} × Garages ${GARAGE_LABELS[g]}` : `Garage ${GARAGE_LABELS[g]}`}`);
+      });
     }
     if (salleASac)       lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
     if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
@@ -576,9 +574,8 @@ module.exports = {
     if (isTypeLuxe && garageLuxe) {
       garagesTitre = `${garageLuxe} × Garage 10 places de luxe`;
     } else {
-      garagesTitre = [garage1, garage2]
-        .filter(Boolean)
-        .map(g => `Garage ${GARAGE_LABELS[g]}`)
+      garagesTitre = garageGroupes
+        .map(([g, n]) => n > 1 ? `ses ${n} Garages ${GARAGE_LABELS[g]}` : `Garage ${GARAGE_LABELS[g]}`)
         .join(' & ');
     }
 

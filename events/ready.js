@@ -28,7 +28,7 @@ module.exports = {
     setInterval(() => {
       index = (index + 1) % activites.length;
       client.user.setActivity(activites[index].name, { type: activites[index].type });
-    }, 15_000); // change toutes les 15 secondes
+    }, 50_000); // change toutes les 15 secondes
     restaurerSessions(client).catch(console.error);
     initScheduler(client);
     initReducScheduler(client);
