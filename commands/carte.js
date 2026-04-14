@@ -281,4 +281,17 @@ module.exports = {
   },
 
   restaurerSessions,
+  annulerSiCarteSupprimee,
 };
+
+// ─── Annulation si la carte est supprimée manuellement ────────────────────────
+async function annulerSiCarteSupprimee(messageId) {
+  const db = getDB();
+  const session = await db.collection('carte_sessions').findOne({ cardMessageId: messageId });
+  if (!session) return false;
+
+  console.log(`[CARTE] Message ${messageId} supprimé manuellement — annulation de la session de ${session.userId}`);
+  clearTimers(session.userId);
+  await supprimerSession(session.userId);
+  return true;
+}
