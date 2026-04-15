@@ -5,26 +5,19 @@ const {
   ButtonStyle,
 } = require('discord.js');
 
-// ── Constantes partagées (source unique : annonce.js) ─────────────────────────
-const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
-
-const { BIENS, STOCKAGE_GARAGE, GARAGE_LABELS, SALLE_A_SAC_LABELS, TYPES_SANS_SALLE_A_SAC, AGENTS } = require('./annonce');
-
-const GARAGE_LABEL_TO_VALUE = Object.fromEntries(
-  Object.entries(GARAGE_LABELS).map(([k, v]) => [v, k])
-);
-
-const SALLE_A_SAC_LABEL_TO_VALUE = Object.fromEntries(
-  Object.entries(SALLE_A_SAC_LABELS).map(([k, v]) => [v, k])
-);
-
-const { toMathSansBold } = require('../utils/formatters');
-
-const DYNASTY8 = toMathSansBold('DYNASTY 8');
+const {
+  AGENTS,
+  BIENS,
+  GARAGE_LABELS,
+  GARAGE_LABEL_TO_VALUE,
+  SALLE_A_SAC_LABELS,
+  SALLE_A_SAC_LABEL_TO_VALUE,
+  buildAnnonceContent,
+} = require('../utils/annonceBuilder');
 
 // ── Parse un message annonce existant ────────────────────────────────────────
 function parseAnnonceMessage(content, components) {
-  // Numero depuis le customId du bouton Acheter
+  // Numéro et agentId depuis le customId du bouton Acheter
   const btn         = components?.[0]?.components?.[0];
   const rawCustomId = btn?.customId ?? '';
   // format: annonce_acheter_${numero}_${agentId}
@@ -56,14 +49,22 @@ function parseAnnonceMessage(content, components) {
   const quartierMatch = content.match(/📍 \*\*Emplacement :\*\* Situé (.+)/);
   const quartier      = quartierMatch ? quartierMatch[1].trim() : null;
 
-  // Garages depuis LES +
-  const isTypeLuxe  = type === 'Villa de Luxe' || type === 'Maison de Luxe';
-  const luxeMatch   = content.match(/> 🚗 (\d+) × Garage 10 places de luxe/);
-  const garageLuxe  = luxeMatch ? parseInt(luxeMatch[1]) : null;
+  // ── Garages depuis LES + ──
+  // Gère les deux formats : "Garage X places" (seul) et "N × Garages X places" (groupé)
+  const isTypeLuxe = type === 'Villa de Luxe' || type === 'Maison de Luxe';
+  const luxeMatch  = content.match(/> 🚗 (\d+) × Garage 10 places de luxe/);
+  const garageLuxe = luxeMatch ? parseInt(luxeMatch[1]) : null;
 
-  const garageLines = [...content.matchAll(/> 🚗 Garage (.+)/g)].map(m => m[1].trim());
-  const garage1     = !isTypeLuxe && garageLines[0] ? GARAGE_LABEL_TO_VALUE[garageLines[0]] ?? null : null;
-  const garage2     = !isTypeLuxe && garageLines[1] ? GARAGE_LABEL_TO_VALUE[garageLines[1]] ?? null : null;
+  const garagesParses = [];
+  if (!isTypeLuxe) {
+    for (const m of content.matchAll(/> 🚗 (?:(\d+) × Garages|Garage) (.+)/g)) {
+      const count = m[1] ? parseInt(m[1]) : 1;
+      const val   = GARAGE_LABEL_TO_VALUE[m[2].trim()];
+      if (val) for (let i = 0; i < count; i++) garagesParses.push(val);
+    }
+  }
+  const garage1 = garagesParses[0] ?? null;
+  const garage2 = garagesParses[1] ?? null;
 
   // Salle à sac
   const sacMatch  = content.match(/> 🎒 (.+)/);
@@ -78,134 +79,11 @@ function parseAnnonceMessage(content, components) {
   const etagMatch = content.match(/dispose de \*\*(\d+) étagère/);
   const etageres  = etagMatch ? parseInt(etagMatch[1]) : null;
 
-  // Description (la ligne "Peut posséder une salle à sac" est ignorée)
-  // Lookahead négatif pour éviter de capturer la ligne "Peut posséder une salle à sac" comme description
+  // Description
   const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n(?:> 👜 Peut posséder une salle à sac\n)?> (?!👜 Peut posséder une salle à sac)(.+)/);
   const description = descMatch ? descMatch[1].trim() : null;
 
   return { numero, agentId, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description };
-}
-
-// ── Reconstruction du contenu (identique à annonce.js) ───────────────────────
-function buildAnnonceContent(p) {
-  const { type, transaction, quartier, numero, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description } = p;
-
-  const bien        = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
-  const isTypeLuxe  = type === 'Villa de Luxe' || type === 'Maison de Luxe';
-  const transLabel  = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
-
-  const garageLuxeUnites  = isTypeLuxe && garageLuxe ? garageLuxe * STOCKAGE_GARAGE['10l'] : 0;
-  const garage1Unites     = !isTypeLuxe && garage1   ? STOCKAGE_GARAGE[garage1] : 0;
-  const garage2Unites     = !isTypeLuxe && garage2   ? STOCKAGE_GARAGE[garage2] : 0;
-  const totalGarageUnites = isTypeLuxe ? garageLuxeUnites : garage1Unites + garage2Unites;
-
-  // STOCKAGE
-  const lignesStockage = [];
-  if (type === 'Entrepôt' && etageres) {
-    const totalEtageres = etageres * 600;
-    const MAX_ENTREPOT  = 25 * 600;
-    lignesStockage.push(`> L'Entrepôt dispose de **${etageres} étagère${etageres > 1 ? 's' : ''}**. (25 max)`);
-    if (etageres === 25) {
-      lignesStockage.push(`> ➡️ Soit un total de **${MAX_ENTREPOT} unités** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
-    } else {
-      lignesStockage.push(`> ➡️ Soit un total de **${totalEtageres} unités** de stockage disponibles (jusqu'à **${MAX_ENTREPOT} unités** possible), un vrai atout pour vos besoins de rangement !`);
-    }
-  } else if (bien.frigo > 0) {
-    lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** (HORS RSA) au total.`);
-  } else {
-    lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** (HORS RSA) de stockage.`);
-  }
-  if (isTypeLuxe && garageLuxe) {
-    const label = garageLuxe === 1 ? 'Le Garage 10 places de luxe dispose' : `Les ${garageLuxe} Garages 10 places de luxe disposent`;
-    lignesStockage.push(`> ${label} de **${garageLuxeUnites} unités** supplémentaires.`);
-    lignesStockage.push(`> ➡️ Soit un total de **${bien.base + bien.frigo + garageLuxeUnites} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
-  } else {
-    if (garage1) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage1]} dispose de **${garage1Unites} unités** (HORS RSA) supplémentaires.`);
-    if (garage2) lignesStockage.push(`> Le Garage ${GARAGE_LABELS[garage2]} dispose de **${garage2Unites} unités** (HORS RSA) supplémentaires.`);
-    if (garage1 || garage2) {
-      lignesStockage.push(`> ➡️ Soit un total de **${bien.base + bien.frigo + totalGarageUnites} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
-    }
-  }
-
-  // INTÉRIEUR
-  const lignesInterieur = (bien.caracteristiques ?? []).map(c => `> - ${c}`);
-
-  // LES +
-  const lignesPlus = [];
-  if (isTypeLuxe && garageLuxe) {
-    lignesPlus.push(`> 🚗 ${garageLuxe} × Garage 10 places de luxe`);
-  } else {
-    if (garage1) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage1]}`);
-    if (garage2) lignesPlus.push(`> 🚗 Garage ${GARAGE_LABELS[garage2]}`);
-  }
-  if (salleASac)       lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
-  if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
-  if (terrasse)        lignesPlus.push(`> ☀️ Terrasse`);
-  if (piscine)         lignesPlus.push(`> 🏊 Piscine`);
-  if (type === 'Entrepôt') {
-    lignesPlus.push(`> 💧 Fontaine à eau`);
-    lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
-    lignesPlus.push(`> 👔 Vestiaire pour prise de service`);
-  }
-  if (bien.ordinateur && type !== 'Entrepôt') lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
-  if (bien.cafe)       lignesPlus.push(`> ☕ Machine à café`);
-  if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
-  if (bien.couleur)    lignesPlus.push(`> ${bien.couleur}`);
-
-  // Titre avec garages
-  let garagesTitre = '';
-  if (isTypeLuxe && garageLuxe) {
-    garagesTitre = `${garageLuxe} × Garage 10 places de luxe`;
-  } else {
-    garagesTitre = [garage1, garage2].filter(Boolean).map(g => `Garage ${GARAGE_LABELS[g]}`).join(' & ');
-  }
-
-  // Message final
-  const lignes = [
-    `━━━━━━━━━━━━━━━━━━━━━━━`,
-    `        ·         ${DYNASTY8}          ·`,
-    `━━━━━━━━━━━━━━━━━━━━━━━`,
-    `✨ **${transLabel} : ${type}${garagesTitre ? ` avec ${garagesTitre}` : ''}** ✨`,
-    ``,
-    `Chers <@&${ROLE_NOTIFICATIONS_LBC_ID}>,`,
-    ``,
-    `📍 **Emplacement :** Situé ${quartier}`,
-  ];
-
-  lignes.push(``, `**📦 STOCKAGE**`);
-  lignes.push(...lignesStockage);
-
-  if (lignesInterieur.length > 0) {
-    lignes.push(``, `**🛋️ INTÉRIEUR**`);
-    lignes.push(...lignesInterieur);
-  }
-
-  if (lignesPlus.length > 0) {
-    lignes.push(``, `**✨ LES +**`);
-    lignes.push(...lignesPlus);
-  }
-
-  const lignesDetails = [];
-  if (!salleASac && !TYPES_SANS_SALLE_A_SAC.has(type)) {
-    lignesDetails.push(`> 👜 Peut posséder une salle à sac`);
-  }
-  if (description) lignesDetails.push(`> ${description}`);
-  if (lignesDetails.length > 0) {
-    lignes.push(``, `**📝 DÉTAILS**`);
-    lignes.push(...lignesDetails);
-  }
-
-  if (bien.entrepriseOnly) {
-    lignes.push(``, `## <a:407265yellowsiren:1489238394826522664> Ce bien est disponible uniquement pour les *entreprises*. <a:407265yellowsiren:1489238394826522664>`);
-  }
-
-  lignes.push(``);
-  lignes.push(``);
-  lignes.push(`*Vous souhaitez être notifié pour chaque bien ? N'hésitez pas à activer votre rôle juste ici* → https://discord.com/channels/814919928233721856/915990552745500692`);
-  lignes.push(``);
-  lignes.push(`*<:Dynasty8:1489223936620236841> Dynasty 8 — Transformons vos projets immobiliers en réalité.*`);
-
-  return lignes.join('\n');
 }
 
 // ── Commande ──────────────────────────────────────────────────────────────────
@@ -350,9 +228,10 @@ module.exports = {
       description: interaction.options.getString('description') ?? current.description,
     };
 
+    // Reconstruction du contenu via l'utilitaire partagé (même logique que /annonce)
     const newContent = buildAnnonceContent(merged);
 
-    // Reconstruit les boutons en préservant (ou mettant à jour) le numero et l'agentId
+    // Reconstruction des boutons
     const newAgentId = interaction.options.getString('agent') ?? current.agentId;
     const suffix = newAgentId ? `${current.numero}_${newAgentId}` : current.numero;
     const row = new ActionRowBuilder().addComponents(
