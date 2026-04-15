@@ -1,7 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-
-// Ajoute $ uniquement si la valeur contient un chiffre (ex: "210'000"), pas sur du texte (ex: "Négociation")
-const avecDollar = val => /\d/.test(val) ? `${val}$` : val;
+const { avecDollar } = require('../utils/formatters');
 
 // ── Reconstruction du contenu (même logique que recapLBC.js) ─────────────────
 function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, type3, adresse3, etage3, description, fraisDossier, doubleCles }) {

@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { avecDollar } = require('../utils/formatters');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -84,9 +85,6 @@ module.exports = {
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
-
-    // Ajoute $ uniquement si la valeur est numérique (ex: "210'000"), pas sur du texte (ex: "Négociation")
-    const avecDollar = val => /\d/.test(val) ? `${val}$` : val;
 
     const annonce      = interaction.options.getString('annonce');
     const prixDepart   = interaction.options.getString('prix_depart');

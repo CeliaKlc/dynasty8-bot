@@ -224,6 +224,7 @@ module.exports = {
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});
         }
+        return;
       }
       if (interaction.customId === 'prepatchnote_modal') {
         try {
@@ -234,6 +235,7 @@ module.exports = {
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});
         }
+        return;
       }
       if (interaction.customId === 'embed_modal') {
         try {
@@ -244,8 +246,8 @@ module.exports = {
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});
         }
+        return;
       }
-      return;
     }
 
     // === COMMANDES SLASH ===

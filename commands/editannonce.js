@@ -3,6 +3,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  PermissionFlagsBits,
 } = require('discord.js');
 
 const {
@@ -95,6 +96,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('editannonce')
     .setDescription('✏️ Modifier les options d\'une annonce déjà publiée')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .addStringOption(opt => opt
       .setName('message_id')
       .setDescription('ID du message à modifier (clic droit → Copier l\'identifiant)')

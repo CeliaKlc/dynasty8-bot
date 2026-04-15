@@ -195,7 +195,7 @@ module.exports = {
       else if (typeFilter)          query['biens.type'] = typeFilter;
       else if (zoneFilter)          query['biens.zone'] = { $regex: zoneFilter, $options: 'i' };
 
-      const clients = await db.collection('waiting_list').find(query).sort({ createdAt: 1 }).toArray();
+      const clients = await db.collection('waiting_list').find(query).sort({ createdAt: 1 }).limit(100).toArray();
 
       if (clients.length === 0) {
         return interaction.reply({ content: '📋 Aucun client en liste d\'attente pour ces critères.', ephemeral: true });

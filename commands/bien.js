@@ -44,7 +44,7 @@ module.exports = {
     // Clients dont un bien correspond exactement au type + secteur
     // et dont le budget max est suffisant
     const matches = await db.collection('waiting_list').find({
-      biens:        { $elemMatch: { type, zone: { $regex: zone, $options: 'i' } } },
+      biens:        { $elemMatch: { type, zone: { $regex: zone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } } },
       status:       'active',
       'budget.max': { $gte: prix },
     }).sort({ createdAt: 1 }).toArray();
