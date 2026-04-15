@@ -72,7 +72,8 @@ function parseAnnonceMessage(content, components) {
 
   // Booléens / entiers
   const jardin   = content.includes('> 🌿 Jardin');
-  const terrasse = content.includes('> ☀️ Terrasse');
+  const terrasseMatch = content.match(/> ☀️ (?:(\d+) Terrasses|Terrasse)/);
+  const terrasse      = terrasseMatch ? (terrasseMatch[1] ? parseInt(terrasseMatch[1]) : 1) : null;
   const piscine  = content.includes('> 🏊 Piscine');
 
   const balconMatch = content.match(/> 🌅 (?:(\d+) Balcons|Balcon)/);
@@ -166,10 +167,11 @@ module.exports = {
       .setName('piscine')
       .setDescription('Piscine incluse ?')
       .setRequired(false))
-    .addBooleanOption(opt => opt
+    .addIntegerOption(opt => opt
       .setName('terrasse')
-      .setDescription('Terrasse incluse ?')
-      .setRequired(false))
+      .setDescription('Nombre de terrasses (0 pour supprimer)')
+      .setRequired(false)
+      .setMinValue(0))
     .addIntegerOption(opt => opt
       .setName('balcon')
       .setDescription('Nombre de balcons (0 pour supprimer)')
@@ -231,7 +233,7 @@ module.exports = {
       salleASac:   resolveStr('salle_a_sac', current.salleASac),
       jardin:      interaction.options.getBoolean('jardin')   ?? current.jardin,
       piscine:     interaction.options.getBoolean('piscine')  ?? current.piscine,
-      terrasse:    interaction.options.getBoolean('terrasse') ?? current.terrasse,
+      terrasse:    interaction.options.getInteger('terrasse') ?? current.terrasse,
       balcon:      interaction.options.getInteger('balcon')   ?? current.balcon,
       etageres:    interaction.options.getInteger('etageres') ?? current.etageres,
       description: interaction.options.getString('description') ?? current.description,

@@ -434,9 +434,9 @@ module.exports = {
       .setName('piscine')
       .setDescription('Piscine incluse ?')
       .setRequired(false))
-    .addBooleanOption(opt => opt
+    .addIntegerOption(opt => opt
       .setName('terrasse')
-      .setDescription('Terrasse incluse ?')
+      .setDescription('Terrasse incluse ? - Nombre de terrasses présentes')
       .setRequired(false))
     .addIntegerOption(opt => opt
       .setName('balcon')
@@ -476,7 +476,7 @@ module.exports = {
     }
     const jardin        = interaction.options.getBoolean('jardin');
     const piscine       = interaction.options.getBoolean('piscine');
-    const terrasse      = interaction.options.getBoolean('terrasse');
+    const terrasse      = interaction.options.getInteger('terrasse');
     const balcon        = interaction.options.getInteger('balcon');
     const etageres      = interaction.options.getInteger('etageres');
     const description   = interaction.options.getString('description');

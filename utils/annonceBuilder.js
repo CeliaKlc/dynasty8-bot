@@ -373,7 +373,7 @@ function buildAnnonceContent({ type, transaction, quartier, garage1, garage2, ga
   }
   if (salleASac)       lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
   if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
-  if (terrasse)        lignesPlus.push(`> ☀️ Terrasse`);
+  if (terrasse)        lignesPlus.push(`> ☀️ ${terrasse > 1 ? `${terrasse} Terrasses` : 'Terrasse'}`);
   if (balcon)          lignesPlus.push(`> 🌅 ${balcon > 1 ? `${balcon} Balcons` : 'Balcon'}`);
   if (piscine)         lignesPlus.push(`> 🏊 Piscine`);
   if (type === 'Entrepôt') {
