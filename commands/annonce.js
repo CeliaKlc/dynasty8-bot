@@ -434,9 +434,13 @@ module.exports = {
       .setName('piscine')
       .setDescription('Piscine incluse ?')
       .setRequired(false))
-    .addBooleanOption(opt => opt
+    .addIntegerOption(opt => opt
       .setName('terrasse')
-      .setDescription('Terrasse incluse ?')
+      .setDescription('Terrasse incluse ? - Nombre de terrasses présentes')
+      .setRequired(false))
+    .addIntegerOption(opt => opt
+      .setName('balcon')
+      .setDescription('Balcon inclus ? - Nombre de balcons présents')
       .setRequired(false))
     .addIntegerOption(opt => opt
       .setName('etageres')
@@ -472,7 +476,8 @@ module.exports = {
     }
     const jardin        = interaction.options.getBoolean('jardin');
     const piscine       = interaction.options.getBoolean('piscine');
-    const terrasse      = interaction.options.getBoolean('terrasse');
+    const terrasse      = interaction.options.getInteger('terrasse');
+    const balcon        = interaction.options.getInteger('balcon');
     const etageres      = interaction.options.getInteger('etageres');
     const description   = interaction.options.getString('description');
 
@@ -481,7 +486,7 @@ module.exports = {
     }
 
     // ── Construction du message (via utilitaire partagé) ──
-    const contenu = buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description });
+    const contenu = buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description });
 
     const agentId = interaction.options.getString('agent');
     const row = new ActionRowBuilder().addComponents(

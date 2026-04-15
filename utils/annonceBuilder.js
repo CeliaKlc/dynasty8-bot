@@ -311,7 +311,7 @@ const DYNASTY8 = toMathSansBold('DYNASTY 8');
 // ─── Construction du contenu d'une annonce ────────────────────────────────────
 // Params : { type, transaction, quartier, garage1, garage2, garageLuxe,
 //            salleASac, jardin, piscine, terrasse, etageres, description }
-function buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description }) {
+function buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description }) {
   const bien           = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
   const isTypeLuxe     = type === 'Villa de Luxe' || type === 'Maison de Luxe';
   const transLabel     = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
@@ -373,7 +373,8 @@ function buildAnnonceContent({ type, transaction, quartier, garage1, garage2, ga
   }
   if (salleASac)       lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
   if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
-  if (terrasse)        lignesPlus.push(`> ☀️ Terrasse`);
+  if (terrasse)        lignesPlus.push(`> ☀️ ${terrasse > 1 ? `${terrasse} Terrasses` : 'Terrasse'}`);
+  if (balcon)          lignesPlus.push(`> 🌅 ${balcon > 1 ? `${balcon} Balcons` : 'Balcon'}`);
   if (piscine)         lignesPlus.push(`> 🏊 Piscine`);
   if (type === 'Entrepôt') {
     lignesPlus.push(`> 💧 Fontaine à eau`);
