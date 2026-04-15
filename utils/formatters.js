@@ -22,4 +22,12 @@ function toMathSans(str) {
   }).join('');
 }
 
-module.exports = { toMathSansBold, toMathSans };
+/**
+ * Ajoute le symbole $ uniquement si la valeur contient un chiffre.
+ * Ex: "210'000" → "210'000$", "Négociation" → "Négociation"
+ */
+function avecDollar(val) {
+  return /\d/.test(val) ? `${val}$` : val;
+}
+
+module.exports = { toMathSansBold, toMathSans, avecDollar };

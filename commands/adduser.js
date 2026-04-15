@@ -1,9 +1,10 @@
-const { SlashCommandBuilder, PermissionFlagsBits, OverwriteType } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('adduser')
     .setDescription('Ajouter un membre dans le ticket actuel')
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addUserOption(opt => opt
       .setName('membre')
       .setDescription('Membre à ajouter au ticket')
