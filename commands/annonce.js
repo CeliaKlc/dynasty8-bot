@@ -13,36 +13,23 @@ const {
 } = require('discord.js');
 
 const CATEGORIE_TICKETS_ID = '993616675670851659';
-const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
 
-// ─── Agents (ID Discord → emoji) ─────────────────────────────────────────────
-const AGENTS = [
-  { name: 'Sacha Rollay',         id: '314057285523472394',  emoji: '🦊', feminin: true  },
-  { name: 'Ely Rollay',           id: '261956403546161152',  emoji: '🦦', feminin: false },
-  { name: 'Marco Romanov',        id: '1151865005239697449', emoji: '🐻', feminin: false },
-  { name: 'John Russet',          id: '922112971793133568',  emoji: '🦍', feminin: false },
-  { name: 'Hain Ergy',            id: '273565768355151874',  emoji: '🐲', feminin: false },
-  { name: 'Maksim Anatolyevich',  id: '343731754311614465',  emoji: '🦁', feminin: false },
-  { name: 'John Macafey',         id: '394751095932583937',  emoji: '🐳', feminin: false },
-];
+const { AGENTS, buildAnnonceContent } = require('../utils/annonceBuilder');
 
-const AGENT_EMOJIS   = Object.fromEntries(AGENTS.map(a => [a.id, a.emoji]));
-const AGENT_FEMININ  = Object.fromEntries(AGENTS.map(a => [a.id, a.feminin]));
+const AGENT_EMOJIS  = Object.fromEntries(AGENTS.map(a => [a.id, a.emoji]));
+const AGENT_FEMININ = Object.fromEntries(AGENTS.map(a => [a.id, a.feminin]));
 
 const ROLES_AUTORISES = [
-  '917744433682849802', // Employé
-  '1375930527873368066', // Direction
+  '917744433682849802',   // Employé
+  '1375930527873368066',  // Direction
 ];
 
 // ─── Rôles ayant accès aux tickets LBC ───────────────────────────────────────
 const ROLES_TICKETS_LBC = [
-  '1045639426170167358', // Gestionnaire-LBC
-  '1373792350991683687', // Responsable-LBC
+  '1045639426170167358',  // Gestionnaire-LBC
+  '1373792350991683687',  // Responsable-LBC
 ];
 
-const { toMathSansBold } = require('../utils/formatters');
-
-// ── Données par type de bien ───────────────────────────────────────────────────
 const BIENS = {
   'Appartement Simple': {
     article: "L'Appartement Simple",
@@ -341,8 +328,6 @@ const TYPES_SANS_SALLE_A_SAC = new Set([
   'Hangar',
 ]);
 
-const DYNASTY8 = toMathSansBold('DYNASTY 8');
-
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('annonce')
@@ -495,135 +480,8 @@ module.exports = {
       return interaction.editReply({ content: `❌ L'option **etageres** est réservée au type **Entrepôt**.` });
     }
 
-    const transactionLabel = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
-
-    const bien                = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
-    const garageLuxeUnites    = isTypeLuxe && garageLuxe ? garageLuxe * STOCKAGE_GARAGE['10l'] : 0;
-    const garage1Unites       = !isTypeLuxe && garage1 ? STOCKAGE_GARAGE[garage1] : 0;
-    const garage2Unites       = !isTypeLuxe && garage2 ? STOCKAGE_GARAGE[garage2] : 0;
-    const totalGarageUnites   = isTypeLuxe ? garageLuxeUnites : garage1Unites + garage2Unites;
-
-    // Regrouper les garages identiques (ex: garage1=2 et garage2=2 → { '2': 2 })
-    const garageGroupes = !isTypeLuxe
-      ? Object.entries([garage1, garage2].filter(Boolean).reduce((acc, g) => { acc[g] = (acc[g] || 0) + 1; return acc; }, {}))
-      : [];
-
-    // ── STOCKAGE (narratif) ──
-    const lignesStockage = [];
-    if (type === 'Entrepôt' && etageres) {
-      const totalEtageres = etageres * 600;
-      const MAX_ENTREPOT  = 25 * 600; // 15000
-      lignesStockage.push(`> L'Entrepôt dispose de **${etageres} étagère${etageres > 1 ? 's' : ''}**. (25 max)`);
-      if (etageres === 25) {
-        lignesStockage.push(`> ➡️ Soit un total de **${MAX_ENTREPOT} unités** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
-      } else {
-        lignesStockage.push(`> ➡️ Soit un total de **${totalEtageres} unités** de stockage disponibles (jusqu'à **${MAX_ENTREPOT} unités** possible), un vrai atout pour vos besoins de rangement !`);
-      }
-    } else if (bien.frigo > 0) {
-      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** de stockage + **${bien.frigo} unités** dans le frigo, soit **${bien.base + bien.frigo} unités** (HORS RSA) au total.`);
-    } else {
-      lignesStockage.push(`> ${bien.article} dispose de **${bien.base} unités** (HORS RSA) de stockage.`);
-    }
-    if (isTypeLuxe && garageLuxe) {
-      const label = garageLuxe === 1 ? 'Le Garage 10 places de luxe dispose' : `Les ${garageLuxe} Garages 10 places de luxe disposent`;
-      lignesStockage.push(`> ${label} de **${garageLuxeUnites} unités** supplémentaires.`);
-      const total = bien.base + bien.frigo + garageLuxeUnites;
-      lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
-    } else {
-      garageGroupes.forEach(([g, n]) => {
-        const unites = n * STOCKAGE_GARAGE[g];
-        const label  = n > 1
-          ? `Les ${n} Garages ${GARAGE_LABELS[g]} disposent de **${STOCKAGE_GARAGE[g]} unités chacun**, soit **${unites} unités** supplémentaires.`
-          : `Le Garage ${GARAGE_LABELS[g]} dispose de **${unites} unités** supplémentaires.`;
-        lignesStockage.push(`> ${label}`);
-      });
-      if (garage1 || garage2) {
-        const total = bien.base + bien.frigo + totalGarageUnites;
-        lignesStockage.push(`> ➡️ Soit un total de **${total} unités (HORS RSA)** de stockage disponibles, un vrai atout pour vos besoins de rangement !`);
-      }
-    }
-
-    // ── INTÉRIEUR (auto selon le type) ──
-    const lignesInterieur = bien.caracteristiques.map(c => `> - ${c}`);
-
-    // ── LES + ──
-    const lignesPlus = [];
-    if (isTypeLuxe && garageLuxe) {
-      lignesPlus.push(`> 🚗 ${garageLuxe} × Garage 10 places de luxe`);
-    } else {
-      garageGroupes.forEach(([g, n]) => {
-        lignesPlus.push(`> 🚗 ${n > 1 ? `${n} × Garages ${GARAGE_LABELS[g]}` : `Garage ${GARAGE_LABELS[g]}`}`);
-      });
-    }
-    if (salleASac)       lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
-    if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
-    if (terrasse)        lignesPlus.push(`> ☀️ Terrasse`);
-    if (piscine)         lignesPlus.push(`> 🏊 Piscine`);
-    if (type === 'Entrepôt') {
-      lignesPlus.push(`> 💧 Fontaine à eau`);
-      lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
-      lignesPlus.push(`> 👔 Vestiaire pour prise de service`);
-    }
-    if (bien.ordinateur && type !== 'Entrepôt') lignesPlus.push(`> 💻 Ordinateur pour gérer son entreprise`);
-    if (bien.cafe)       lignesPlus.push(`> ☕ Machine à café`);
-    if (bien.modifiable) lignesPlus.push(`> 🔧 Intérieur modifiable`);
-    if (bien.couleur)    lignesPlus.push(`> ${bien.couleur}`);
-
-    // ── Suffixe du titre avec les garages ──
-    let garagesTitre = '';
-    if (isTypeLuxe && garageLuxe) {
-      garagesTitre = `${garageLuxe} × Garage 10 places de luxe`;
-    } else {
-      garagesTitre = garageGroupes
-        .map(([g, n]) => n > 1 ? `ses ${n} Garages ${GARAGE_LABELS[g]}` : `Garage ${GARAGE_LABELS[g]}`)
-        .join(' & ');
-    }
-
-    // ── Construction du message ──
-    const lignes = [
-      `━━━━━━━━━━━━━━━━━━━━━━━`,
-      `        ·         ${DYNASTY8}          ·`,
-      `━━━━━━━━━━━━━━━━━━━━━━━`,
-      `✨ **${transactionLabel} : ${bien.titre ?? type}${garagesTitre ? ` avec ${garagesTitre}` : ''}** ✨`,
-      ``,
-      `Chers <@&${ROLE_NOTIFICATIONS_LBC_ID}>,`,
-      ``,
-      `📍 **Emplacement :** Situé ${quartier}`,
-    ];
-
-    lignes.push(``, `**📦 STOCKAGE**`);
-    lignes.push(...lignesStockage);
-
-    if (lignesInterieur.length > 0) {
-      lignes.push(``, `**🛋️ INTÉRIEUR**`);
-      lignes.push(...lignesInterieur);
-    }
-
-    if (lignesPlus.length > 0) {
-      lignes.push(``, `**✨ LES +**`);
-      lignes.push(...lignesPlus);
-    }
-
-    const lignesDetails = [];
-    if (!salleASac && !TYPES_SANS_SALLE_A_SAC.has(type)) {
-      lignesDetails.push(`> 👜 Peut posséder une salle à sac`);
-    }
-    if (description) lignesDetails.push(`> ${description}`);
-    if (lignesDetails.length > 0) {
-      lignes.push(``, `**📝 DÉTAILS**`);
-      lignes.push(...lignesDetails);
-    }
-
-    if (bien.entrepriseOnly) {
-      lignes.push(``, `## <a:407265yellowsiren:1489238394826522664> Ce bien est disponible uniquement pour les *entreprises*. <a:407265yellowsiren:1489238394826522664>`);
-    }
-    lignes.push(``);
-    lignes.push(``);
-    lignes.push(`*Vous souhaitez être notifié pour chaque bien ? N'hésitez pas à activer votre rôle juste ici* → https://discord.com/channels/814919928233721856/915990552745500692`);
-    lignes.push(``);
-    lignes.push(`*<:Dynasty8:1489223936620236841> Dynasty 8 — Transformons vos projets immobiliers en réalité.*`);
-
-    const contenu = lignes.join('\n');
+    // ── Construction du message (via utilitaire partagé) ──
+    const contenu = buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description });
 
     const agentId = interaction.options.getString('agent');
     const row = new ActionRowBuilder().addComponents(
@@ -777,9 +635,4 @@ async function handleAnnonceModal(interaction) {
 
 module.exports.handleAnnonceButton = handleAnnonceButton;
 module.exports.handleAnnonceModal  = handleAnnonceModal;
-module.exports.BIENS               = BIENS;
-module.exports.STOCKAGE_GARAGE     = STOCKAGE_GARAGE;
-module.exports.GARAGE_LABELS       = GARAGE_LABELS;
-module.exports.SALLE_A_SAC_LABELS  = SALLE_A_SAC_LABELS;
-module.exports.TYPES_SANS_SALLE_A_SAC = TYPES_SANS_SALLE_A_SAC;
-module.exports.AGENTS                 = AGENTS;
+// Les constantes (BIENS, AGENTS, etc.) sont exportées depuis utils/annonceBuilder.js
