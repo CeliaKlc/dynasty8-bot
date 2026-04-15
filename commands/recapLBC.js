@@ -85,6 +85,9 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
+    // Ajoute $ uniquement si la valeur est numérique (ex: "210'000"), pas sur du texte (ex: "Négociation")
+    const avecDollar = val => /\d/.test(val) ? `${val}$` : val;
+
     const annonce      = interaction.options.getString('annonce');
     const prixDepart   = interaction.options.getString('prix_depart');
     const negociation  = interaction.options.getString('negociation');
@@ -109,10 +112,10 @@ module.exports = {
     const lignes = [
       `======= **Annonce LBC : ${annonce}** ========`,
       ``,
-      `**Prix de départ :** ${prixDepart}$`,
+      `**Prix de départ :** ${avecDollar(prixDepart)}`,
     ];
 
-    if (negociation) lignes.push(`**Négociation :** ${negociation}$`);
+    if (negociation) lignes.push(`**Négociation :** ${avecDollar(negociation)}`);
 
     lignes.push(`**Commission :** ${commission}%`);
 

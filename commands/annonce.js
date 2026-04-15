@@ -439,6 +439,10 @@ module.exports = {
       .setDescription('Terrasse incluse ?')
       .setRequired(false))
     .addIntegerOption(opt => opt
+      .setName('balcon')
+      .setDescription('Balcon inclus ? - Nombre de balcons présents')
+      .setRequired(false))
+    .addIntegerOption(opt => opt
       .setName('etageres')
       .setDescription('⚠️ Entrepôt uniquement — Nombre d\'étagères (1 à 25, 1 étagère = 600 unités)')
       .setRequired(false)
@@ -473,6 +477,7 @@ module.exports = {
     const jardin        = interaction.options.getBoolean('jardin');
     const piscine       = interaction.options.getBoolean('piscine');
     const terrasse      = interaction.options.getBoolean('terrasse');
+    const balcon        = interaction.options.getInteger('balcon');
     const etageres      = interaction.options.getInteger('etageres');
     const description   = interaction.options.getString('description');
 
@@ -481,7 +486,7 @@ module.exports = {
     }
 
     // ── Construction du message (via utilitaire partagé) ──
-    const contenu = buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description });
+    const contenu = buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description });
 
     const agentId = interaction.options.getString('agent');
     const row = new ActionRowBuilder().addComponents(

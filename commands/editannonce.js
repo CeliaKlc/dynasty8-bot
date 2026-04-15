@@ -70,10 +70,13 @@ function parseAnnonceMessage(content, components) {
   const sacMatch  = content.match(/> 🎒 (.+)/);
   const salleASac = sacMatch ? SALLE_A_SAC_LABEL_TO_VALUE[sacMatch[1].trim()] ?? null : null;
 
-  // Booléens
+  // Booléens / entiers
   const jardin   = content.includes('> 🌿 Jardin');
-  const piscine  = content.includes('> 🏊 Piscine');
   const terrasse = content.includes('> ☀️ Terrasse');
+  const piscine  = content.includes('> 🏊 Piscine');
+
+  const balconMatch = content.match(/> 🌅 (?:(\d+) Balcons|Balcon)/);
+  const balcon      = balconMatch ? (balconMatch[1] ? parseInt(balconMatch[1]) : 1) : null;
 
   // Étagères (Entrepôt)
   const etagMatch = content.match(/dispose de \*\*(\d+) étagère/);
@@ -83,7 +86,7 @@ function parseAnnonceMessage(content, components) {
   const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n(?:> 👜 Peut posséder une salle à sac\n)?> (?!👜 Peut posséder une salle à sac)(.+)/);
   const description = descMatch ? descMatch[1].trim() : null;
 
-  return { numero, agentId, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, etageres, description };
+  return { numero, agentId, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description };
 }
 
 // ── Commande ──────────────────────────────────────────────────────────────────
@@ -168,6 +171,11 @@ module.exports = {
       .setDescription('Terrasse incluse ?')
       .setRequired(false))
     .addIntegerOption(opt => opt
+      .setName('balcon')
+      .setDescription('Nombre de balcons (0 pour supprimer)')
+      .setRequired(false)
+      .setMinValue(0))
+    .addIntegerOption(opt => opt
       .setName('etageres')
       .setDescription('Étagères Entrepôt uniquement (1 à 25)')
       .setRequired(false)
@@ -224,6 +232,7 @@ module.exports = {
       jardin:      interaction.options.getBoolean('jardin')   ?? current.jardin,
       piscine:     interaction.options.getBoolean('piscine')  ?? current.piscine,
       terrasse:    interaction.options.getBoolean('terrasse') ?? current.terrasse,
+      balcon:      interaction.options.getInteger('balcon')   ?? current.balcon,
       etageres:    interaction.options.getInteger('etageres') ?? current.etageres,
       description: interaction.options.getString('description') ?? current.description,
     };
