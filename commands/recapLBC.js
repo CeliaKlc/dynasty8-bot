@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { avecDollar } = require('../utils/formatters');
+const { avecDollar, formatPrix } = require('../utils/formatters');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -110,10 +110,10 @@ module.exports = {
     const lignes = [
       `======= **Annonce LBC : ${annonce}** ========`,
       ``,
-      `**Prix de départ :** ${avecDollar(prixDepart)}`,
+      `**Prix de départ :** ${avecDollar(formatPrix(prixDepart))}`,
     ];
 
-    if (negociation) lignes.push(`**Négociation :** ${avecDollar(negociation)}`);
+    if (negociation) lignes.push(`**Négociation :** ${avecDollar(formatPrix(negociation))}`);
 
     lignes.push(`**Commission :** ${commission}%`);
 

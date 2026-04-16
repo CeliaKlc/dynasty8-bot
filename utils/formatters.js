@@ -30,4 +30,21 @@ function avecDollar(val) {
   return /\d/.test(val) ? `${val}$` : val;
 }
 
-module.exports = { toMathSansBold, toMathSans, avecDollar };
+/**
+ * Formate un prix avec des apostrophes comme séparateurs de milliers.
+ * Si la valeur contient déjà des apostrophes, elle est d'abord normalisée
+ * pour éviter tout doublon.
+ * Si la valeur n'est pas un nombre pur (ex : "N/A", texte), elle est
+ * retournée telle quelle.
+ * Ex : "1600000" → "1'600'000"
+ *      "1'600'000" → "1'600'000" (déjà formaté)
+ *      "N/A" → "N/A"
+ */
+function formatPrix(val) {
+  if (!val) return val;
+  const stripped = val.replace(/'/g, '');
+  if (!/^\d+$/.test(stripped)) return val;
+  return stripped.replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+}
+
+module.exports = { toMathSansBold, toMathSans, avecDollar, formatPrix };
