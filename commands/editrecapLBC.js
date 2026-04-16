@@ -1,15 +1,15 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { avecDollar } = require('../utils/formatters');
+const { avecDollar, formatPrix } = require('../utils/formatters');
 
 // ── Reconstruction du contenu (même logique que recapLBC.js) ─────────────────
 function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, type3, adresse3, etage3, description, fraisDossier, doubleCles }) {
   const lignes = [
     `======= **Annonce LBC : ${annonce}** ========`,
     ``,
-    `**Prix de départ :** ${avecDollar(prixDepart)}`,
+    `**Prix de départ :** ${avecDollar(formatPrix(prixDepart))}`,
   ];
 
-  if (negociation) lignes.push(`**Négociation :** ${avecDollar(negociation)}`);
+  if (negociation) lignes.push(`**Négociation :** ${avecDollar(formatPrix(negociation))}`);
 
   lignes.push(`**Commission :** ${commission}%`);
   lignes.push(``);
