@@ -1,7 +1,8 @@
 const { EmbedBuilder } = require('discord.js');
 const { getDB } = require('./db');
 
-const timeouts = new Map(); // id -> [timeoutId, ...]
+const timeouts         = new Map(); // rdvId -> [timeoutId, ...]
+const preReminderMsgIds = new Map(); // rdvId -> messageId du pré-rappel
 
 async function sendRdvReminder(client, rdv, isPreReminder = false) {
   try {
@@ -9,6 +10,16 @@ async function sendRdvReminder(client, rdv, isPreReminder = false) {
     if (!channel || !channel.isTextBased()) {
       console.error(`[RDV] Salon introuvable ou non-textuel pour le rappel ${rdv.id} (channelId: ${rdv.channelId})`);
       return;
+    }
+
+    // Supprimer le message du pré-rappel avant d'envoyer le rappel principal
+    if (!isPreReminder) {
+      const preId = preReminderMsgIds.get(rdv.id);
+      if (preId) {
+        await channel.messages.delete(preId).catch(() => {});
+        preReminderMsgIds.delete(rdv.id);
+        console.log(`[RDV] 🗑️ Pré-rappel supprimé pour ${rdv.id}`);
+      }
     }
 
     const datetime = new Date(rdv.datetime);
@@ -24,16 +35,22 @@ async function sendRdvReminder(client, rdv, isPreReminder = false) {
         { name: '📌 Objet', value: rdv.description, inline: false },
         { name: '📆 Date', value: dateFormatted, inline: true },
         { name: '🕐 Heure', value: heureFormatted, inline: true },
+        ...(rdv.lieu ? [{ name: '📍 Lieu', value: rdv.lieu, inline: true }] : []),
       )
       .setFooter({ text: 'Dynasty 8 • Rappel automatique' })
       .setTimestamp();
 
     const mentions = `<@${rdv.agentId}> <@${rdv.clientId}>`;
-    await channel.send({
+    const message = await channel.send({
       content: mentions,
       embeds: [embed],
       allowedMentions: { users: [rdv.agentId, rdv.clientId] },
     });
+
+    // Mémoriser l'ID du message de pré-rappel pour pouvoir le supprimer au moment H
+    if (isPreReminder) {
+      preReminderMsgIds.set(rdv.id, message.id);
+    }
 
     console.log(`[RDV] ✅ Rappel envoyé pour ${rdv.id} (${isPreReminder ? 'pré-rappel' : 'à l\'heure'})`);
 
@@ -76,6 +93,7 @@ function cancelRdv(id) {
     ids.forEach(t => clearTimeout(t));
     timeouts.delete(id);
   }
+  preReminderMsgIds.delete(id);
 }
 
 async function initScheduler(client) {
