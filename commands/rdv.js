@@ -58,6 +58,10 @@ module.exports = {
         .setName('description')
         .setDescription('Objet du rendez-vous (ex: Visite appartement centre-ville)')
         .setRequired(false))
+      .addStringOption(opt => opt
+        .setName('lieu')
+        .setDescription('Lieu du rendez-vous (ex: Agence Dynasty 8, Rockford Hills)')
+        .setRequired(false))
       .addIntegerOption(opt => opt
         .setName('rappel')
         .setDescription('Rappel avant le RDV (défaut : 30 min)')
@@ -72,6 +76,10 @@ module.exports = {
     .addSubcommand(sub => sub
       .setName('liste')
       .setDescription('Voir tous les rendez-vous à venir')
+      .addUserOption(opt => opt
+        .setName('agent')
+        .setDescription('Filtrer par agent (laisser vide = tous les agents)')
+        .setRequired(false))
     )
     .addSubcommand(sub => sub
       .setName('annuler')
@@ -93,6 +101,7 @@ module.exports = {
       const heureStr = interaction.options.getString('heure');
       const rappelMinutes = interaction.options.getInteger('rappel') ?? 30;
       const description = interaction.options.getString('description') ?? 'Rendez-vous';
+      const lieu = interaction.options.getString('lieu') ?? null;
 
       const datetime = parseDateTime(dateStr, heureStr);
       if (!datetime) {
@@ -118,6 +127,7 @@ module.exports = {
         guildId: interaction.guildId,
         datetime: datetime.toISOString(),
         description,
+        lieu,
         rappelMinutes,
         statut: 'prévu',
         createdAt: new Date().toISOString(),
@@ -125,6 +135,15 @@ module.exports = {
 
       await col.insertOne(rdvEntry);
       scheduleRdv(interaction.client, rdvEntry);
+
+      // Renommer le salon pour indiquer qu'un RDV est planifié
+      const chName = interaction.channel.name;
+      if (!chName.includes('⏰')) {
+        const newName = chName.includes('⌛')
+          ? chName.replace('⌛', '⏰')
+          : `⏰${chName}`;
+        interaction.channel.setName(newName).catch(() => {});
+      }
 
       const dateFormatted = datetime.toLocaleDateString('fr-FR', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -143,6 +162,7 @@ module.exports = {
           { name: '📌 Objet', value: description, inline: false },
           { name: '📆 Date', value: dateFormatted, inline: true },
           { name: '🕐 Heure', value: heureFormatted, inline: true },
+          { name: '📍 Lieu', value: lieu ?? '*Non précisé*', inline: true },
           {
             name: '⏰ Rappel',
             value: rappelMinutes > 0 ? `${rappelMinutes} min avant + à l'heure pile` : 'À l\'heure pile seulement',
@@ -161,19 +181,31 @@ module.exports = {
 
     // ─── LISTE ───────────────────────────────────────────────────────────────
     if (sub === 'liste') {
+      const agentFilter = interaction.options.getUser('agent');
       const now = new Date();
-      const upcoming = await col.find({
+
+      const query = {
         statut: 'prévu',
         datetime: { $gt: now.toISOString() },
-      }).sort({ datetime: 1 }).limit(10).toArray();
+        ...(agentFilter ? { agentId: agentFilter.id } : {}),
+      };
+
+      const upcoming = await col.find(query).sort({ datetime: 1 }).limit(10).toArray();
 
       if (upcoming.length === 0) {
-        return interaction.reply({ content: '📅 Aucun rendez-vous à venir.', ephemeral: true });
+        const vide = agentFilter
+          ? `📅 Aucun rendez-vous à venir pour <@${agentFilter.id}>.`
+          : '📅 Aucun rendez-vous à venir.';
+        return interaction.reply({ content: vide, ephemeral: true });
       }
+
+      const titre = agentFilter
+        ? `📅 Rendez-vous de ${agentFilter.displayName}`
+        : '📅 Rendez-vous à venir';
 
       const embed = new EmbedBuilder()
         .setColor(0x9B59B6)
-        .setTitle('📅 Rendez-vous à venir')
+        .setTitle(titre)
         .setFooter({ text: `${upcoming.length} rendez-vous • Dynasty 8` })
         .setTimestamp();
 
@@ -181,9 +213,14 @@ module.exports = {
         const dt = new Date(rdv.datetime);
         const dateStr = dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
         const heureStr = dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const lignes = [];
+        if (!agentFilter) lignes.push(`Agent : <@${rdv.agentId}>`);
+        lignes.push(`Client : <@${rdv.clientId}>`);
+        if (rdv.lieu) lignes.push(`📍 ${rdv.lieu}`);
+        lignes.push(`ID : \`${rdv.id}\``);
         embed.addFields({
           name: `${dateStr} à ${heureStr} — ${rdv.description}`,
-          value: `Agent : <@${rdv.agentId}> | Client : <@${rdv.clientId}>\nID : \`${rdv.id}\``,
+          value: lignes.join('\n'),
         });
       }
 

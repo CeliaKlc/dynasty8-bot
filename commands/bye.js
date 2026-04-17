@@ -50,6 +50,15 @@ module.exports = {
 
     await interaction.channel.send({ embeds: [embed], components: [row] });
 
+    // Renommer le salon pour indiquer la fin de service
+    const chName = interaction.channel.name;
+    if (!chName.includes('✅')) {
+      const newName = chName.includes('⌛') ? chName.replace('⌛', '✅')
+                    : chName.includes('⏰') ? chName.replace('⏰', '✅')
+                    : `✅${chName}`;
+      interaction.channel.setName(newName).catch(() => {});
+    }
+
     // Planifier la fermeture automatique dans 24h si le client ne laisse pas d'avis
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const doc = {
