@@ -280,8 +280,9 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // /prepatchnote réservé à la Direction uniquement
-    if (interaction.commandName === 'prepatchnote') {
+    // Commandes réservées à la Direction uniquement
+    const CMDS_DIRECTION = ['prepatchnote', 'sac', 'embed'];
+    if (CMDS_DIRECTION.includes(interaction.commandName)) {
       const isDirection = interaction.member.roles.cache.has('1375930527873368066');
       const isAdmin     = interaction.member.permissions.has(8n); // Administrator
       if (!isDirection && !isAdmin) {
