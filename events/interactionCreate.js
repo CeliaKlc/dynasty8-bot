@@ -5,6 +5,7 @@ const { buildListeDetaillee } = require('../utils/attenteManager');
 const { handleAttenteSelect, handleAttenteSaisirZones, handleAttenteZonesModal } = require('../commands/attente');
 const { handleCarteCheck } = require('../commands/carte');
 const { handleEmbedModal } = require('../commands/embed');
+const { handleSacHistorique, handleSacDonnerSelect, handleSacRetirerSelect } = require('../commands/sac');
 const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
@@ -55,6 +56,15 @@ module.exports = {
         try { await handleCarteCheck(interaction); } catch (err) {
           console.error('❌ Erreur carte_check :', err);
           await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
+        }
+        return;
+      }
+
+      // Bouton historique des sacs
+      if (interaction.customId === 'sac_historique') {
+        try { await handleSacHistorique(interaction); } catch (err) {
+          console.error('❌ Erreur sac_historique :', err);
+          await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true }).catch(() => {});
         }
         return;
       }
@@ -192,11 +202,25 @@ module.exports = {
       return;
     }
 
-    // === SELECT MENUS (liste d'attente) ===
+    // === SELECT MENUS ===
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === 'attente_sel_types') {
         try { await handleAttenteSelect(interaction); } catch (err) {
           console.error('❌ Erreur select attente :', err);
+          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
+        }
+        return;
+      }
+      if (interaction.customId === 'sac_donner_select') {
+        try { await handleSacDonnerSelect(interaction); } catch (err) {
+          console.error('❌ Erreur sac_donner_select :', err);
+          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
+        }
+        return;
+      }
+      if (interaction.customId === 'sac_retirer_select') {
+        try { await handleSacRetirerSelect(interaction); } catch (err) {
+          console.error('❌ Erreur sac_retirer_select :', err);
           await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
         }
         return;

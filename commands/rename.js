@@ -1,16 +1,10 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { AGENTS: AGENTS_SRC } = require('../utils/annonceBuilder');
 
-// ─── Agents ───────────────────────────────────────────────────────────────────
-const AGENTS = {
-  'sacha-rollay':        { emoji: '🦊', nom: 'Sacha Rollay' },
-  'ely-rollay':          { emoji: '🦦', nom: 'Ely Rollay' },
-  'marco-romanov':       { emoji: '🐻', nom: 'Marco Romanov' },
-  'john-russet':         { emoji: '🦍', nom: 'John Russet' },
-  'hain-ergy':           { emoji: '🐲', nom: 'Hain Ergy' },
-  'joy-lutz':            { emoji: '🐍', nom: 'Joy Lutz' },
-  'maksim-anatolyevich': { emoji: '🦁', nom: 'Maksim Anatolyevich' },
-  'john-macafey':        { emoji: '🐳', nom: 'John Macafey' },
-};
+// ─── Index agents par slug (source : utils/annonceBuilder.js) ────────────────
+const AGENTS = Object.fromEntries(
+  AGENTS_SRC.filter(a => a.slug && a.agre.includes('Gestionnaire LeBonCoin')).map(a => [a.slug, a]),
+);
 
 // ─── Statuts ──────────────────────────────────────────────────────────────────
 const STATUTS = {
@@ -31,14 +25,7 @@ module.exports = {
       .setDescription('L\'agent responsable du dossier')
       .setRequired(true)
       .addChoices(
-        { name: 'Sacha Rollay 🦊',        value: 'sacha-rollay'        },
-        { name: 'Ely Rollay 🦦',           value: 'ely-rollay'          },
-        { name: 'Marco Romanov 🐻',        value: 'marco-romanov'       },
-        { name: 'John Russet 🦍',          value: 'john-russet'         },
-        { name: 'Hain Ergy 🐲',            value: 'hain-ergy'           },
-        { name: 'Joy Lutz 🐍',             value: 'joy-lutz'            },
-        { name: 'Maksim Anatolyevich 🦁',  value: 'maksim-anatolyevich' },
-        { name: 'John Macafey 🐳',         value: 'john-macafey'        },
+        ...AGENTS_SRC.filter(a => a.slug && a.agre.includes('Gestionnaire LeBonCoin')).map(a => ({ name: `${a.name} ${a.emoji}`, value: a.slug })),
       ))
     .addStringOption(opt => opt
       .setName('statut')
@@ -95,7 +82,7 @@ module.exports = {
       .setColor(0xC9A84C)
       .setTitle('✏️ Ticket renommé')
       .addFields(
-        { name: '👤 Agent',       value: `${agent.emoji} ${agent.nom}`,    inline: true },
+        { name: '👤 Agent',       value: `${agent.emoji} ${agent.name}`,   inline: true },
         { name: '📋 Statut',      value: `${statut.emoji} ${statut.label}`, inline: true },
         { name: '🔢 Numéro',      value: numero,                            inline: true },
         { name: '📝 Description', value: description ?? '—',               inline: true },
