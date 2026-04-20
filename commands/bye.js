@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
-const { getDB } = require('../utils/db');
+const { getDB }      = require('../utils/db');
 const { scheduleBye } = require('../utils/byeScheduler');
 
 const AVIS_CLIENTS_CHANNEL_ID = '915921133260386335';
@@ -57,6 +57,25 @@ module.exports = {
                     : chName.includes('⏰') ? chName.replace('⏰', '✅')
                     : `✅${chName}`;
       interaction.channel.setName(newName).catch(() => {});
+    }
+
+    // Marquer automatiquement le salon d'annonce comme vendu (✅ → ❌)
+    try {
+      const link = await getDB().collection('annonce_links').findOne({ ticketChannelId: interaction.channel.id });
+      if (link?.announcementChannelId) {
+        const salonAnnonce = await interaction.client.channels.fetch(link.announcementChannelId).catch(() => null);
+        if (salonAnnonce) {
+          const nomActuel = salonAnnonce.name;
+          const nomVendu  = nomActuel.startsWith('✅')
+            ? nomActuel.replace('✅', '❌')
+            : `❌${nomActuel.replace(/^❌/, '')}`;
+          salonAnnonce.setName(nomVendu).catch(err =>
+            console.error('[BYE] Impossible de renommer le salon d\'annonce :', err.message),
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[BYE] Erreur lookup salon annonce :', err.message);
     }
 
     // Planifier la fermeture automatique dans 24h si le client ne laisse pas d'avis

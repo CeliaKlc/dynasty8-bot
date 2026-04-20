@@ -1,5 +1,9 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
+const { getDB }  = require('../utils/db');
+const { BIENS }  = require('../utils/annonceBuilder');
+
+const TYPES_CHOICES = Object.keys(BIENS).map(t => ({ name: t, value: t }));
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -25,8 +29,9 @@ module.exports = {
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('type')
-      .setDescription('Type du bien (ex: Garage 6 places)')
-      .setRequired(true))
+      .setDescription('Type du bien')
+      .setRequired(true)
+      .addChoices(...TYPES_CHOICES))
     .addStringOption(opt => opt
       .setName('adresse')
       .setDescription('Adresse du bien (ex: Rockford Hills - Olympic Freeway 3)')
@@ -55,8 +60,9 @@ module.exports = {
     // ── Optionnels ────────────────────────────────────────────────────────────
     .addStringOption(opt => opt
       .setName('type_2')
-      .setDescription('Type du 2ème bien (ex: Garage 2 places)')
-      .setRequired(false))
+      .setDescription('Type du 2ème bien')
+      .setRequired(false)
+      .addChoices(...TYPES_CHOICES))
     .addStringOption(opt => opt
       .setName('adresse_2')
       .setDescription('Adresse du 2ème bien (ex: Rockford Hills - Olympic Freeway 1)')
@@ -67,8 +73,9 @@ module.exports = {
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('type_3')
-      .setDescription('Type du 3ème bien (ex: Garage 2 places)')
-      .setRequired(false))
+      .setDescription('Type du 3ème bien')
+      .setRequired(false)
+      .addChoices(...TYPES_CHOICES))
     .addStringOption(opt => opt
       .setName('adresse_3')
       .setDescription('Adresse du 2ème bien (ex: Rockford Hills - Olympic Freeway 1)')
@@ -158,6 +165,16 @@ module.exports = {
     const contenu = lignes.join('\n');
 
     await interaction.channel.send({ content: contenu, files: [gps.url, carteId.url] });
+
+    // Sauvegarder le lien numero → ticket (pour que /bye retrouve le salon d'annonce)
+    try {
+      await getDB().collection('annonce_links').updateOne(
+        { numero },
+        { $set: { ticketChannelId: interaction.channel.id, updatedAt: new Date() } },
+        { upsert: true },
+      );
+    } catch (e) { console.error('[RECLBC] Erreur sauvegarde lien :', e.message); }
+
     await interaction.editReply({ content: '✅ Récap LBC publié !' });
   },
 };
