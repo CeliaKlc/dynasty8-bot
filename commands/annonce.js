@@ -90,7 +90,8 @@ module.exports = {
       opt.setName('agent')
         .setDescription('Agent en charge de cette annonce')
         .setRequired(true);
-      AGENTS.forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      AGENTS.filter(a => a.id && a.agre.includes('Gestionnaire LeBonCoin'))
+            .forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt

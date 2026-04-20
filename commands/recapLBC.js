@@ -169,7 +169,7 @@ module.exports = {
     // Sauvegarder le lien numero → ticket (pour que /bye retrouve le salon d'annonce)
     try {
       await getDB().collection('annonce_links').updateOne(
-        { numero },
+        { numero: annonce },
         { $set: { ticketChannelId: interaction.channel.id, updatedAt: new Date() } },
         { upsert: true },
       );

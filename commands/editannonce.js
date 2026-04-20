@@ -103,7 +103,8 @@ module.exports = {
       .setRequired(true))
     .addStringOption(opt => {
       opt.setName('agent').setDescription('Nouvel agent en charge de l\'annonce').setRequired(false);
-      AGENTS.forEach(a => opt.addChoices({ name: a.name, value: a.id }));
+      AGENTS.filter(a => a.id && a.agre.includes('Gestionnaire LeBonCoin'))
+            .forEach(a => opt.addChoices({ name: a.name, value: a.id }));
       return opt;
     })
     .addStringOption(opt => {

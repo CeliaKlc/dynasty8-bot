@@ -4,14 +4,87 @@ const { toMathSansBold } = require('./formatters');
 
 const ROLE_NOTIFICATIONS_LBC_ID = '1345415367333380156';
 
+// ─── Liste unifiée des agents ─────────────────────────────────────────────────
+// Source de vérité unique pour /annonce, /editannonce, /rename, /carte, /sac.
+// Champs :
+//   id      — Discord ID de l'agent (null si inconnu)
+//   name    — Prénom Nom affiché partout
+//   slug    — Identifiant URL utilisé par /rename (ex : 'sacha-rollay')
+//   emoji   — Emoji affiché dans les annonces et le nom du ticket
+//   feminin — true si l'agent est une femme (accord dans les messages)
+//   titre   — Titre affiché sur la carte d'agent
+//   numero  — Numéro de téléphone RP affiché sur la carte
+//   photo   — URL de la photo de profil (null → pas de carte configurée)
+//   agre    — Habilitations affichées sur la carte
+//   bunker  — ID Discord du salon bunker (pour les rappels /carte)
+
 const AGENTS = [
-  { name: 'Sacha Rollay',         id: '314057285523472394',  emoji: '🦊', feminin: true  },
-  { name: 'Ely Rollay',           id: '261956403546161152',  emoji: '🦦', feminin: false },
-  { name: 'Marco Romanov',        id: '1151865005239697449', emoji: '🐻', feminin: false },
-  { name: 'John Russet',          id: '922112971793133568',  emoji: '🦍', feminin: false },
-  { name: 'Hain Ergy',            id: '273565768355151874',  emoji: '🐲', feminin: false },
-  { name: 'Maksim Anatolyevich',  id: '343731754311614465',  emoji: '🦁', feminin: false },
-  { name: 'John Macafey',         id: '394751095932583937',  emoji: '🐳', feminin: false },
+  {
+    id: '314057285523472394',  name: 'Sacha Rollay',        slug: 'sacha-rollay',
+    emoji: '🦊', feminin: true,
+    titre: 'Patronne',                  numero: '509360',  photo: 'https://img.draftbot.fr/1776469909640-bc61b1612e0488bb.png',
+    agre: ['Las Venturas', 'Cayo Perico', 'Gestionnaire LeBonCoin'], bunker: '1204165862173442098',
+  },
+  {
+    id: '261956403546161152',  name: 'Ely Rollay',           slug: 'ely-rollay',
+    emoji: '🦦', feminin: false,
+    titre: 'Patron',                    numero: '0640200', photo: 'https://img.draftbot.fr/1766518616384-7f0fe8eeed22fd98.png',
+    agre: ['Las Venturas', 'Cayo Perico', 'Gestionnaire LeBonCoin'], bunker: '1204165862173442098',
+  },
+  {
+    id: '1151865005239697449', name: 'Marco Romanov',        slug: 'marco-romanov',
+    emoji: '🐻', feminin: false,
+    titre: 'Patron',                    numero: '68500',   photo: 'https://img.draftbot.fr/1775907175185-5df7d00ab926fd60.png',
+    agre: ['Las Venturas', 'Cayo Perico', 'Gestionnaire LeBonCoin'], bunker: '1362857187118026802',
+  },
+  {
+    id: '922112971793133568',  name: 'John Russet',          slug: 'john-russet',
+    emoji: '🦍', feminin: false,
+    titre: 'Agent Immobilier Senior',   numero: '4523947', photo: 'https://img.draftbot.fr/1773406483462-1ac7d8a1e35074c6.png',
+    agre: ['Las Venturas', 'Cayo Perico', 'Gestionnaire LeBonCoin'], bunker: '1334541413529948180',
+  },
+  {
+    id: '273565768355151874',  name: 'Hain Ergy',            slug: 'hain-ergy',
+    emoji: '🐲', feminin: false,
+    titre: 'Agent Immobilier Confirmé', numero: '12354',   photo: 'https://img.draftbot.fr/1768517004762-7ca455a27fad5bbf.png',
+    agre: ['Las Venturas', 'Cayo Perico', 'Gestionnaire LeBonCoin'], bunker: '1457843137610514452',
+  },
+  {
+    id: '343731754311614465',  name: 'Maksim Anatolyevich',  slug: 'maksim-anatolyevich',
+    emoji: '🦁', feminin: false,
+    titre: 'Agent Immobilier Senior',   numero: '4343627', photo: 'https://img.draftbot.fr/1765411964408-d43caa09d436ebce.png',
+    agre: ['Las Venturas', 'Cayo Perico', 'Gestionnaire LeBonCoin'], bunker: '1439300519901396993',
+  },
+  {
+    id: '394751095932583937',  name: 'John Macafey',         slug: 'john-macafey',
+    emoji: '🐳', feminin: false,
+    titre: 'Agent Immobilier Confirmé', numero: '353182',  photo: 'https://img.draftbot.fr/1767989376583-c813a51ee47ee341.png',
+    agre: ['Las Venturas', 'Cayo Perico', 'Gestionnaire LeBonCoin'], bunker: '1456597599552409677',
+  },
+  {
+    id: '993192428699914240',  name: 'Joe Hutson',        slug: 'joe-hutson',
+    emoji: '🦖', feminin: false,
+    titre: 'Agent Immobilier Senior',          numero: '0828282',    photo: 'https://i.imgur.com/D8G2aFM.png',
+    agre: [], bunker: '1411816032007622656',
+  },
+  {
+    id: '871705632414269491',  name: 'Piper Pipou',          slug: 'piper-pipou',
+    emoji: '', feminin: true,
+    titre: 'Agente Immobilière',        numero: '323635',  photo: 'https://img.draftbot.fr/1775841304111-8c9693903646e149.png',
+    agre: [], bunker: '1480722296321605815',
+  },
+  {
+    id: '1082632036906438757', name: 'Franklin Warner',      slug: 'franklin-warner',
+    emoji: '', feminin: false,
+    titre: 'Agent Immobilier',          numero: '946430',  photo: 'https://img.draftbot.fr/1774219842061-07aabc1491290c30.png',
+    agre: [], bunker: '1480269661038837941',
+  },
+  {
+    id: '976601674976206868',  name: 'Ben Lafayette',        slug: 'ben-lafayette',
+    emoji: '', feminin: false,
+    titre: 'Agent Immobilier',          numero: '6133',    photo: 'https://img.draftbot.fr/1774826009858-68a9c394d7abbf7d.png',
+    agre: [], bunker: '1479528566331936768',
+  },
 ];
 
 const BIENS = {
