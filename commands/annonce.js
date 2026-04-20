@@ -14,6 +14,7 @@ const {
 
 const CATEGORIE_TICKETS_ID = '993616675670851659';
 
+const { getDB }                        = require('../utils/db');
 const { AGENTS, buildAnnonceContent } = require('../utils/annonceBuilder');
 const { toMathSansBold } = require('../utils/formatters');
 
@@ -211,6 +212,16 @@ module.exports = {
     );
 
     await interaction.channel.send({ content: contenu, files: [{ attachment: image.url, name: image.name }], components: [row], allowedMentions: { parse: ['roles'] } });
+
+    // Sauvegarder le lien numero → salon d'annonce
+    try {
+      await getDB().collection('annonce_links').updateOne(
+        { numero },
+        { $set: { numero, announcementChannelId: interaction.channel.id, updatedAt: new Date() } },
+        { upsert: true },
+      );
+    } catch (e) { console.error('[ANNONCE] Erreur sauvegarde lien :', e.message); }
+
     await interaction.editReply({ content: '✅ Annonce publiée !' });
   },
 };
@@ -329,6 +340,15 @@ async function handleAnnonceModal(interaction) {
       .setLabel('🔒 Fermer le ticket')
       .setStyle(ButtonStyle.Danger),
   );
+
+  // Sauvegarder le lien numero → ticket (créé via le bouton de l'annonce)
+  try {
+    await getDB().collection('annonce_links').updateOne(
+      { numero },
+      { $set: { ticketChannelId: ticketChannel.id, updatedAt: new Date() } },
+      { upsert: true },
+    );
+  } catch (e) { console.error('[ANNONCE] Erreur sauvegarde lien ticket :', e.message); }
 
   await ticketChannel.send({ embeds: [embed], components: [clotureRow] });
   await ticketChannel.send({

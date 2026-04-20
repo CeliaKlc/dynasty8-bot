@@ -5,6 +5,7 @@ const { buildListeDetaillee } = require('../utils/attenteManager');
 const { handleAttenteSelect, handleAttenteSaisirZones, handleAttenteZonesModal } = require('../commands/attente');
 const { handleCarteCheck } = require('../commands/carte');
 const { handleEmbedModal } = require('../commands/embed');
+const { handleRecapSemaineModal } = require('../commands/recapSemaine');
 const { handleSacHistorique, handleSacDonnerSelect, handleSacRetirerSelect } = require('../commands/sac');
 const { getDB } = require('../utils/db');
 
@@ -266,6 +267,17 @@ module.exports = {
           await handleEmbedModal(interaction);
         } catch (err) {
           console.error('❌ Erreur embed_modal :', err);
+          const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+        return;
+      }
+      if (interaction.customId === 'recapsemaine_modal') {
+        try {
+          await handleRecapSemaineModal(interaction);
+        } catch (err) {
+          console.error('❌ Erreur recapsemaine_modal :', err);
           const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});
