@@ -6,7 +6,6 @@ const { handleAttenteSelect, handleAttenteSaisirZones, handleAttenteZonesModal }
 const { handleCarteCheck } = require('../commands/carte');
 const { handleEmbedModal } = require('../commands/embed');
 const { handleRecapSemaineModal } = require('../commands/recapSemaine');
-const { handleSacHistorique, handleSacDonnerSelect, handleSacRetirerSelect } = require('../commands/sac');
 const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
@@ -57,15 +56,6 @@ module.exports = {
         try { await handleCarteCheck(interaction); } catch (err) {
           console.error('❌ Erreur carte_check :', err);
           await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
-        }
-        return;
-      }
-
-      // Bouton historique des sacs
-      if (interaction.customId === 'sac_historique') {
-        try { await handleSacHistorique(interaction); } catch (err) {
-          console.error('❌ Erreur sac_historique :', err);
-          await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true }).catch(() => {});
         }
         return;
       }
@@ -203,25 +193,11 @@ module.exports = {
       return;
     }
 
-    // === SELECT MENUS ===
+    // === SELECT MENUS (liste d'attente) ===
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === 'attente_sel_types') {
         try { await handleAttenteSelect(interaction); } catch (err) {
           console.error('❌ Erreur select attente :', err);
-          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
-        }
-        return;
-      }
-      if (interaction.customId === 'sac_donner_select') {
-        try { await handleSacDonnerSelect(interaction); } catch (err) {
-          console.error('❌ Erreur sac_donner_select :', err);
-          await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
-        }
-        return;
-      }
-      if (interaction.customId === 'sac_retirer_select') {
-        try { await handleSacRetirerSelect(interaction); } catch (err) {
-          console.error('❌ Erreur sac_retirer_select :', err);
           await interaction.update({ content: '❌ Une erreur est survenue.', components: [] }).catch(() => {});
         }
         return;
@@ -292,9 +268,8 @@ module.exports = {
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) return;
 
-    // Commandes réservées à la Direction uniquement
-    const CMDS_DIRECTION = ['prepatchnote', 'sac', 'embed'];
-    if (CMDS_DIRECTION.includes(interaction.commandName)) {
+    // /prepatchnote réservé à la Direction uniquement
+    if (interaction.commandName === 'prepatchnote') {
       const isDirection = interaction.member.roles.cache.has('1375930527873368066');
       const isAdmin     = interaction.member.permissions.has(8n); // Administrator
       if (!isDirection && !isAdmin) {
