@@ -1,8 +1,13 @@
+require('dotenv').config();
+
+// Force Node.js à utiliser Google DNS (fix ECONNREFUSED sur Windows pour mongodb+srv://)
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
 const { connectDB } = require('./utils/db');
-require('dotenv').config();
 
 const client = new Client({
   intents: [
@@ -10,8 +15,9 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessageReactions,
   ],
-  partials: [Partials.Channel, Partials.Message],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });
 
 client.commands = new Collection();

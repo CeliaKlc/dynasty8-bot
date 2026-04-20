@@ -10,6 +10,7 @@ async function loadCommands(client) {
 
   for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
+
     if ('data' in command && 'execute' in command) {
       client.commands.set(command.data.name, command);
       commands.push(command.data.toJSON());
