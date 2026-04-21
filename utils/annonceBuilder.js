@@ -498,7 +498,12 @@ function buildAnnonceContent({ type, transaction, quartier, garage1, garage2, ga
   if (!salleASac && !TYPES_SANS_SALLE_A_SAC.has(type)) {
     lignesDetails.push(`> 👜 Peut posséder une salle à sac`);
   }
-  if (description) lignesDetails.push(`> ${description}`);
+  if (description) {
+    description.split(' , ').forEach(part => {
+      const t = part.trim();
+      if (t) lignesDetails.push(`> ${t}`);
+    });
+  }
   if (lignesDetails.length > 0) {
     lignes.push(``, `**📝 DÉTAILS**`);
     lignes.push(...lignesDetails);
