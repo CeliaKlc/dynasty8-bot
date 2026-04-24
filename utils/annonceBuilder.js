@@ -85,6 +85,12 @@ const AGENTS = [
     titre: 'Agent Immobilier',          numero: '6133',    photo: 'https://img.draftbot.fr/1774826009858-68a9c394d7abbf7d.png',
     agre: [], bunker: '1479528566331936768',
   },
+  {
+    id: '976601674976206868',  name: 'Zoé Bell',        slug: 'zoe-bell',
+    emoji: '', feminin: true,
+    titre: 'Agente Immobilière',          numero: '104148',    photo: 'https://img.draftbot.fr/1777040419292-d759b6dd5bb7b4d5.png',
+    agre: [], bunker: '1497239082378592266',
+  },
 ];
 
 const BIENS = {
