@@ -84,9 +84,16 @@ function parseAnnonceMessage(content, components) {
   const etagMatch = content.match(/dispose de \*\*(\d+) étagère/);
   const etageres  = etagMatch ? parseInt(etagMatch[1]) : null;
 
-  // Description
-  const descMatch   = content.match(/\*\*📝 DÉTAILS\*\*\n(?:> 👜 Peut posséder une salle à sac\n)?> (?!👜 Peut posséder une salle à sac)(.+)/);
-  const description = descMatch ? descMatch[1].trim() : null;
+  // Description — plusieurs lignes possibles (découpées sur ' , ' à l'affichage)
+  const detailsMatch = content.match(/\*\*📝 DÉTAILS\*\*\n((?:> .+\n?)+)/);
+  let description = null;
+  if (detailsMatch) {
+    const descLines = detailsMatch[1]
+      .split('\n')
+      .map(l => l.replace(/^> /, '').trim())
+      .filter(l => l && l !== '👜 Peut posséder une salle à sac');
+    if (descLines.length > 0) description = descLines.join(' , ');
+  }
 
   return { numero, agentId, transaction, type, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description };
 }
