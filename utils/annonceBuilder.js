@@ -248,7 +248,7 @@ const BIENS = {
   },
   'Villa de Luxe': {
     article: 'La Villa de Luxe',
-    base: 2000, frigo: 0,
+    base: 2500, frigo: 0,
     caracteristiques: [
       '4 Chambres avec dressing',
       '4 Salles de bain',
@@ -362,6 +362,13 @@ const SALLE_A_SAC_LABEL_TO_VALUE = Object.fromEntries(
   Object.entries(SALLE_A_SAC_LABELS).map(([k, v]) => [v, k]),
 );
 
+// Détail du stockage par niveau de salle à sac
+const SALLE_A_SAC_STOCKAGE = {
+  '1': '32 places · 16 sacs bandoulières · 16 sacs à dos',
+  '2': '64 places · 32 sacs bandoulières · 32 sacs à dos',
+  '3': '96 places · 48 sacs bandoulières · 48 sacs à dos',
+};
+
 // Types de biens qui ne peuvent PAS posséder de salle à sac
 const TYPES_SANS_SALLE_A_SAC = new Set([
   'Caravane',
@@ -444,7 +451,10 @@ function buildAnnonceContent({ type, transaction, quartier, garage1, garage2, ga
       lignesPlus.push(`> 🚗 ${n > 1 ? `${n} × Garages ${GARAGE_LABELS[g]}` : `Garage ${GARAGE_LABELS[g]}`}`);
     });
   }
-  if (salleASac)       lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
+  if (salleASac) {
+    lignesPlus.push(`> 🎒 ${SALLE_A_SAC_LABELS[salleASac]}`);
+    lignesPlus.push(`> ↳ 🗄️ ${SALLE_A_SAC_STOCKAGE[salleASac]}`);
+  }
   if (jardin)          lignesPlus.push(`> 🌿 Jardin`);
   if (terrasse)        lignesPlus.push(`> ☀️ ${terrasse > 1 ? `${terrasse} Terrasses` : 'Terrasse'}`);
   if (balcon)          lignesPlus.push(`> 🌅 ${balcon > 1 ? `${balcon} Balcons` : 'Balcon'}`);
