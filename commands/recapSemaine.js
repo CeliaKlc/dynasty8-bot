@@ -6,7 +6,7 @@ const {
   ActionRowBuilder,
 } = require('discord.js');
 const { formatPrix } = require('../utils/formatters');
-const { AGENTS }     = require('../utils/annonceBuilder');
+const agentCache = require('../utils/agentCache');
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -14,7 +14,7 @@ const ROLE_EMPLOYE_ID = '917744433682849802';
 const EMOJI_DYNASTY   = '<:Dynasty8:963035929042386984>';
 const JOURS_FR        = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
-const AGENT_BY_ID = Object.fromEntries(AGENTS.filter(a => a.id).map(a => [a.id, a]));
+const AGENT_BY_ID = () => Object.fromEntries(agentCache.getAll().filter(a => a.id).map(a => [a.id, a]));
 const PATRONS_IDS = new Set(['314057285523472394', '261956403546161152', '1151865005239697449']);
 
 const PALMARES_CONFIG = [
@@ -121,7 +121,7 @@ function buildRecap({ informations, departs, felicitations, chiffres, top3, data
     for (const cfg of PALMARES_CONFIG) {
       const agentId = data[cfg.key];
       if (!agentId) continue;
-      const agent       = AGENT_BY_ID[agentId];
+      const agent       = AGENT_BY_ID()[agentId];
       const roleDisplay = `<@&${cfg.roleId}>`;
       if (PATRONS_IDS.has(agentId)) {
         const label = agent?.feminin ? 'patronne' : 'patron';
@@ -218,24 +218,24 @@ module.exports = {
     // Palmarès
     .addStringOption(opt => {
       opt.setName('cdp').setDescription('🧸 Meilleur CDP').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => {
       opt.setName('vendeur').setDescription('🧸 Meilleur Vendeur').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => {
       opt.setName('loueur').setDescription('🧸 Meilleur Loueur').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
 
     // RH
     .addStringOption(opt => {
       opt.setName('arrivee').setDescription('Nouvelle arrivée').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt
@@ -253,7 +253,7 @@ module.exports = {
     // Félicitations 1
     .addStringOption(opt => {
       opt.setName('fel_1_agent').setDescription('Félicitation 1 — Agent').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt
@@ -265,7 +265,7 @@ module.exports = {
     // Félicitations 2
     .addStringOption(opt => {
       opt.setName('fel_2_agent').setDescription('Félicitation 2 — Agent').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt
@@ -277,7 +277,7 @@ module.exports = {
     // Félicitations 3
     .addStringOption(opt => {
       opt.setName('fel_3_agent').setDescription('Félicitation 3 — Agent').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt

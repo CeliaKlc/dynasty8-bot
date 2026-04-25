@@ -1,6 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getDB } = require('./db');
-const { AGENTS } = require('./annonceBuilder');
+const agentCache = require('./agentCache');
 
 const SAC_CHANNEL_ID    = '1398797852490207262';
 const SAC_DASHBOARD_KEY = 'sac_dashboard_message';
@@ -27,7 +27,7 @@ async function updateSacDashboard(client) {
 
   // Un champ inline par agent actif (3 par ligne dans Discord)
   let actifCount = 0;
-  for (const agent of AGENTS) {
+  for (const agent of agentCache.getAll()) {
     const entry = entryMap[agent.id];
     if (entry?.statut === 'parti') continue; // Masquer les agents partis
 

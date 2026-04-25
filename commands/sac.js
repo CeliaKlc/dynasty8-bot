@@ -6,10 +6,10 @@ const {
 } = require('discord.js');
 const { getDB } = require('../utils/db');
 const { updateSacDashboard } = require('../utils/sacManager');
-const { AGENTS } = require('../utils/annonceBuilder');
+const agentCache = require('../utils/agentCache');
 
-// Index Discord ID → nom RP
-const AGENT_NAMES = Object.fromEntries(AGENTS.filter(a => a.id).map(a => [a.id, a.name]));
+// Index Discord ID → nom RP (calculé à la volée pour refléter le cache)
+const AGENT_NAMES = () => Object.fromEntries(agentCache.getAll().filter(a => a.id).map(a => [a.id, a.name]));
 
 // ─── Liste des sacs disponibles ───────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ module.exports = {
       .setDescription('Marquer un agent comme parti (masqué du tableau, conservé dans l\'historique)')
       .addStringOption(opt => {
         opt.setName('agent').setDescription('L\'agent concerné').setRequired(true);
-        AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+        agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
         return opt;
       }),
     )
@@ -63,7 +63,7 @@ module.exports = {
       .setDescription('Réactiver un agent parti (retour dans l\'entreprise)')
       .addStringOption(opt => {
         opt.setName('agent').setDescription('L\'agent concerné').setRequired(true);
-        AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+        agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
         return opt;
       }),
     ),
@@ -80,7 +80,7 @@ module.exports = {
     const agentMember = (sub === 'donner' || sub === 'retirer')
       ? interaction.options.getMember('agent') : null;
     const agentId   = agentUser?.id ?? interaction.options.getString('agent');
-    const agentName = AGENT_NAMES[agentId]
+    const agentName = AGENT_NAMES()[agentId]
       ?? agentMember?.displayName
       ?? agentUser?.username
       ?? agentId;

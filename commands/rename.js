@@ -1,10 +1,9 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { AGENTS: AGENTS_SRC } = require('../utils/annonceBuilder');
+const agentCache = require('../utils/agentCache');
 
-// ─── Index agents par slug (source : utils/annonceBuilder.js) ────────────────
-const AGENTS = Object.fromEntries(
-  AGENTS_SRC.filter(a => a.slug && a.agre.includes('Gestionnaire LeBonCoin')).map(a => [a.slug, a]),
-);
+// ─── Index agents par slug (depuis le cache) ──────────────────────────────────
+const lbcAgents    = () => agentCache.getAll().filter(a => a.slug && a.agre.includes('Gestionnaire LeBonCoin'));
+const AGENTS       = () => Object.fromEntries(lbcAgents().map(a => [a.slug, a]));
 
 // ─── Statuts ──────────────────────────────────────────────────────────────────
 const STATUTS = {
@@ -25,7 +24,7 @@ module.exports = {
       .setDescription('L\'agent responsable du dossier')
       .setRequired(true)
       .addChoices(
-        ...AGENTS_SRC.filter(a => a.slug && a.agre.includes('Gestionnaire LeBonCoin')).map(a => ({ name: `${a.name} ${a.emoji}`, value: a.slug })),
+        ...lbcAgents().map(a => ({ name: `${a.name} ${a.emoji}`, value: a.slug })),
       ))
     .addStringOption(opt => opt
       .setName('statut')
@@ -54,7 +53,7 @@ module.exports = {
     const numero      = interaction.options.getString('numero');
     const description = interaction.options.getString('description');
 
-    const agent  = AGENTS[agentKey];
+    const agent  = AGENTS()[agentKey];
     const statut = STATUTS[statutKey];
 
     // Format final : 🦊⌛𝟭𝟯𝟯𝟲_𝗗𝗲𝘀𝗰𝗿𝗶𝗽𝘁𝗶𝗼𝗻
