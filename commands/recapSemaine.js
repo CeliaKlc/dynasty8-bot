@@ -6,7 +6,7 @@ const {
   ActionRowBuilder,
 } = require('discord.js');
 const { formatPrix } = require('../utils/formatters');
-const { AGENTS }     = require('../utils/annonceBuilder');
+const agentCache = require('../utils/agentCache');
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -14,7 +14,7 @@ const ROLE_EMPLOYE_ID = '917744433682849802';
 const EMOJI_DYNASTY   = '<:Dynasty8:963035929042386984>';
 const JOURS_FR        = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
-const AGENT_BY_ID = Object.fromEntries(AGENTS.filter(a => a.id).map(a => [a.id, a]));
+const AGENT_BY_ID = () => Object.fromEntries(agentCache.getAll().filter(a => a.id).map(a => [a.id, a]));
 const PATRONS_IDS = new Set(['314057285523472394', '261956403546161152', '1151865005239697449']);
 
 const PALMARES_CONFIG = [
@@ -121,7 +121,7 @@ function buildRecap({ informations, departs, felicitations, chiffres, top3, data
     for (const cfg of PALMARES_CONFIG) {
       const agentId = data[cfg.key];
       if (!agentId) continue;
-      const agent       = AGENT_BY_ID[agentId];
+      const agent       = AGENT_BY_ID()[agentId];
       const roleDisplay = `<@&${cfg.roleId}>`;
       if (PATRONS_IDS.has(agentId)) {
         const label = agent?.feminin ? 'patronne' : 'patron';
@@ -182,10 +182,14 @@ function buildRecap({ informations, departs, felicitations, chiffres, top3, data
   }
 
   // ── Rôles cherchés ────────────────────────────────────────────────────────
-  // 2 rôles par défaut + 1 rôle supplémentaire (option slash)
+  // 2 rôles par défaut + rôles supplémentaires (slash: role_sup / web: roles_sup[])
   {
     const allRoles = ROLES_RECHERCHES_DEFAUT.map(id => `<@&${id}>`);
-    if (data.role_sup) allRoles.push(`<@&${data.role_sup}>`);
+    if (Array.isArray(data.roles_sup) && data.roles_sup.length) {
+      data.roles_sup.forEach(id => id && allRoles.push(`<@&${id}>`));
+    } else if (data.role_sup) {
+      allRoles.push(`<@&${data.role_sup}>`);
+    }
 
     parts.push('\n__**Rôle que nous cherchons encore :**__');
     allRoles.forEach((r, i) => {
@@ -218,24 +222,24 @@ module.exports = {
     // Palmarès
     .addStringOption(opt => {
       opt.setName('cdp').setDescription('🧸 Meilleur CDP').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => {
       opt.setName('vendeur').setDescription('🧸 Meilleur Vendeur').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => {
       opt.setName('loueur').setDescription('🧸 Meilleur Loueur').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
 
     // RH
     .addStringOption(opt => {
       opt.setName('arrivee').setDescription('Nouvelle arrivée').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt
@@ -253,7 +257,7 @@ module.exports = {
     // Félicitations 1
     .addStringOption(opt => {
       opt.setName('fel_1_agent').setDescription('Félicitation 1 — Agent').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt
@@ -265,7 +269,7 @@ module.exports = {
     // Félicitations 2
     .addStringOption(opt => {
       opt.setName('fel_2_agent').setDescription('Félicitation 2 — Agent').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt
@@ -277,7 +281,7 @@ module.exports = {
     // Félicitations 3
     .addStringOption(opt => {
       opt.setName('fel_3_agent').setDescription('Félicitation 3 — Agent').setRequired(false);
-      AGENTS.filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
+      agentCache.getAll().filter(a => a.id).forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
     .addStringOption(opt => opt
@@ -357,6 +361,11 @@ module.exports = {
   },
 
   // ─── Handler modal ───────────────────────────────────────────────────────
+
+  // Exports pour le panel web
+  buildRecap,
+  GRADE_ROLE_IDS,
+  GRADES_CHOICES,
 
   async handleRecapSemaineModal(interaction) {
     const data = pendingData.get(interaction.user.id) ?? { channelId: interaction.channelId };

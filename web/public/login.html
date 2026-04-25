@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynasty 8 — Connexion</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+  <div class="login-card">
+    <img src="https://i.imgur.com/vXQ9Y7n.png" alt="Dynasty 8" class="login-logo" onerror="this.style.display='none'">
+    <h1>Dynasty 8</h1>
+    <p class="login-subtitle">Panel d'administration</p>
+
+    <div id="error-msg" class="error-banner" style="display:none"></div>
+
+    <a href="/auth/login" class="btn-discord">
+      <svg width="20" height="20" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M60.1 4.9A58.5 58.5 0 0 0 45.5.9a40 40 0 0 0-1.8 3.6 54 54 0 0 0-16.4 0A38 38 0 0 0 25.5.9 58.4 58.4 0 0 0 10.9 5C1.6 18.9-1 32.5.3 45.9a58.9 58.9 0 0 0 18 9.1 43 43 0 0 0 3.7-6 38.4 38.4 0 0 1-6.1-2.9l1.5-1.1a42 42 0 0 0 35.8 0l1.5 1.1a38.4 38.4 0 0 1-6.1 2.9 43 43 0 0 0 3.7 6 58.7 58.7 0 0 0 18-9.1C72 30.4 68.3 16.9 60.1 4.9ZM23.7 37.8c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.5 0 6.4 3.2 6.3 7.2 0 4-2.8 7.2-6.3 7.2Zm23.6 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.5 0 6.4 3.2 6.3 7.2 0 4-2.8 7.2-6.3 7.2Z" fill="currentColor"/>
+      </svg>
+      Se connecter avec Discord
+    </a>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const err = params.get('error');
+    const msgs = {
+      unauthorized: '❌ Accès refusé. Tu dois avoir le rôle Employé ou Direction.',
+      no_code:      '❌ Connexion annulée.',
+      server:       '❌ Erreur serveur. Réessaie plus tard.',
+    };
+    if (err && msgs[err]) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msgs[err];
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

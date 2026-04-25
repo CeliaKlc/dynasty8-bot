@@ -15,11 +15,12 @@ const {
 const CATEGORIE_TICKETS_ID = '993616675670851659';
 
 const { getDB }                        = require('../utils/db');
-const { AGENTS, buildAnnonceContent } = require('../utils/annonceBuilder');
+const { buildAnnonceContent } = require('../utils/annonceBuilder');
 const { toMathSansBold } = require('../utils/formatters');
+const agentCache = require('../utils/agentCache');
 
-const AGENT_EMOJIS  = Object.fromEntries(AGENTS.map(a => [a.id, a.emoji]));
-const AGENT_FEMININ = Object.fromEntries(AGENTS.map(a => [a.id, a.feminin]));
+const AGENT_EMOJIS  = () => Object.fromEntries(agentCache.getAll().map(a => [a.id, a.emoji]));
+const AGENT_FEMININ = () => Object.fromEntries(agentCache.getAll().map(a => [a.id, a.feminin]));
 
 const ROLES_AUTORISES = [
   '917744433682849802',   // Employé
@@ -90,7 +91,7 @@ module.exports = {
       opt.setName('agent')
         .setDescription('Agent en charge de cette annonce')
         .setRequired(true);
-      AGENTS.filter(a => a.id && a.agre.includes('Gestionnaire LeBonCoin'))
+      agentCache.getAll().filter(a => a.id && a.agre.includes('Gestionnaire LeBonCoin'))
             .forEach(a => opt.addChoices({ name: `${a.emoji} ${a.name}`, value: a.id }));
       return opt;
     })
@@ -283,7 +284,7 @@ async function handleAnnonceModal(interaction) {
   const isAchat     = action === 'acheter';
   const emoji       = isAchat ? '🏠' : '👁️';
   const actionLabel = isAchat ? 'Acheter' : 'Visiter';
-  const agentEmoji  = AGENT_EMOJIS[agentId] ?? emoji;
+  const agentEmoji  = AGENT_EMOJIS()[agentId] ?? emoji;
   const channelName = `${agentEmoji}⌛${toMathSansBold(numero)}_${toMathSansBold(actionLabel)}`;
 
   const guild  = interaction.guild;
@@ -356,7 +357,7 @@ async function handleAnnonceModal(interaction) {
       const heure      = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false });
       const salutation = parseInt(heure) >= 18 ? 'une bonne soirée' : 'une bonne journée';
       const politesse = parseInt(heure) >= 18 ? 'Bonsoir' : 'Bonjour';
-      const pronom     = AGENT_FEMININ[agentId] ? 'elle' : 'il';
+      const pronom     = AGENT_FEMININ()[agentId] ? 'elle' : 'il';
       return `${politesse},\nJe vous assigne l'agent en charge de cette annonce <@${agentId}>, ${pronom} vous répondra quand ${pronom} sera disponible !\n\nEn vous souhaitant ${salutation} !\nCordialement,\n-# Dynasty 8 <:Dynasty8:1489223936620236841>`;
     })(),
     allowedMentions: { users: [agentId] },

@@ -7,7 +7,6 @@ const {
 } = require('discord.js');
 
 const {
-  AGENTS,
   BIENS,
   GARAGE_LABELS,
   GARAGE_LABEL_TO_VALUE,
@@ -15,6 +14,7 @@ const {
   SALLE_A_SAC_LABEL_TO_VALUE,
   buildAnnonceContent,
 } = require('../utils/annonceBuilder');
+const agentCache = require('../utils/agentCache');
 
 // ── Parse un message annonce existant ────────────────────────────────────────
 function parseAnnonceMessage(content, components) {
@@ -110,7 +110,7 @@ module.exports = {
       .setRequired(true))
     .addStringOption(opt => {
       opt.setName('agent').setDescription('Nouvel agent en charge de l\'annonce').setRequired(false);
-      AGENTS.filter(a => a.id && a.agre.includes('Gestionnaire LeBonCoin'))
+      agentCache.getAll().filter(a => a.id && a.agre.includes('Gestionnaire LeBonCoin'))
             .forEach(a => opt.addChoices({ name: a.name, value: a.id }));
       return opt;
     })

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { toMathSans } = require('../utils/formatters');
 const { getDB }      = require('../utils/db');
-const { AGENTS }     = require('../utils/annonceBuilder');
+const agentCache = require('../utils/agentCache');
 
 const DELAI_RAPPEL  = 3 * 60 * 60 * 1000; // 3h
 const DELAI_REPONSE = 10 * 60 * 1000;      // 10 min
@@ -17,11 +17,13 @@ const TIMERS = {
   '8h':    8 * 60 * 60 * 1000,
 };
 
-// ─── Index des cartes agents (source : utils/annonceBuilder.js) ───────────────
+// ─── Index des cartes agents (depuis le cache — toujours à jour) ───────────────
 // Seuls les agents avec un id Discord et une photo configurée ont une carte.
-const CARTES = Object.fromEntries(
-  AGENTS.filter(a => a.id && a.photo).map(a => [a.id, a]),
-);
+function getCartes() {
+  return Object.fromEntries(
+    agentCache.getAll().filter(a => a.id && a.photo).map(a => [a.id, a]),
+  );
+}
 
 // ─── Timers en mémoire (référence pour clearTimeout) ──────────────────────────
 const timers = new Map(); // userId → { rappelTimeout?, suppressionTimeout? }
@@ -159,7 +161,7 @@ module.exports = {
       )),
 
   async execute(interaction) {
-    const carte      = CARTES[interaction.user.id];
+    const carte      = getCartes()[interaction.user.id];
     const timerKey   = interaction.options.getString('timer');
 
     if (!carte) {
@@ -254,7 +256,7 @@ module.exports = {
     clearTimers(userId);
 
     // Repartir pour un nouveau cycle de 3h
-    const carte          = CARTES[userId];
+    const carte          = getCartes()[userId];
     const updatedSession = {
       ...session,
       phase:           'rappel',

@@ -7,7 +7,8 @@ dns.setServers(['8.8.8.8', '1.1.1.1']);
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
-const { connectDB } = require('./utils/db');
+const { connectDB, getDB } = require('./utils/db');
+const agentCache = require('./utils/agentCache');
 
 const client = new Client({
   intents: [
@@ -24,6 +25,7 @@ client.commands = new Collection();
 
 (async () => {
   await connectDB();
+  await agentCache.init(getDB());   // ← charge les agents avant les commandes
   await loadCommands(client);
   await loadEvents(client);
   await client.login(process.env.TOKEN);
