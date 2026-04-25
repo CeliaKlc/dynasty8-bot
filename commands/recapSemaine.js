@@ -182,10 +182,14 @@ function buildRecap({ informations, departs, felicitations, chiffres, top3, data
   }
 
   // ── Rôles cherchés ────────────────────────────────────────────────────────
-  // 2 rôles par défaut + 1 rôle supplémentaire (option slash)
+  // 2 rôles par défaut + rôles supplémentaires (slash: role_sup / web: roles_sup[])
   {
     const allRoles = ROLES_RECHERCHES_DEFAUT.map(id => `<@&${id}>`);
-    if (data.role_sup) allRoles.push(`<@&${data.role_sup}>`);
+    if (Array.isArray(data.roles_sup) && data.roles_sup.length) {
+      data.roles_sup.forEach(id => id && allRoles.push(`<@&${id}>`));
+    } else if (data.role_sup) {
+      allRoles.push(`<@&${data.role_sup}>`);
+    }
 
     parts.push('\n__**Rôle que nous cherchons encore :**__');
     allRoles.forEach((r, i) => {
@@ -357,6 +361,11 @@ module.exports = {
   },
 
   // ─── Handler modal ───────────────────────────────────────────────────────
+
+  // Exports pour le panel web
+  buildRecap,
+  GRADE_ROLE_IDS,
+  GRADES_CHOICES,
 
   async handleRecapSemaineModal(interaction) {
     const data = pendingData.get(interaction.user.id) ?? { channelId: interaction.channelId };

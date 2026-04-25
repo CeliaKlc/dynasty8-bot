@@ -23,6 +23,21 @@
       <a href="#" class="nav-item" data-page="annonces">
         <span class="nav-icon">🏠</span> Annonces
       </a>
+      <a href="#" class="nav-item" data-page="sacs">
+        <span class="nav-icon">🎒</span> Sacs
+      </a>
+      <a href="#" class="nav-item" data-page="rdv">
+        <span class="nav-icon">📅</span> Rendez-vous
+      </a>
+      <a href="#" class="nav-item" data-page="attente">
+        <span class="nav-icon">📋</span> Attente
+      </a>
+      <a href="#" class="nav-item" data-page="recap">
+        <span class="nav-icon">📝</span> Récap Semaine
+      </a>
+      <a href="#" class="nav-item" data-page="config">
+        <span class="nav-icon">⚙️</span> Configuration
+      </a>
     </nav>
     <div class="sidebar-user" id="sidebar-user"></div>
   </aside>
@@ -37,8 +52,11 @@
         <div class="stat-card"><div class="stat-value" id="stat-agents">—</div><div class="stat-label">Agents</div></div>
         <div class="stat-card"><div class="stat-value" id="stat-annonces">—</div><div class="stat-label">Annonces totales</div></div>
         <div class="stat-card"><div class="stat-value" id="stat-actives">—</div><div class="stat-label">En cours</div></div>
-        <div class="stat-card"><div class="stat-value" id="stat-sacs">—</div><div class="stat-label">Sacs enregistrés</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-sacs">—</div><div class="stat-label">Sacs attribués</div></div>
       </div>
+
+      <h3 class="section-title">Annonces par agent</h3>
+      <div class="agent-stats-grid" id="agent-stats-grid"></div>
     </section>
 
     <!-- Page : Agents -->
@@ -56,14 +74,256 @@
       <div class="table-wrapper">
         <table class="data-table" id="annonces-table">
           <thead>
-            <tr><th>N°</th><th>Statut</th><th>Ticket</th><th>Annonce</th><th>Modifié</th></tr>
+            <tr><th>N°</th><th>Agent</th><th>Type</th><th>Statut</th><th>Ticket</th><th>Annonce</th><th>Modifié</th><th></th></tr>
           </thead>
           <tbody id="annonces-body"></tbody>
         </table>
       </div>
     </section>
 
+    <!-- Page : Rendez-vous -->
+    <section id="page-rdv" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Rendez-vous</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="rdv-toggle-passes" style="background:var(--bg3);color:var(--text-muted);font-size:.8rem">
+            Voir les passés / annulés
+          </button>
+          <button class="btn btn-primary" id="btn-new-rdv" style="display:none;font-size:.8rem">+ Nouveau RDV</button>
+        </div>
+      </div>
+
+      <!-- Calendrier -->
+      <div class="rdv-cal-wrap" id="rdv-calendar"></div>
+
+      <!-- Filtre par agent -->
+      <div class="rdv-agents-strip" id="rdv-agents-strip"></div>
+
+      <!-- Liste -->
+      <div class="rdv-list" id="rdv-list"></div>
+    </section>
+
+    <!-- Page : Sacs -->
+    <section id="page-sacs" class="page">
+      <h2 class="page-title">Gestion des Sacs</h2>
+      <div class="sacs-grid" id="sacs-grid"></div>
+    </section>
+
+    <!-- Page : Configuration -->
+    <section id="page-config" class="page">
+      <h2 class="page-title">Configuration</h2>
+
+      <!-- Actions rapides -->
+      <h3 class="section-title">Actions</h3>
+      <div class="config-actions" id="config-actions">
+        <button class="config-action-btn" id="btn-refresh-cache">
+          <span class="config-action-icon">🔄</span>
+          <span class="config-action-label">Rafraîchir le cache agents</span>
+          <span class="config-action-desc">Recharge les données agents depuis la base</span>
+        </button>
+      </div>
+
+      <!-- Stats DB -->
+      <h3 class="section-title">Base de données</h3>
+      <div class="config-stats-grid" id="config-stats-grid"></div>
+
+      <!-- Accès panel -->
+      <h3 class="section-title">Accès au panel</h3>
+      <div class="config-users-list" id="config-users-list"></div>
+
+      <!-- Formulaire ajout (admin only) -->
+      <div id="config-add-user-section" style="display:none;margin-top:16px">
+        <div class="config-add-form">
+          <input type="text"   id="new-user-id"      placeholder="Discord ID  (ex: 314057285523472394)" class="config-input">
+          <input type="text"   id="new-user-name"    placeholder="Nom affiché (ex: Sacha Rollay)" class="config-input">
+          <label class="config-checkbox-label">
+            <input type="checkbox" id="new-user-admin"> Admin
+          </label>
+          <button class="btn btn-primary" id="btn-add-panel-user">+ Ajouter</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page : Récap Semaine -->
+    <section id="page-recap" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Récap Semaine</h2>
+      </div>
+
+      <div class="recap-layout">
+
+        <!-- Colonne principale -->
+        <div class="recap-main">
+
+          <!-- Palmarès -->
+          <div class="recap-card">
+            <div class="recap-card-title">🏆 Palmarès</div>
+            <div class="recap-palmares-grid">
+              <div class="form-group">
+                <label>🧸 Meilleur CDP</label>
+                <select id="recap-cdp"><option value="">— Aucun —</option></select>
+              </div>
+              <div class="form-group">
+                <label>🧸 Meilleur Vendeur</label>
+                <select id="recap-vendeur"><option value="">— Aucun —</option></select>
+              </div>
+              <div class="form-group">
+                <label>🧸 Meilleur Loueur</label>
+                <select id="recap-loueur"><option value="">— Aucun —</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- RH -->
+          <div class="recap-card">
+            <div class="recap-card-title">👥 Ressources Humaines</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nouvelle arrivée</label>
+                <select id="recap-arrivee"><option value="">— Aucun —</option></select>
+              </div>
+              <div class="form-group">
+                <label>Grade</label>
+                <select id="recap-arrivee-grade"><option value="">— Grade —</option></select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Départs</label>
+              <input type="text" id="recap-departs" placeholder="Sacha Rollay, Marco Romanov…">
+            </div>
+          </div>
+
+          <!-- Félicitations & Promotions -->
+          <div class="recap-card">
+            <div class="recap-card-title">🎖️ Félicitations &amp; Promotions de grade</div>
+            <div id="recap-fel-list"></div>
+            <div class="form-group" style="margin-top:12px">
+              <label>Félicitations libres</label>
+              <textarea id="recap-felicitations" class="recap-textarea" rows="2" placeholder="Texte libre affiché en plus des félicitations structurées…"></textarea>
+            </div>
+          </div>
+
+          <!-- Informations -->
+          <div class="recap-card">
+            <div class="recap-card-title">📢 Informations</div>
+            <div class="recap-info-grid">
+              <div class="form-group">
+                <label>ℹ️ Informations</label>
+                <textarea id="recap-info" class="recap-textarea" rows="3" placeholder="Une ligne = une info…"></textarea>
+              </div>
+              <div class="form-group">
+                <label>✨ Nouveautés</label>
+                <textarea id="recap-nouveau" class="recap-textarea" rows="3" placeholder="Une ligne = une nouveauté…"></textarea>
+              </div>
+              <div class="form-group">
+                <label>⚠️ Avertissements</label>
+                <textarea id="recap-avert" class="recap-textarea" rows="3" placeholder="Une ligne = un avertissement…"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chiffres -->
+          <div class="recap-card">
+            <div class="recap-card-title">📈 Chiffres de la semaine</div>
+            <div class="recap-stats-grid">
+              <div class="form-group">
+                <label>CA ($)</label>
+                <input type="number" id="recap-ca" min="0" placeholder="54089531">
+              </div>
+              <div class="form-group">
+                <label>Total des primes ($)</label>
+                <input type="number" id="recap-primes" min="0" placeholder="1781001">
+              </div>
+              <div class="form-group">
+                <label>Bénéfices ($)</label>
+                <input type="number" id="recap-benef" min="0" placeholder="3297939">
+              </div>
+            </div>
+          </div>
+
+          <!-- Top 3 -->
+          <div class="recap-card">
+            <div class="recap-card-title">🥇 Top 3 des services les plus vendus</div>
+            <div id="recap-top3-list"></div>
+          </div>
+
+        </div>
+
+        <!-- Sidebar : publication + historique -->
+        <div class="recap-sidebar">
+
+          <!-- Publication -->
+          <div class="recap-card">
+            <div class="recap-card-title">📤 Publication</div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label>Salon Discord (ID) *</label>
+              <input type="text" id="recap-canal" placeholder="123456789012345678">
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+              <label>Rôles supplémentaires recherchés (IDs)</label>
+              <div id="recap-roles-sup-list"></div>
+              <button type="button" id="btn-recap-add-role" class="btn-recap-add-role">+ Ajouter un rôle</button>
+            </div>
+            <button class="btn btn-primary" id="btn-recap-publier" style="width:100%;justify-content:center">📤 Publier sur Discord</button>
+            <p id="recap-publish-status" style="font-size:.78rem;color:var(--text-muted);margin-top:10px;text-align:center;min-height:1.2em"></p>
+          </div>
+
+          <!-- Historique -->
+          <div class="recap-card">
+            <div class="recap-card-title">📋 Historique</div>
+            <div id="recap-history"></div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Page : Attente -->
+    <section id="page-attente" class="page">
+      <h2 class="page-title">Liste d'attente</h2>
+
+      <!-- Résumé par catégorie -->
+      <div class="attente-cats-grid" id="attente-cats-grid"></div>
+
+      <!-- Liste clients -->
+      <h3 class="section-title" id="attente-section-title">Tous les clients actifs</h3>
+      <div class="attente-list" id="attente-list"></div>
+    </section>
+
   </main>
+
+  <!-- Modal sacs -->
+  <div class="modal-overlay" id="sac-modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="sac-modal-title">Gérer les sacs</h3>
+        <button class="modal-close" id="sac-modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="sac-modal-body">
+        <input type="hidden" id="sac-agent-id">
+        <p id="sac-agent-name" style="font-weight:600;margin-bottom:8px"></p>
+
+        <div class="form-group">
+          <label>Sacs actuels</label>
+          <div id="sac-current" style="color:var(--text-muted);font-size:.875rem">Aucun</div>
+        </div>
+
+        <div class="form-group">
+          <label>Attribuer des sacs</label>
+          <div class="checkbox-group" id="sac-donner-options"></div>
+        </div>
+
+        <div class="form-group" id="sac-retirer-group" style="display:none">
+          <label>Retirer des sacs</label>
+          <div class="checkbox-group" id="sac-retirer-options"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="sac-btn-donner">Attribuer</button>
+        <button class="btn" id="sac-btn-retirer" style="background:var(--bg3);color:var(--text)">Retirer</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal agent -->
   <div class="modal-overlay" id="modal-overlay" style="display:none">
@@ -119,6 +379,11 @@
             <label><input type="checkbox" id="agre-cp"> Cayo Perico</label>
             <label><input type="checkbox" id="agre-lbc"> Gestionnaire LeBonCoin</label>
           </div>
+          <div id="agre-custom-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="text" id="agre-custom-input" placeholder="Habilitation personnalisée…" style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 12px;font-size:.875rem;outline:none">
+            <button type="button" class="btn" id="agre-custom-add" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)">+ Ajouter</button>
+          </div>
         </div>
         <div class="form-group">
           <label><input type="checkbox" id="f-feminin"> Genre féminin (accord grammatical)</label>
@@ -126,6 +391,86 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-danger" id="btn-delete-agent" style="display:none">Supprimer</button>
           <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal aperçu carte agent -->
+  <div class="modal-overlay" id="carte-preview-overlay" style="display:none">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <h3>Aperçu de la carte</h3>
+        <button class="modal-close" id="carte-preview-close">✕</button>
+      </div>
+      <div class="modal-body" style="align-items:center">
+        <div class="discord-embed" id="carte-embed"></div>
+        <p style="color:var(--text-muted);font-size:.72rem;text-align:center;margin-top:4px">Aperçu approximatif — le rendu final peut légèrement varier sur Discord</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal créer RDV -->
+  <div class="modal-overlay" id="rdv-create-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Nouveau rendez-vous</h3>
+        <button class="modal-close" id="rdv-create-close">✕</button>
+      </div>
+      <form id="rdv-create-form" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Agent *</label>
+            <select id="rdv-f-agent" required>
+              <option value="">— Choisir un agent —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Description *</label>
+            <input type="text" id="rdv-f-description" required placeholder="Visite, signature, remise de clés…">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" id="rdv-f-date" required>
+          </div>
+          <div class="form-group">
+            <label>Heure *</label>
+            <input type="time" id="rdv-f-heure" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du client</label>
+            <input type="text" id="rdv-f-client-name" placeholder="Jean Dupont">
+          </div>
+          <div class="form-group">
+            <label>ID Discord client</label>
+            <input type="text" id="rdv-f-client-id" placeholder="314057285523472394">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Lieu</label>
+            <input type="text" id="rdv-f-lieu" placeholder="Agence Dynasty 8, Vinewood…">
+          </div>
+          <div class="form-group">
+            <label>Rappel Discord</label>
+            <select id="rdv-f-rappel">
+              <option value="0">Pas de rappel</option>
+              <option value="15">15 min avant</option>
+              <option value="30" selected>30 min avant</option>
+              <option value="60">1 heure avant</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Salon Discord (pour le rappel)</label>
+          <input type="text" id="rdv-f-channel" placeholder="Rempli automatiquement depuis le bunker de l'agent">
+        </div>
+        <div class="modal-footer" style="padding:0;border:none;margin-top:4px">
+          <button type="submit" class="btn btn-primary">📅 Créer le rendez-vous</button>
         </div>
       </form>
     </div>
