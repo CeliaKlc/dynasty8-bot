@@ -27,8 +27,10 @@ async function sendRecap(client, recap) {
         cdp:           recap.cdp           ?? null,
         vendeur:       recap.vendeur       ?? null,
         loueur:        recap.loueur        ?? null,
-        arrivee:       recap.arrivee       ?? null,
-        arrivee_grade: recap.arrivee_grade ?? null,
+        // Tableau d'arrivées (web) ou arrivée unique (slash command)
+        arrivees: recap.arrivees ?? (recap.arrivee
+          ? [{ agent: recap.arrivee, grade: recap.arrivee_grade ?? null }]
+          : []),
         // Tableau de rôles supplémentaires (web) ou rôle unique (slash command)
         roles_sup:     recap.roles_sup ?? (recap.role_sup ? [recap.role_sup] : []),
         fel_1_agent:   recap.fel_1_agent   ?? null,

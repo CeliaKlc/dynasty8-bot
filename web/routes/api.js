@@ -653,7 +653,7 @@ router.post('/recap', requireAdmin, async (req, res) => {
     const {
       canalId,
       cdp, vendeur, loueur,
-      arrivee, arrivee_grade, roles_sup,
+      arrivees, roles_sup,
       departs, felicitations,
       info, nouveau, avert,
       ca, primes, benef,
@@ -689,9 +689,9 @@ router.post('/recap', requireAdmin, async (req, res) => {
       canalId:       canalId.trim(),
       cdp:           cdp     || null,
       vendeur:       vendeur || null,
-      loueur:        loueur  || null,
-      arrivee:       arrivee || null,
-      arrivee_grade: arrivee_grade || null,
+      loueur:    loueur  || null,
+      // Tableau d'arrivées [{agent, grade}, ...]
+      arrivees:  Array.isArray(arrivees) ? arrivees.filter(a => a?.agent) : [],
       roles_sup:     Array.isArray(roles_sup) ? roles_sup.filter(id => id?.trim()) : [],
       departs:       departs?.trim()  || '',
       felicitations: felicitations?.trim() || '',

@@ -103,21 +103,27 @@ function buildRecap({ informations, departs, felicitations, chiffres, top3, data
     parts.push(`\n__**Départ :**__\n\n> ${departs.trim()}`);
   }
 
-  // ── Arrivée ───────────────────────────────────────────────────────────────
-  if (data.arrivee) {
-    const gradeArrivee = data.arrivee_grade
-      ? ` en tant qu'<@&${GRADE_ROLE_IDS[data.arrivee_grade]}>`
-      : '';
-    parts.push(`\n__**Arrivée :**__\n\n> Arrivé de <@${data.arrivee}>${gradeArrivee}`);
+  // ── Arrivée(s) ────────────────────────────────────────────────────────────
+  // Support arrivees[] (web panel) ou arrivee + arrivee_grade (slash command)
+  const arriveesList = Array.isArray(data.arrivees) && data.arrivees.length
+    ? data.arrivees.filter(a => a?.agent)
+    : (data.arrivee ? [{ agent: data.arrivee, grade: data.arrivee_grade ?? null }] : []);
+
+  if (arriveesList.length) {
+    const plural = arriveesList.length > 1;
+    parts.push(`\n__**Arrivée${plural ? 's' : ''} :**__\n`);
+    arriveesList.forEach(a => {
+      const grade = a.grade ? ` en tant qu'<@&${GRADE_ROLE_IDS[a.grade]}>` : '';
+      parts.push(`> Arrivé de <@${a.agent}>${grade}`);
+    });
   }
 
   // ── Félicitations ─────────────────────────────────────────────────────────
-  // On construit d'abord toutes les lignes structurées (palmarès + promotions),
-  // puis on leur affecte les suffixes , / . dynamiquement.
+  // Palmarès et promotions séparés par une ligne vide, suffixes , / . gérés
+  // indépendamment dans chaque groupe.
   {
-    const items = []; // lignes sans suffixe
-
     // Palmarès (CDP / VENDEUR / LOUEUR)
+    const palmaresItems = [];
     for (const cfg of PALMARES_CONFIG) {
       const agentId = data[cfg.key];
       if (!agentId) continue;
@@ -125,34 +131,53 @@ function buildRecap({ informations, departs, felicitations, chiffres, top3, data
       const roleDisplay = `<@&${cfg.roleId}>`;
       if (PATRONS_IDS.has(agentId)) {
         const label = agent?.feminin ? 'patronne' : 'patron';
-        items.push(`> <@${agentId}> qui est ${roleDisplay} et reçoit **rien car ${label}**`);
+        palmaresItems.push(`> <@${agentId}> qui est ${roleDisplay} et reçoit **rien car ${label}**`);
       } else {
-        items.push(`> <@${agentId}> qui est ${roleDisplay} et reçoit **+ ${cfg.bonus} supplémentaire**`);
+        palmaresItems.push(`> <@${agentId}> qui est ${roleDisplay} et reçoit **+ ${cfg.bonus} supplémentaire**`);
       }
     }
 
     // Promotions de grade (fel_1 / fel_2 / fel_3)
+    const promoItems = [];
     for (let i = 1; i <= 3; i++) {
       const agentId = data[`fel_${i}_agent`];
       const grade   = data[`fel_${i}_grade`];
       if (!agentId || !grade) continue;
       const gradeDisplay = GRADE_ROLE_IDS[grade] ? `<@&${GRADE_ROLE_IDS[grade]}>` : `**${grade}**`;
-      items.push(`> <@${agentId}> qui passe ${gradeDisplay}`);
+      promoItems.push(`> <@${agentId}> qui passe ${gradeDisplay}`);
     }
 
-    // Ajout des suffixes , / . selon la position
-    const structuredLines = items.map((line, i) =>
-      `${line}${i < items.length - 1 ? ' ,' : '.'}`,
-    );
-
-    // Félicitations libres (modal)
+    // Félicitations libres (modal / web)
     const customLines = felicitations?.trim() ? blockquoteLines(felicitations) : [];
 
-    if (structuredLines.length || customLines.length) {
+    const hasContent = palmaresItems.length || promoItems.length || customLines.length;
+    if (hasContent) {
       parts.push(`\n__**Félicitations à :**__\n`);
+
+      // Texte libre en premier
       if (customLines.length) parts.push(customLines.join('\n'));
-      if (customLines.length && structuredLines.length) parts.push('');
-      if (structuredLines.length) parts.push(structuredLines.join('\n'));
+
+      // Palmarès — virgule sur tous si des promos suivent, point sur le dernier sinon
+      if (palmaresItems.length) {
+        const trailingComma = promoItems.length > 0;
+        const suffixed = palmaresItems.map((line, i) =>
+          `${line}${!trailingComma && i === palmaresItems.length - 1 ? '.' : ' ,'}`,
+        );
+        if (customLines.length) parts.push('');
+        parts.push(suffixed.join('\n'));
+      }
+
+      // Ligne vide entre palmarès et promotions de grade
+      if (palmaresItems.length && promoItems.length) parts.push('');
+
+      // Promotions — suffixes indépendants
+      if (promoItems.length) {
+        const suffixed = promoItems.map((line, i) =>
+          `${line}${i < promoItems.length - 1 ? ' ,' : '.'}`,
+        );
+        if (!palmaresItems.length && customLines.length) parts.push('');
+        parts.push(suffixed.join('\n'));
+      }
     }
   }
 

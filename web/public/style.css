@@ -979,6 +979,14 @@ body.login-page {
 }
 .btn-recap-add-role:hover { border-color: var(--accent); color: var(--text); }
 
+/* Arrivées : ligne agent + grade + bouton suppr */
+.recap-arrivee-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
 /* Félicitations : ligne numéro + 2 selects */
 .recap-fel-row {
   display: flex;

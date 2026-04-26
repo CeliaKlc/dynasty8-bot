@@ -1262,7 +1262,8 @@ const RECAP_GRADES  = ['Agent Débutant', 'Agent', 'Agent Confirmé', 'Agent Sen
 const TOP3_MEDALS   = ['🥇', '🥈', '🥉'];
 const TOP3_EXAMPLES = ['SUD CDP', 'Contrat de vente', 'SUD LOCATION'];
 
-let recapRolesSup = [''];  // tableau des IDs de rôles supplémentaires
+let recapRolesSup  = [''];                    // IDs de rôles supplémentaires
+let recapArrivees  = [{ agent: '', grade: '' }]; // tableau des arrivées
 
 async function loadRecap() {
   // Charger les agents si nécessaire
@@ -1279,11 +1280,14 @@ async function loadRecap() {
   const gradeOpts = `<option value="">— Grade —</option>` +
     RECAP_GRADES.map(g => `<option value="${g}">${g}</option>`).join('');
 
-  // Peupler les selects d'agents palmarès + RH
-  ['recap-cdp', 'recap-vendeur', 'recap-loueur', 'recap-arrivee'].forEach(id => {
+  // Peupler les selects d'agents palmarès
+  ['recap-cdp', 'recap-vendeur', 'recap-loueur'].forEach(id => {
     document.getElementById(id).innerHTML = agentOpts;
   });
-  document.getElementById('recap-arrivee-grade').innerHTML = gradeOpts;
+
+  // Arrivées dynamiques
+  recapArrivees = [{ agent: '', grade: '' }];
+  renderRecapArrivees();
 
   // Félicitations structurées (3 lignes agent + grade)
   renderFelRows(agentOpts, gradeOpts);
@@ -1307,6 +1311,47 @@ async function loadRecap() {
 
   loadRecapHistory();
 }
+
+// ── Arrivées (liste dynamique) ────────────────────────────────────────────────
+
+function renderRecapArrivees() {
+  const activeAgents = agentsData.filter(a => (agentsSacMap[a.id]?.statut ?? 'actif') !== 'parti');
+  const list = document.getElementById('recap-arrivees-list');
+  list.innerHTML = '';
+  recapArrivees.forEach((a, i) => {
+    const agentHtml = `<option value="">— Aucun —</option>` +
+      activeAgents.map(ag =>
+        `<option value="${ag.id}"${ag.id === a.agent ? ' selected' : ''}>${ag.emoji ? ag.emoji + ' ' : ''}${ag.name}</option>`,
+      ).join('');
+    const gradeHtml = `<option value="">— Grade —</option>` +
+      RECAP_GRADES.map(g =>
+        `<option value="${g}"${g === a.grade ? ' selected' : ''}>${g}</option>`,
+      ).join('');
+    const row = document.createElement('div');
+    row.className = 'recap-arrivee-row';
+    row.innerHTML = `
+      <select class="recap-select" style="flex:1"
+        onchange="recapArrivees[${i}].agent = this.value">${agentHtml}</select>
+      <select class="recap-select" style="flex:1"
+        onchange="recapArrivees[${i}].grade = this.value">${gradeHtml}</select>
+      ${recapArrivees.length > 1
+        ? `<button class="recap-role-del" onclick="removeRecapArrivee(${i})" title="Retirer">✕</button>`
+        : ''}
+    `;
+    list.appendChild(row);
+  });
+}
+
+function removeRecapArrivee(i) {
+  recapArrivees.splice(i, 1);
+  renderRecapArrivees();
+}
+
+document.getElementById('btn-recap-add-arrivee').addEventListener('click', () => {
+  if (recapArrivees.length >= 6) return toast('Maximum 6 arrivées', 'error');
+  recapArrivees.push({ agent: '', grade: '' });
+  renderRecapArrivees();
+});
 
 // ── Rôles supplémentaires (liste dynamique) ──────────────────────────────────
 
@@ -1427,8 +1472,7 @@ document.getElementById('btn-recap-publier').addEventListener('click', async () 
     cdp:           document.getElementById('recap-cdp').value           || null,
     vendeur:       document.getElementById('recap-vendeur').value       || null,
     loueur:        document.getElementById('recap-loueur').value        || null,
-    arrivee:       document.getElementById('recap-arrivee').value       || null,
-    arrivee_grade: document.getElementById('recap-arrivee-grade').value || null,
+    arrivees:      recapArrivees.filter(a => a.agent),
     roles_sup:     recapRolesSup.map(id => id.trim()).filter(Boolean),
     departs:       document.getElementById('recap-departs').value.trim(),
     felicitations: document.getElementById('recap-felicitations').value.trim(),
