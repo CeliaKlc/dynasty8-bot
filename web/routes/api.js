@@ -7,6 +7,7 @@ const { ObjectId } = require('mongodb');
 const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManager');
 const { calculerReprise, getResumeTousTypes } = require('../../utils/repriseManager');
 const { BIENS }                              = require('../../utils/annonceBuilder');
+const { logAction }                          = require('../../utils/actionLogger');
 
 const router = Router();
 
@@ -154,6 +155,12 @@ router.post('/agents', requireAdmin, async (req, res) => {
 
     await getDB().collection('agents').insertOne(doc);
     await agentCache.refresh(getDB());
+    await logAction({
+      type:      'agent_create',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { name: doc.name, slug: doc.slug },
+    });
     res.status(201).json({ ok: true });
   } catch (err) {
     console.error('[API] POST /agents :', err);
@@ -178,6 +185,12 @@ router.put('/agents/:slug', requireAdmin, async (req, res) => {
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Agent introuvable' });
 
     await agentCache.refresh(getDB());
+    await logAction({
+      type:      'agent_update',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { slug },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /agents :', err);
@@ -192,6 +205,12 @@ router.delete('/agents/:slug', requireAdmin, async (req, res) => {
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Agent introuvable' });
 
     await agentCache.refresh(getDB());
+    await logAction({
+      type:      'agent_delete',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { slug: req.params.slug },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] DELETE /agents :', err);
@@ -322,6 +341,12 @@ router.put('/sacs/:agentId/donner', requireAdmin, async (req, res) => {
       },
       { upsert: true },
     );
+    await logAction({
+      type:      'sac_donner',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { agentId, agentName: agent.name, sacs },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /sacs/donner :', err);
@@ -341,6 +366,13 @@ router.put('/sacs/:agentId/retirer', requireAdmin, async (req, res) => {
       { agentId },
       { $pull: { sacs: { $in: sacs } }, $set: { updatedAt: new Date() } },
     );
+    const agent = agentCache.getById(agentId);
+    await logAction({
+      type:      'sac_retirer',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { agentId, agentName: agent?.name ?? 'Inconnu', sacs },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /sacs/retirer :', err);
@@ -767,6 +799,47 @@ router.post('/recap', requireAdmin, async (req, res) => {
     res.json({ ok: true, id: recap.id });
   } catch (err) {
     console.error('[API] POST /recap :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// HISTORIQUE DES ACTIONS
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/logs', requireAuth, async (req, res) => {
+  try {
+    const limit    = Math.min(parseInt(req.query.limit) || 100, 200);
+    const { type, actorId } = req.query;
+
+    const query = {};
+    if (type)    query.type    = type;
+    if (actorId) query.actorId = actorId;
+
+    const logs = await getDB().collection('action_logs')
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+
+    const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
+
+    const enriched = logs.map(l => ({
+      id:         l._id.toString(),
+      type:       l.type,
+      icon:       l.icon,
+      label:      l.label,
+      actorId:    l.actorId,
+      actorName:  l.actorName,
+      actorEmoji: agentMap[l.actorId]?.emoji ?? '',
+      actorPhoto: agentMap[l.actorId]?.photo ?? null,
+      details:    l.details,
+      createdAt:  l.createdAt,
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('[API] GET /logs :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

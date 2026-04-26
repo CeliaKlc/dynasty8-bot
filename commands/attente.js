@@ -12,6 +12,7 @@ const {
 } = require('discord.js');
 const { getDB } = require('../utils/db');
 const { updateDashboard, TYPE_EMOJIS, STATUT_EMOJI } = require('../utils/attenteManager');
+const { logAction } = require('../utils/actionLogger');
 
 const TYPES = [
   'Appartement Simple', 'Appartement Basique', 'Maison Simple', 'Caravane',
@@ -161,10 +162,22 @@ module.exports = {
     // ── REMOVE ────────────────────────────────────────────────────────────────
     if (sub === 'remove') {
       const clientUser = interaction.options.getUser('client');
+      const doc = await db.collection('waiting_list').findOne({ clientId: clientUser.id });
       const result = await db.collection('waiting_list').deleteOne({ clientId: clientUser.id });
       if (result.deletedCount === 0) {
         return interaction.reply({ content: `❌ <@${clientUser.id}> n'est pas en liste d'attente.`, ephemeral: true });
       }
+      await logAction({
+        type:      'attente_remove',
+        actorId:   interaction.user.id,
+        actorName: interaction.member?.displayName ?? interaction.user.username,
+        details: {
+          clientId:   clientUser.id,
+          clientName: doc?.clientName ?? null,
+          prenom:     doc?.prenom    ?? null,
+          nom:        doc?.nom       ?? null,
+        },
+      });
       await updateDashboard(interaction.client);
       return interaction.reply({ content: `✅ <@${clientUser.id}> a été retiré(e) de la liste d'attente.`, ephemeral: true });
     }
@@ -377,6 +390,21 @@ module.exports = {
         },
       );
     }
+
+    await logAction({
+      type:      pending.mode === 'add' ? 'attente_add' : 'attente_update',
+      actorId:   interaction.user.id,
+      actorName: interaction.user.username,
+      details: {
+        clientId:   pending.clientId,
+        clientName: pending.clientName,
+        prenom:     pending.prenom   ?? null,
+        nom:        pending.nom      ?? null,
+        telephone:  pending.telephone ?? null,
+        biens:      biens.map(b => `${b.type} (${b.zone})`),
+        budgetMax:  pending.budgetMax,
+      },
+    });
 
     await updateDashboard(interaction.client);
 

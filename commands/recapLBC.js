@@ -1,7 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
-const { getDB }  = require('../utils/db');
-const { BIENS }  = require('../utils/annonceBuilder');
+const { getDB }       = require('../utils/db');
+const { BIENS }       = require('../utils/annonceBuilder');
+const { logAction }   = require('../utils/actionLogger');
 
 // Convertit "210'000" ou "210000" en number, null si N/A ou invalide
 const parsePrice = str => {
@@ -209,6 +210,19 @@ module.exports = {
         dateVente:  null,
       });
     } catch (e) { console.error('[RECLBC] Erreur sauvegarde vente_lbc :', e.message); }
+
+    // Log action
+    await logAction({
+      type:      'recap_lbc',
+      actorId:   interaction.user.id,
+      actorName: interaction.member?.displayName ?? interaction.user.username,
+      details: {
+        annonce,
+        type,
+        adresse,
+        prixDepart: parsePrice(prixDepart),
+      },
+    });
 
     await interaction.editReply({ content: '✅ Récap LBC publié !' });
   },

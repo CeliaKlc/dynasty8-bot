@@ -46,6 +46,7 @@ function loadPage(page) {
   if (page === 'attente')   loadAttente();
   if (page === 'recap')     loadRecap();
   if (page === 'reprise')   loadReprise();
+  if (page === 'logs')      loadLogs();
   if (page === 'config')    loadConfig();
 }
 
@@ -1581,6 +1582,168 @@ document.getElementById('btn-recap-publier').addEventListener('click', async () 
     statusEl.textContent = '';
   }
 });
+
+// ── Historique des actions ────────────────────────────────────────────────────
+
+let logsAllActors = []; // pour le filtre agents (rempli au premier chargement)
+
+// Détails lisibles selon le type d'action
+function buildLogDetails(log) {
+  const d = log.details ?? {};
+  switch (log.type) {
+    case 'recap_lbc':
+      return [
+        d.annonce  ? `Annonce #${d.annonce}` : null,
+        d.type     ? `Type : ${d.type}`      : null,
+        d.adresse  ? `📍 ${d.adresse}`       : null,
+        d.prixDepart != null ? `Prix départ : ${fmtCA(d.prixDepart)}` : null,
+      ].filter(Boolean).join(' · ');
+
+    case 'vente_cloture':
+      return [
+        d.annonce   ? `Annonce #${d.annonce}` : null,
+        d.type      ? d.type                   : null,
+        d.prixFinal != null ? `→ **${fmtCA(d.prixFinal)}**` : null,
+        d.prixDepart != null && d.prixFinal != null && d.prixFinal !== d.prixDepart
+          ? `(départ ${fmtCA(d.prixDepart)})`
+          : null,
+      ].filter(Boolean).join(' · ');
+
+    case 'attente_add':
+    case 'attente_update': {
+      const nom = [d.prenom, d.nom].filter(Boolean).join(' ') || d.clientName || null;
+      return [
+        nom          ? `👤 ${nom}`              : null,
+        d.telephone  ? `📞 ${d.telephone}`       : null,
+        d.budgetMax  ? `💰 max ${fmtCA(d.budgetMax)}` : null,
+        d.biens?.length ? d.biens.join(', ')      : null,
+      ].filter(Boolean).join(' · ');
+    }
+
+    case 'attente_remove': {
+      const nom = [d.prenom, d.nom].filter(Boolean).join(' ') || d.clientName || null;
+      return nom ? `👤 ${nom}` : null;
+    }
+
+    case 'recap_semaine':
+      return d.canalId ? `Salon : ${d.canalId}` : null;
+
+    case 'agent_create':
+    case 'agent_update':
+      return d.name ? d.name : (d.slug ?? null);
+
+    case 'agent_delete':
+      return d.slug ?? null;
+
+    case 'sac_donner':
+    case 'sac_retirer':
+      return [
+        d.agentName ? `→ ${d.agentName}` : null,
+        d.sacs?.length ? d.sacs.join(', ') : null,
+      ].filter(Boolean).join(' · ');
+
+    default:
+      return null;
+  }
+}
+
+async function loadLogs() {
+  const typeFilter  = document.getElementById('logs-filter-type').value;
+  const actorFilter = document.getElementById('logs-filter-actor').value;
+
+  let url = '/logs?limit=100';
+  if (typeFilter)  url += `&type=${encodeURIComponent(typeFilter)}`;
+  if (actorFilter) url += `&actorId=${encodeURIComponent(actorFilter)}`;
+
+  const logs = await api(url);
+  if (!logs) return;
+
+  // Remplir le filtre agents (une seule fois)
+  if (!logsAllActors.length && !typeFilter && !actorFilter) {
+    const seenIds = new Set();
+    logs.forEach(l => {
+      if (l.actorId && l.actorId !== 'web' && !seenIds.has(l.actorId)) {
+        seenIds.add(l.actorId);
+        logsAllActors.push({ id: l.actorId, name: l.actorName });
+      }
+    });
+    const sel = document.getElementById('logs-filter-actor');
+    sel.innerHTML = '<option value="">Tous les agents</option>';
+    logsAllActors.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id; opt.textContent = a.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  renderLogsTimeline(logs);
+}
+
+function renderLogsTimeline(logs) {
+  const timeline = document.getElementById('logs-timeline');
+  const empty    = document.getElementById('logs-empty');
+  timeline.innerHTML = '';
+
+  if (!logs.length) {
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Regrouper par jour
+  const groups = {};
+  logs.forEach(l => {
+    const day = new Date(l.createdAt).toLocaleDateString('fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+    if (!groups[day]) groups[day] = [];
+    groups[day].push(l);
+  });
+
+  Object.entries(groups).forEach(([day, entries]) => {
+    // Séparateur de date
+    const sep = document.createElement('div');
+    sep.className = 'logs-day-sep';
+    sep.textContent = day.charAt(0).toUpperCase() + day.slice(1);
+    timeline.appendChild(sep);
+
+    entries.forEach(l => {
+      const item = document.createElement('div');
+      item.className = 'logs-item';
+
+      const time = new Date(l.createdAt).toLocaleTimeString('fr-FR', {
+        hour: '2-digit', minute: '2-digit',
+      });
+
+      const avatarHtml = l.actorPhoto
+        ? `<img class="logs-avatar" src="${l.actorPhoto}" alt="" onerror="this.style.display='none'">`
+        : `<div class="logs-avatar-ph">${l.actorEmoji || '👤'}</div>`;
+
+      const details = buildLogDetails(l);
+
+      item.innerHTML = `
+        <div class="logs-icon">${l.icon ?? '🔔'}</div>
+        <div class="logs-body">
+          <div class="logs-header">
+            <span class="logs-label">${l.label}</span>
+            <span class="logs-time">${time}</span>
+          </div>
+          <div class="logs-actor">
+            ${avatarHtml}
+            <span>${l.actorName}</span>
+          </div>
+          ${details ? `<div class="logs-details">${details}</div>` : ''}
+        </div>
+      `;
+      timeline.appendChild(item);
+    });
+  });
+}
+
+// Filtres et rafraîchissement
+document.getElementById('logs-filter-type').addEventListener('change',  loadLogs);
+document.getElementById('logs-filter-actor').addEventListener('change', loadLogs);
+document.getElementById('btn-logs-refresh').addEventListener('click',   loadLogs);
 
 // ── Reprise de bien ───────────────────────────────────────────────────────────
 

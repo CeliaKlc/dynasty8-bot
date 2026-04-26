@@ -38,6 +38,9 @@
       <a href="#" class="nav-item" data-page="reprise">
         <span class="nav-icon">🏷️</span> Reprise bien
       </a>
+      <a href="#" class="nav-item" data-page="logs">
+        <span class="nav-icon">📜</span> Historique
+      </a>
       <a href="#" class="nav-item" data-page="config">
         <span class="nav-icon">⚙️</span> Configuration
       </a>
@@ -396,6 +399,38 @@
           </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- Page : Historique des actions -->
+    <section id="page-logs" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Historique des actions</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="logs-filter-type" class="logs-filter-select">
+            <option value="">Tous les types</option>
+            <option value="recap_lbc">📋 Récap LBC</option>
+            <option value="vente_cloture">✅ Vente confirmée</option>
+            <option value="attente_add">➕ Ajout attente</option>
+            <option value="attente_remove">❌ Retrait attente</option>
+            <option value="attente_update">✏️ Mise à jour attente</option>
+            <option value="recap_semaine">📣 Récap semaine</option>
+            <option value="agent_create">👤 Agent créé</option>
+            <option value="agent_update">📝 Agent modifié</option>
+            <option value="agent_delete">🗑️ Agent supprimé</option>
+            <option value="sac_donner">🎒 Sac attribué</option>
+            <option value="sac_retirer">📤 Sac retiré</option>
+          </select>
+          <select id="logs-filter-actor" class="logs-filter-select">
+            <option value="">Tous les agents</option>
+          </select>
+          <button class="btn" id="btn-logs-refresh" style="background:var(--bg3);color:var(--text)">🔄 Rafraîchir</button>
+        </div>
+      </div>
+
+      <div id="logs-timeline"></div>
+      <div id="logs-empty" style="display:none;color:var(--text-muted);font-size:.875rem;padding:24px 0">
+        Aucune action enregistrée pour ces filtres.
       </div>
     </section>
 
