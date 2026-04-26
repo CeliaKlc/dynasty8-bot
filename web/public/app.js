@@ -45,20 +45,29 @@ function loadPage(page) {
   if (page === 'rdv')       loadRdv();
   if (page === 'attente')   loadAttente();
   if (page === 'recap')     loadRecap();
+  if (page === 'reprise')   loadReprise();
   if (page === 'config')    loadConfig();
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
+// Formatte un montant en $, style "175'000$" ou "1'200'000$"
+function fmtCA(n) {
+  if (!n) return '0$';
+  return Math.round(n).toLocaleString('fr-CH').replace(/\s/g, "'") + '$';
+}
+
 async function loadDashboard() {
   const data = await api('/stats');
   if (!data) return;
+
+  // ── Indicateurs généraux ──────────────────────────────────────────────────
   document.getElementById('stat-agents').textContent   = data.totalAgents;
   document.getElementById('stat-annonces').textContent = data.totalAnnonces;
   document.getElementById('stat-actives').textContent  = data.annoncesActives;
   document.getElementById('stat-sacs').textContent     = data.totalSacs;
 
-  // Stats par agent
+  // Annonces par agent
   const grid = document.getElementById('agent-stats-grid');
   grid.innerHTML = '';
   (data.statsParAgent || []).forEach(s => {
@@ -79,9 +88,61 @@ async function loadDashboard() {
     `;
     grid.appendChild(card);
   });
-
   if (!data.statsParAgent?.length) {
     grid.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem">Aucune donnée — les annonces publiées via /annonce apparaîtront ici.</p>';
+  }
+
+  // ── Activité LBC ──────────────────────────────────────────────────────────
+  const lbc = data.lbc;
+  if (!lbc) return;
+
+  document.getElementById('lbc-stat-ventes').textContent  = lbc.ventesTotal   ?? 0;
+  document.getElementById('lbc-stat-encours').textContent = lbc.ventesEnCours ?? 0;
+  document.getElementById('lbc-stat-ca').textContent      = fmtCA(lbc.caTotal);
+  document.getElementById('lbc-stat-moyen').textContent   = lbc.prixMoyen ? fmtCA(lbc.prixMoyen) : '—';
+
+  // Top agents LBC
+  const agentsList = document.getElementById('lbc-agents-list');
+  agentsList.innerHTML = '';
+  if (lbc.parAgent?.length) {
+    lbc.parAgent.forEach((a, i) => {
+      const el = document.createElement('div');
+      el.className = 'lbc-agent-row';
+      const avatarHtml = a.photo
+        ? `<img class="lbc-agent-avatar" src="${a.photo}" alt="" onerror="this.style.display='none'">`
+        : `<div class="lbc-agent-avatar-ph">${a.emoji || '👤'}</div>`;
+      el.innerHTML = `
+        ${avatarHtml}
+        <div class="lbc-agent-info">
+          <span class="lbc-agent-name">${a.emoji ? a.emoji + ' ' : ''}${a.name}</span>
+          <span class="lbc-agent-meta">${a.ventes} vente${a.ventes > 1 ? 's' : ''} · CA : ${fmtCA(a.ca)}</span>
+        </div>
+        <div class="lbc-agent-rank">#${i + 1}</div>
+      `;
+      agentsList.appendChild(el);
+    });
+  } else {
+    agentsList.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">Aucune vente enregistrée pour le moment.</p>';
+  }
+
+  // Répartition par type de bien
+  const typesList = document.getElementById('lbc-types-list');
+  typesList.innerHTML = '';
+  if (lbc.parType?.length) {
+    const maxCount = Math.max(...lbc.parType.map(t => t.count), 1);
+    lbc.parType.forEach(t => {
+      const pct = Math.round((t.count / maxCount) * 100);
+      const el  = document.createElement('div');
+      el.className = 'lbc-type-row';
+      el.innerHTML = `
+        <div class="lbc-type-name">${t.type}</div>
+        <div class="lbc-type-bar-wrap"><div class="lbc-type-bar" style="width:${pct}%"></div></div>
+        <div class="lbc-type-count">${t.count}</div>
+      `;
+      typesList.appendChild(el);
+    });
+  } else {
+    typesList.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">Aucune donnée.</p>';
   }
 }
 
@@ -1509,6 +1570,104 @@ document.getElementById('btn-recap-publier').addEventListener('click', async () 
     toast(res?.error || 'Erreur', 'error');
     statusEl.textContent = '';
   }
+});
+
+// ── Reprise de bien ───────────────────────────────────────────────────────────
+
+function fmtReprisePrix(n) {
+  if (n == null || n === 0) return '—';
+  return Math.round(n).toLocaleString('fr-CH').replace(/ |\s/g, "'") + '$';
+}
+
+async function loadReprise() {
+  const types = await api('/reprise/types');
+  if (!types) return;
+
+  // Remplir le select
+  const sel = document.getElementById('reprise-type-select');
+  sel.innerHTML = '<option value="">— Choisir un type —</option>';
+  types.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value       = t.type;
+    opt.textContent = t.type;
+    sel.appendChild(opt);
+  });
+
+  // Remplir le tableau récapitulatif
+  renderRepriseTypesTable(types);
+}
+
+function renderRepriseTypesTable(types) {
+  const tbody = document.getElementById('reprise-types-body');
+  tbody.innerHTML = '';
+
+  types.forEach(t => {
+    const tr = document.createElement('tr');
+    const hasData = t.count > 0;
+    tr.innerHTML = `
+      <td><strong>${t.type}</strong></td>
+      <td>${hasData ? t.count : '<span style="color:var(--text-muted)">0</span>'}</td>
+      <td>${hasData && t.median ? fmtReprisePrix(t.median) : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td style="color:var(--text-muted);font-size:.8rem">${hasData ? `${fmtReprisePrix(t.min)} / ${fmtReprisePrix(t.max)}` : '—'}</td>
+      <td>
+        ${hasData
+          ? `<button class="btn reprise-estimate-btn" data-type="${t.type.replace(/"/g, '&quot;')}" style="font-size:.75rem;padding:4px 10px;background:var(--bg3);color:var(--text)">Estimer</button>`
+          : ''}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Délégation d'événement sur les boutons Estimer
+  document.getElementById('reprise-types-body').addEventListener('click', e => {
+    const btn = e.target.closest('.reprise-estimate-btn');
+    if (!btn) return;
+    const type = btn.dataset.type;
+    document.getElementById('reprise-type-select').value = type;
+    doCalculerReprise(type);
+    document.getElementById('reprise-result-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, { once: true }); // once:true évite l'accumulation de listeners à chaque rechargement
+}
+
+async function doCalculerReprise(type) {
+  if (!type) { toast('Sélectionnez un type de bien', 'error'); return; }
+
+  const stats = await api(`/reprise?type=${encodeURIComponent(type)}`);
+  if (!stats) return;
+
+  const card = document.getElementById('reprise-result-card');
+  card.style.display = '';
+
+  document.getElementById('reprise-result-title').textContent = `🏠 Reprise — ${type}`;
+
+  // Badge de fiabilité
+  const badge = document.getElementById('reprise-fiabilite-badge');
+  if (!stats.count) {
+    badge.textContent = 'Aucune donnée';
+    badge.className   = 'reprise-badge reprise-badge-none';
+  } else if (stats.fiable) {
+    badge.textContent = `✅ Données fiables (${stats.count} ventes)`;
+    badge.className   = 'reprise-badge reprise-badge-ok';
+  } else {
+    badge.textContent = `⚠️ Données limitées — ${stats.count} vente${stats.count > 1 ? 's' : ''}`;
+    badge.className   = 'reprise-badge reprise-badge-warn';
+  }
+
+  // Stats générales
+  document.getElementById('reprise-count').textContent  = stats.count ?? '0';
+  document.getElementById('reprise-median').textContent = fmtReprisePrix(stats.mediane);
+  document.getElementById('reprise-min').textContent    = fmtReprisePrix(stats.min);
+  document.getElementById('reprise-max').textContent    = fmtReprisePrix(stats.max);
+
+  // Paliers de reprise
+  const r = stats.reprises;
+  document.getElementById('reprise-prudent').textContent   = r ? `≤ ${fmtReprisePrix(r.prudent)}`   : '—';
+  document.getElementById('reprise-standard').textContent  = r ? `≤ ${fmtReprisePrix(r.standard)}`  : '—';
+  document.getElementById('reprise-optimiste').textContent = r ? `≤ ${fmtReprisePrix(r.optimiste)}` : '—';
+}
+
+document.getElementById('btn-reprise-calculer').addEventListener('click', () => {
+  doCalculerReprise(document.getElementById('reprise-type-select').value);
 });
 
 // ── Sidebar utilisateur ───────────────────────────────────────────────────────

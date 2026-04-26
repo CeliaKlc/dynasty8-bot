@@ -4,7 +4,9 @@ const { Router } = require('express');
 const { getDB }  = require('../../utils/db');
 const agentCache = require('../../utils/agentCache');
 const { ObjectId } = require('mongodb');
-const { DASHBOARD_CATEGORIES } = require('../../utils/attenteManager');
+const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManager');
+const { calculerReprise, getResumeTousTypes } = require('../../utils/repriseManager');
+const { BIENS }                              = require('../../utils/annonceBuilder');
 
 const router = Router();
 
@@ -27,7 +29,11 @@ function requireAdmin(req, res, next) {
 router.get('/stats', requireAuth, async (req, res) => {
   try {
     const db = getDB();
-    const [totalAnnonces, annoncesActives, totalSacs, totalAgents, parAgent] = await Promise.all([
+    const [
+      totalAnnonces, annoncesActives, totalSacs, totalAgents, parAgent,
+      // LBC
+      lbcVentesTotal, lbcEnCours, lbcCA, lbcParType, lbcParAgent,
+    ] = await Promise.all([
       db.collection('annonce_links').countDocuments(),
       db.collection('annonce_links').countDocuments({ vendu: { $ne: true } }),
       db.collection('sac_registry').aggregate([
@@ -35,20 +41,44 @@ router.get('/stats', requireAuth, async (req, res) => {
         { $group: { _id: null, total: { $sum: '$count' } } },
       ]).toArray().then(r => r[0]?.total ?? 0),
       db.collection('agents').countDocuments(),
-      // Stats par agent : total et actives
+      // Annonces par agent : total et actives
       db.collection('annonce_links').aggregate([
         {
           $group: {
-            _id:    '$agentId',
-            total:  { $sum: 1 },
+            _id:     '$agentId',
+            total:   { $sum: 1 },
             actives: { $sum: { $cond: [{ $ne: ['$vendu', true] }, 1, 0] } },
           },
         },
+      ]).toArray(),
+      // LBC — ventes confirmées
+      db.collection('ventes_lbc').countDocuments({ statut: 'vendu' }),
+      // LBC — en cours
+      db.collection('ventes_lbc').countDocuments({ statut: 'en_cours' }),
+      // LBC — CA total + prix moyen
+      db.collection('ventes_lbc').aggregate([
+        { $match: { statut: 'vendu', prixFinal: { $gt: 0 } } },
+        { $group: { _id: null, total: { $sum: '$prixFinal' }, avg: { $avg: '$prixFinal' } } },
+      ]).toArray().then(r => r[0] ?? { total: 0, avg: 0 }),
+      // LBC — répartition par type (top 10)
+      db.collection('ventes_lbc').aggregate([
+        { $match: { statut: 'vendu' } },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ]).toArray(),
+      // LBC — top agents (par nb de ventes)
+      db.collection('ventes_lbc').aggregate([
+        { $match: { statut: 'vendu' } },
+        { $group: { _id: '$agentId', ventes: { $sum: 1 }, ca: { $sum: '$prixFinal' } } },
+        { $sort: { ventes: -1 } },
+        { $limit: 8 },
       ]).toArray(),
     ]);
 
     // Enrichir avec les infos agent du cache
     const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
+
     const statsParAgent = parAgent
       .filter(s => s._id)
       .map(s => ({
@@ -61,7 +91,28 @@ router.get('/stats', requireAuth, async (req, res) => {
       }))
       .sort((a, b) => b.total - a.total);
 
-    res.json({ totalAnnonces, annoncesActives, totalSacs, totalAgents, statsParAgent });
+    const lbcAgentStats = lbcParAgent
+      .filter(s => s._id)
+      .map(s => ({
+        agentId: s._id,
+        name:    agentMap[s._id]?.name  ?? 'Inconnu',
+        emoji:   agentMap[s._id]?.emoji ?? '',
+        photo:   agentMap[s._id]?.photo ?? null,
+        ventes:  s.ventes,
+        ca:      s.ca,
+      }));
+
+    res.json({
+      totalAnnonces, annoncesActives, totalSacs, totalAgents, statsParAgent,
+      lbc: {
+        ventesTotal:  lbcVentesTotal,
+        ventesEnCours: lbcEnCours,
+        caTotal:      lbcCA.total,
+        prixMoyen:    lbcCA.avg > 0 ? Math.round(lbcCA.avg) : 0,
+        parType:      lbcParType.map(t => ({ type: t._id, count: t.count })),
+        parAgent:     lbcAgentStats,
+      },
+    });
   } catch (err) {
     console.error('[API] /stats :', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -713,6 +764,46 @@ router.post('/recap', requireAdmin, async (req, res) => {
     res.json({ ok: true, id: recap.id });
   } catch (err) {
     console.error('[API] POST /recap :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// REPRISE DE BIEN
+// ════════════════════════════════════════════════════════════════════════════
+
+// Résumé par type (utilise $avg comme approximation de la médiane)
+router.get('/reprise/types', requireAuth, async (req, res) => {
+  try {
+    const types     = Object.keys(BIENS);
+    const summaries = await getResumeTousTypes();
+    const map       = Object.fromEntries(summaries.map(s => [s._id, s]));
+
+    const result = types.map(type => {
+      const s = map[type];
+      if (!s) return { type, count: 0, median: null, min: null, max: null };
+      return { type, count: s.count, median: Math.round(s.median), min: s.min, max: s.max };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[API] GET /reprise/types :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Estimation complète (médiane exacte + 3 paliers) pour un type donné
+router.get('/reprise', requireAuth, async (req, res) => {
+  try {
+    const { type } = req.query;
+    if (!type) return res.status(400).json({ error: 'Paramètre type requis' });
+
+    const stats = await calculerReprise(type);
+    if (!stats)  return res.json({ count: 0 });
+
+    res.json(stats);
+  } catch (err) {
+    console.error('[API] GET /reprise :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

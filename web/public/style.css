@@ -1067,6 +1067,157 @@ body.login-page {
   .recap-stats-grid    { grid-template-columns: 1fr 1fr; }
 }
 
+/* ── LBC Dashboard ───────────────────────────────────────────────────────── */
+
+.lbc-accent { color: var(--accent2); }
+
+.lbc-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 4px;
+}
+
+/* Top agents */
+.lbc-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lbc-agent-row:last-child { border-bottom: none; }
+.lbc-agent-avatar    { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.lbc-agent-avatar-ph {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--bg3); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+}
+.lbc-agent-info  { flex: 1; min-width: 0; }
+.lbc-agent-name  { display: block; font-size: .875rem; font-weight: 600; }
+.lbc-agent-meta  { font-size: .78rem; color: var(--text-muted); }
+.lbc-agent-rank  { font-size: .9rem; font-weight: 700; color: var(--accent2); min-width: 28px; text-align: right; }
+
+/* Type de bien — barre horizontale */
+.lbc-type-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lbc-type-row:last-child { border-bottom: none; }
+.lbc-type-name {
+  font-size: .82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lbc-type-bar-wrap {
+  background: var(--bg3);
+  border-radius: 4px;
+  height: 7px;
+  overflow: hidden;
+}
+.lbc-type-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #0ea84d);
+  border-radius: 4px;
+  transition: width .4s ease;
+}
+.lbc-type-count { font-size: .82rem; font-weight: 700; text-align: right; }
+
+@media (max-width: 900px) {
+  .lbc-detail-grid { grid-template-columns: 1fr; }
+  .lbc-type-row    { grid-template-columns: 120px 1fr 32px; }
+}
+
+/* ── Reprise de bien ─────────────────────────────────────────────────────── */
+
+.reprise-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.reprise-form-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.reprise-form-row .btn { white-space: nowrap; }
+
+.reprise-result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.reprise-badge {
+  font-size: .72rem;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 3px 11px;
+  white-space: nowrap;
+}
+.reprise-badge-ok   { background: rgba(46,204,113,.14); color: #2ecc71; }
+.reprise-badge-warn { background: rgba(243,156,18,.14);  color: #f3a018; }
+.reprise-badge-none { background: rgba(255,255,255,.06); color: var(--text-muted); }
+
+.reprise-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.reprise-stat-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 10px;
+  text-align: center;
+}
+.reprise-stat-label { font-size: .7rem; color: var(--text-muted); margin-bottom: 5px; }
+.reprise-stat-value { font-size: 1rem; font-weight: 700; }
+
+.reprise-section-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.reprise-tiers { display: flex; flex-direction: column; gap: 8px; }
+
+.reprise-tier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+.reprise-tier-prudent   { background: rgba(52,152,219,.08);  border-color: #3498db; }
+.reprise-tier-standard  { background: rgba(46,204,113,.08);  border-color: #2ecc71; }
+.reprise-tier-optimiste { background: rgba(243,156,18,.08);  border-color: #f39c12; }
+
+.reprise-tier-label       { font-size: .85rem; color: var(--text-muted); }
+.reprise-tier-label small { font-size: .72rem; margin-left: 4px; opacity: .7; }
+.reprise-tier-price       { font-size: 1.1rem; font-weight: 700; }
+
+@media (max-width: 1000px) {
+  .reprise-layout     { grid-template-columns: 1fr; }
+  .reprise-stats-row  { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* ── Toast ───────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
