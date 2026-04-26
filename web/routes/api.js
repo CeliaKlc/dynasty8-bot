@@ -296,12 +296,8 @@ router.get('/annonces', requireAuth, async (req, res) => {
       };
     });
 
-    // Tri : en retard → en cours → vendus → sans dossier
-    const order = { en_cours: 1, vendu: 2 };
-    enriched.sort((a, b) => {
-      if (a.retard !== b.retard) return a.retard ? -1 : 1;
-      return (order[a.statutDossier] ?? 3) - (order[b.statutDossier] ?? 3);
-    });
+    // Tri par numéro d'annonce croissant (1396 avant 1401)
+    enriched.sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
 
     res.json(enriched);
   } catch (err) {
