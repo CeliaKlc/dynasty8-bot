@@ -83,6 +83,9 @@ module.exports = {
       .addUserOption(opt => opt.setName('client').setDescription('Mentionner le client (@)').setRequired(true))
       .addChannelOption(opt => opt.setName('ticket').setDescription('Salon ticket du client (#)').setRequired(true).addChannelTypes(ChannelType.GuildText))
       .addIntegerOption(opt => opt.setName('budget_max').setDescription('Budget maximum ($)').setRequired(true).setMinValue(0))
+      .addStringOption(opt => opt.setName('prenom').setDescription('Prénom du client').setRequired(false))
+      .addStringOption(opt => opt.setName('nom').setDescription('Nom de famille du client').setRequired(false))
+      .addStringOption(opt => opt.setName('telephone').setDescription('Numéro de téléphone RP').setRequired(false))
       .addStringOption(opt => opt.setName('notes').setDescription('Notes supplémentaires (optionnel)').setRequired(false)),
     )
 
@@ -94,9 +97,12 @@ module.exports = {
 
     .addSubcommand(sub => sub
       .setName('update')
-      .setDescription('Modifier la fiche d\'un client (budget, notes, biens)')
+      .setDescription('Modifier la fiche d\'un client (budget, notes, biens, identité)')
       .addUserOption(opt => opt.setName('client').setDescription('Mentionner le client (@)').setRequired(true))
       .addIntegerOption(opt => opt.setName('nouveau_budget_max').setDescription('Nouveau budget maximum ($)').setRequired(false).setMinValue(0))
+      .addStringOption(opt => opt.setName('prenom').setDescription('Prénom (remplace l\'existant)').setRequired(false))
+      .addStringOption(opt => opt.setName('nom').setDescription('Nom de famille (remplace l\'existant)').setRequired(false))
+      .addStringOption(opt => opt.setName('telephone').setDescription('Téléphone RP (remplace l\'existant)').setRequired(false))
       .addStringOption(opt => opt.setName('nouvelles_notes').setDescription('Nouvelles notes (remplace les existantes)').setRequired(false)),
     )
 
@@ -116,6 +122,9 @@ module.exports = {
       const clientUser = interaction.options.getUser('client');
       const ticket     = interaction.options.getChannel('ticket');
       const budgetMax  = interaction.options.getInteger('budget_max');
+      const prenom     = interaction.options.getString('prenom')?.trim()    || null;
+      const nom        = interaction.options.getString('nom')?.trim()       || null;
+      const telephone  = interaction.options.getString('telephone')?.trim() || null;
       const notes      = interaction.options.getString('notes') ?? null;
 
       const existing = await db.collection('waiting_list').findOne({
@@ -128,8 +137,14 @@ module.exports = {
         });
       }
 
+      // Récupérer le nom d'affichage Discord du client (pseudo serveur > nom global > username)
+      const member     = await interaction.guild.members.fetch(clientUser.id).catch(() => null);
+      const clientName = member?.displayName ?? clientUser.globalName ?? clientUser.username;
+
       const pending = {
-        mode: 'add', clientId: clientUser.id, ticketId: ticket.id,
+        mode: 'add', clientId: clientUser.id, clientName,
+        prenom, nom, telephone,
+        ticketId: ticket.id,
         budgetMax, notes, agentId: interaction.user.id,
         selectedTypes: [], bienZones: {},
       };
@@ -158,6 +173,9 @@ module.exports = {
     if (sub === 'update') {
       const clientUser     = interaction.options.getUser('client');
       const newBudgetMax   = interaction.options.getInteger('nouveau_budget_max');
+      const newPrenom      = interaction.options.getString('prenom')?.trim()    ?? null;
+      const newNom         = interaction.options.getString('nom')?.trim()       ?? null;
+      const newTelephone   = interaction.options.getString('telephone')?.trim() ?? null;
       const nouvellesNotes = interaction.options.getString('nouvelles_notes');
 
       const doc = await db.collection('waiting_list').findOne({ clientId: clientUser.id });
@@ -165,9 +183,17 @@ module.exports = {
         return interaction.reply({ content: `❌ <@${clientUser.id}> n'est pas en liste d'attente.`, ephemeral: true });
       }
 
+      const member     = await interaction.guild.members.fetch(clientUser.id).catch(() => null);
+      const clientName = member?.displayName ?? clientUser.globalName ?? clientUser.username;
+
       const pending = {
         mode:          'update',
         clientId:      clientUser.id,
+        clientName,
+        // Garde l'existant si non renseigné
+        prenom:        newPrenom    ?? doc.prenom    ?? null,
+        nom:           newNom       ?? doc.nom       ?? null,
+        telephone:     newTelephone ?? doc.telephone ?? null,
         ticketId:      doc.ticketId,
         budgetMax:     newBudgetMax   ?? doc.budget.max,
         notes:         nouvellesNotes ?? doc.notes,
@@ -216,8 +242,11 @@ module.exports = {
         );
         const biensAffich = biensFiltres.length > 0 ? biensFiltres : (c.biens ?? []);
         const biensStr    = biensAffich.map(b => `${TYPE_EMOJIS[b.type] ?? '🏠'} ${b.type} (${b.zone})`).join(', ');
+        const identite    = [c.prenom, c.nom].filter(Boolean).join(' ');
+        const identiteStr = identite ? ` — 👤 **${identite}**` : '';
+        const telStr      = c.telephone ? ` — 📞 ${c.telephone}` : '';
         const notes       = c.notes ? `\n> 📝 ${c.notes}` : '';
-        return `**${i + 1}.** ${statut} <@${c.clientId}> • <#${c.ticketId}>\n> ${biensStr} • 💰 ${budget} • 📅 ${date}${notes}`;
+        return `**${i + 1}.** ${statut} <@${c.clientId}>${identiteStr}${telStr} • <#${c.ticketId}>\n> ${biensStr} • 💰 ${budget} • 📅 ${date}${notes}`;
       });
 
       embed.setDescription(lines.join('\n\n'));
@@ -284,11 +313,19 @@ module.exports = {
 
     const db = getDB();
 
+    // Libellé identité pour les messages Discord
+    const identiteLabel = [pending.prenom, pending.nom].filter(Boolean).join(' ')
+      || pending.clientName;
+
     if (pending.mode === 'add') {
       await db.collection('waiting_list').insertOne({
-        clientId:  pending.clientId,
-        ticketId:  pending.ticketId,
-        agentId:   pending.agentId,
+        clientId:   pending.clientId,
+        clientName: pending.clientName,
+        prenom:     pending.prenom,
+        nom:        pending.nom,
+        telephone:  pending.telephone,
+        ticketId:   pending.ticketId,
+        agentId:    pending.agentId,
         biens,
         budget:    { max: pending.budgetMax },
         notes:     pending.notes,
@@ -300,12 +337,19 @@ module.exports = {
       try {
         const ch = await interaction.client.channels.fetch(pending.ticketId);
         if (ch) {
+          const identiteFields = [];
+          if (pending.prenom || pending.nom)
+            identiteFields.push({ name: '👤 Identité', value: identiteLabel, inline: true });
+          if (pending.telephone)
+            identiteFields.push({ name: '📞 Téléphone', value: pending.telephone, inline: true });
+
           await ch.send({ embeds: [
             new EmbedBuilder()
               .setColor(0x2ECC71)
               .setTitle('📋 Ajouté en liste d\'attente')
               .setDescription(`<@${pending.clientId}> a bien été noté(e) en liste d'attente.`)
               .addFields(
+                ...identiteFields,
                 { name: '🏠 Bien(s) recherché(s)', value: biens.map(b => `> ${TYPE_EMOJIS[b.type] ?? '🏠'} **${b.type}** — 📍 ${b.zone}`).join('\n') },
                 { name: '💰 Budget maximum', value: `${pending.budgetMax.toLocaleString('fr-FR')} $`, inline: true },
                 ...(pending.notes ? [{ name: '📝 Notes', value: pending.notes }] : []),
@@ -320,19 +364,36 @@ module.exports = {
     } else {
       await db.collection('waiting_list').updateOne(
         { clientId: pending.clientId },
-        { $set: { biens, 'budget.max': pending.budgetMax, notes: pending.notes } },
+        {
+          $set: {
+            biens,
+            clientName: pending.clientName,
+            prenom:     pending.prenom,
+            nom:        pending.nom,
+            telephone:  pending.telephone,
+            'budget.max': pending.budgetMax,
+            notes:      pending.notes,
+          },
+        },
       );
     }
 
     await updateDashboard(interaction.client);
 
     const biensStr = biens.map(b => `> ${TYPE_EMOJIS[b.type] ?? '🏠'} **${b.type}** — 📍 ${b.zone}`).join('\n');
-    const verb = pending.mode === 'add' ? 'ajouté(e) en liste d\'attente' : 'mis(e) à jour';
+    const verb     = pending.mode === 'add' ? 'ajouté(e) en liste d\'attente' : 'mis(e) à jour';
+
+    const identiteLines = [];
+    if (pending.prenom || pending.nom)
+      identiteLines.push(`> 👤 ${[pending.prenom, pending.nom].filter(Boolean).join(' ')}`);
+    if (pending.telephone)
+      identiteLines.push(`> 📞 ${pending.telephone}`);
 
     return interaction.reply({
       content: [
         `✅ <@${pending.clientId}> ${verb} !`,
         `> 🎫 Ticket : <#${pending.ticketId}>`,
+        ...identiteLines,
         biensStr,
         `> 💰 Budget max : ${pending.budgetMax.toLocaleString('fr-FR')} $`,
         ...(pending.notes ? [`> 📝 ${pending.notes}`] : []),

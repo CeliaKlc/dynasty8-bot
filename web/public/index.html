@@ -35,6 +35,9 @@
       <a href="#" class="nav-item" data-page="recap">
         <span class="nav-icon">📝</span> Récap Semaine
       </a>
+      <a href="#" class="nav-item" data-page="reprise">
+        <span class="nav-icon">🏷️</span> Reprise bien
+      </a>
       <a href="#" class="nav-item" data-page="config">
         <span class="nav-icon">⚙️</span> Configuration
       </a>
@@ -48,6 +51,8 @@
     <!-- Page : Dashboard -->
     <section id="page-dashboard" class="page active">
       <h2 class="page-title">Dashboard</h2>
+
+      <!-- Indicateurs généraux -->
       <div class="stats-grid" id="stats-grid">
         <div class="stat-card"><div class="stat-value" id="stat-agents">—</div><div class="stat-label">Agents</div></div>
         <div class="stat-card"><div class="stat-value" id="stat-annonces">—</div><div class="stat-label">Annonces totales</div></div>
@@ -57,6 +62,38 @@
 
       <h3 class="section-title">Annonces par agent</h3>
       <div class="agent-stats-grid" id="agent-stats-grid"></div>
+
+      <!-- Activité LBC -->
+      <h3 class="section-title" style="margin-top:32px">📦 Activité LBC</h3>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value lbc-accent" id="lbc-stat-ventes">—</div>
+          <div class="stat-label">Ventes confirmées</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="lbc-stat-encours">—</div>
+          <div class="stat-label">En cours</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value lbc-accent" id="lbc-stat-ca">—</div>
+          <div class="stat-label">CA total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="lbc-stat-moyen">—</div>
+          <div class="stat-label">Prix moyen de vente</div>
+        </div>
+      </div>
+
+      <div class="lbc-detail-grid">
+        <div>
+          <h3 class="section-title" style="margin-top:24px">🏆 Top agents (ventes LBC)</h3>
+          <div id="lbc-agents-list"></div>
+        </div>
+        <div>
+          <h3 class="section-title" style="margin-top:24px">🏠 Ventes par type de bien</h3>
+          <div id="lbc-types-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- Page : Agents -->
@@ -177,16 +214,8 @@
           <!-- RH -->
           <div class="recap-card">
             <div class="recap-card-title">👥 Ressources Humaines</div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Nouvelle arrivée</label>
-                <select id="recap-arrivee"><option value="">— Aucun —</option></select>
-              </div>
-              <div class="form-group">
-                <label>Grade</label>
-                <select id="recap-arrivee-grade"><option value="">— Grade —</option></select>
-              </div>
-            </div>
+            <div id="recap-arrivees-list"></div>
+            <button type="button" id="btn-recap-add-arrivee" class="btn-recap-add-role">+ Ajouter une arrivée</button>
             <div class="form-group">
               <label>Départs</label>
               <input type="text" id="recap-departs" placeholder="Sacha Rollay, Marco Romanov…">
@@ -275,6 +304,98 @@
           </div>
 
         </div>
+      </div>
+    </section>
+
+    <!-- Page : Reprise de bien -->
+    <section id="page-reprise" class="page">
+      <h2 class="page-title">Reprise de bien</h2>
+
+      <div class="reprise-layout">
+
+        <!-- Colonne gauche : sélecteur + résultats -->
+        <div class="reprise-main">
+
+          <!-- Formulaire de recherche -->
+          <div class="recap-card">
+            <div class="recap-card-title">🔍 Estimer un bien</div>
+            <div class="reprise-form-row">
+              <div class="form-group" style="flex:1;margin:0">
+                <label>Type de bien</label>
+                <select id="reprise-type-select">
+                  <option value="">— Choisir un type —</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="btn-reprise-calculer">Calculer</button>
+            </div>
+          </div>
+
+          <!-- Résultats (masqués au départ) -->
+          <div id="reprise-result-card" class="recap-card" style="display:none">
+            <div class="reprise-result-header">
+              <div class="recap-card-title" id="reprise-result-title" style="margin:0">🏠 —</div>
+              <span id="reprise-fiabilite-badge" class="reprise-badge"></span>
+            </div>
+
+            <div class="reprise-stats-row">
+              <div class="reprise-stat-box">
+                <div class="reprise-stat-label">Ventes analysées</div>
+                <div class="reprise-stat-value" id="reprise-count">—</div>
+              </div>
+              <div class="reprise-stat-box">
+                <div class="reprise-stat-label">Prix médian</div>
+                <div class="reprise-stat-value" id="reprise-median">—</div>
+              </div>
+              <div class="reprise-stat-box">
+                <div class="reprise-stat-label">Min observé</div>
+                <div class="reprise-stat-value" id="reprise-min">—</div>
+              </div>
+              <div class="reprise-stat-box">
+                <div class="reprise-stat-label">Max observé</div>
+                <div class="reprise-stat-value" id="reprise-max">—</div>
+              </div>
+            </div>
+
+            <div class="reprise-section-label">Prix de reprise maximum conseillé</div>
+            <div class="reprise-tiers">
+              <div class="reprise-tier reprise-tier-prudent">
+                <div class="reprise-tier-label">🛡️ Prudent <small>(marge 20%)</small></div>
+                <div class="reprise-tier-price" id="reprise-prudent">—</div>
+              </div>
+              <div class="reprise-tier reprise-tier-standard">
+                <div class="reprise-tier-label">⚖️ Standard <small>(marge 15%)</small></div>
+                <div class="reprise-tier-price" id="reprise-standard">—</div>
+              </div>
+              <div class="reprise-tier reprise-tier-optimiste">
+                <div class="reprise-tier-label">🚀 Optimiste <small>(marge 10%)</small></div>
+                <div class="reprise-tier-price" id="reprise-optimiste">—</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Colonne droite : vue d'ensemble -->
+        <div class="reprise-aside">
+          <div class="recap-card">
+            <div class="recap-card-title">📊 Vue d'ensemble par type</div>
+            <div class="table-wrapper">
+              <table class="data-table" id="reprise-types-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Ventes</th>
+                    <th>Médiane</th>
+                    <th>Min&nbsp;/&nbsp;Max</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="reprise-types-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 

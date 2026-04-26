@@ -1,5 +1,9 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
+// Fix DNS pour MongoDB sur Windows
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 const express = require('express');
 const session = require('express-session');
 const path    = require('path');

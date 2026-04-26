@@ -12,7 +12,11 @@ module.exports = {
     .addUserOption(opt => opt
       .setName('client')
       .setDescription('Mentionner le client')
-      .setRequired(true)),
+      .setRequired(true))
+    .addStringOption(opt => opt
+      .setName('prix')
+      .setDescription('Prix de vente final (si différent du prix de départ, ex: 175000). Laisser vide = prix de départ.')
+      .setRequired(false)),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
@@ -77,6 +81,25 @@ module.exports = {
     } catch (err) {
       console.error('[BYE] Erreur lookup salon annonce :', err.message);
     }
+
+    // ── Confirmer le prix de vente final dans ventes_lbc ─────────────────────
+    try {
+      const vente = await getDB().collection('ventes_lbc').findOne({
+        ticketChannelId: interaction.channel.id,
+        statut: 'en_cours',
+      });
+      if (vente) {
+        const prixStr  = interaction.options.getString('prix');
+        const prixSaisi = prixStr
+          ? parseInt(prixStr.replace(/['\s,.]/g, ''), 10) || null
+          : null;
+        const prixFinal = prixSaisi ?? vente.prixDepart; // fallback = prix de départ
+        await getDB().collection('ventes_lbc').updateOne(
+          { _id: vente._id },
+          { $set: { prixFinal, statut: 'vendu', dateVente: new Date() } },
+        );
+      }
+    } catch (e) { console.error('[BYE] Erreur maj vente_lbc :', e.message); }
 
     // Planifier la fermeture automatique dans 24h si le client ne laisse pas d'avis
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
