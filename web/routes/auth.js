@@ -1,16 +1,37 @@
 // ─── Discord OAuth2 ───────────────────────────────────────────────────────────
 
 const { Router } = require('express');
+const { getDB }  = require('../../utils/db');
 const router = Router();
 
 const CLIENT_ID     = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const REDIRECT_URI  = process.env.DISCORD_REDIRECT_URI;
-const GUILD_ID      = process.env.GUILD_ID;
 
-// Rôles autorisés à accéder au panel
-const ROLES_ADMIN  = ['1375930527873368066']; // Direction
-const ROLES_ACCESS = ['917744433682849802', '1375930527873368066']; // Employé + Direction
+// Utilisateurs par défaut — seed initial si la collection est vide
+const DEFAULT_PANEL_USERS = [
+  { discordId: '314057285523472394',  name: 'Sacha Rollay',  isAdmin: true },
+  { discordId: '261956403546161152',  name: 'Ely Rollay',    isAdmin: true },
+  { discordId: '1151865005239697449', name: 'Marco Romanov', isAdmin: true },
+];
+
+async function getPanelUsers() {
+  try {
+    const db  = getDB();
+    const doc = await db.collection('bot_config').findOne({ key: 'panel_users' });
+    if (!doc?.users?.length) {
+      await db.collection('bot_config').updateOne(
+        { key: 'panel_users' },
+        { $set: { users: DEFAULT_PANEL_USERS } },
+        { upsert: true },
+      );
+      return DEFAULT_PANEL_USERS;
+    }
+    return doc.users;
+  } catch {
+    return DEFAULT_PANEL_USERS; // fallback si DB indisponible
+  }
+}
 
 // ── /auth/login — Redirige vers Discord OAuth ─────────────────────────────────
 router.get('/login', (req, res) => {
@@ -18,7 +39,7 @@ router.get('/login', (req, res) => {
     client_id:     CLIENT_ID,
     redirect_uri:  REDIRECT_URI,
     response_type: 'code',
-    scope:         'identify guilds.members.read',
+    scope:         'identify',
   });
   res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
 });
@@ -50,25 +71,20 @@ router.get('/callback', async (req, res) => {
     });
     const user = await userRes.json();
 
-    // 3. Membre du serveur (pour les rôles)
-    const memberRes = await fetch(
-      `https://discord.com/api/users/@me/guilds/${GUILD_ID}/member`,
-      { headers: { Authorization: `Bearer ${token.access_token}` } },
-    );
-    const member = await memberRes.json();
-    const roles  = member.roles ?? [];
-
-    const hasAccess = ROLES_ACCESS.some(r => roles.includes(r));
-    if (!hasAccess) return res.redirect('/login.html?error=unauthorized');
+    // 3. Vérification whitelist (depuis MongoDB)
+    const panelUsers = await getPanelUsers();
+    const panelEntry = panelUsers.find(u => u.discordId === user.id);
+    if (!panelEntry) return res.redirect('/login.html?error=unauthorized');
 
     // 4. Sauvegarde en session
     req.session.user = {
       id:       user.id,
       username: user.username,
+      name:     panelEntry.name,
       avatar:   user.avatar
         ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
         : `https://cdn.discordapp.com/embed/avatars/${parseInt(user.id) % 5}.png`,
-      isAdmin:  ROLES_ADMIN.some(r => roles.includes(r)),
+      isAdmin:  panelEntry.isAdmin,
     };
 
     res.redirect('/');

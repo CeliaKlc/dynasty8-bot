@@ -218,7 +218,7 @@ module.exports = {
     try {
       await getDB().collection('annonce_links').updateOne(
         { numero },
-        { $set: { numero, announcementChannelId: interaction.channel.id, updatedAt: new Date() } },
+        { $set: { numero, announcementChannelId: interaction.channel.id, agentId, type, updatedAt: new Date() } },
         { upsert: true },
       );
     } catch (e) { console.error('[ANNONCE] Erreur sauvegarde lien :', e.message); }

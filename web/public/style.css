@@ -824,9 +824,12 @@ body.login-page {
   justify-content: space-between;
   gap: 10px;
 }
-.attente-client       { display: flex; align-items: center; gap: 10px; }
-.attente-client-name  { font-size: .95rem; font-weight: 600; color: var(--text); }
-.attente-client-id    { font-size: .8rem; color: var(--text-muted); font-family: monospace; }
+.attente-client          { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.attente-client-identity { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.attente-client-name     { font-size: .95rem; font-weight: 600; color: var(--text); }
+.attente-client-id       { font-size: .8rem; color: var(--text-muted); font-family: monospace; }
+.attente-discord-name    { font-size: .78rem; color: var(--text-muted); }
+.attente-phone           { font-size: .82rem; color: var(--accent2); font-weight: 600; }
 .attente-budget       { font-size: .875rem; font-weight: 600; color: var(--accent2); }
 .attente-status-dot   { font-size: .8rem; font-weight: 600; }
 

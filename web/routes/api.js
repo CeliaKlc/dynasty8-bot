@@ -619,7 +619,10 @@ router.get('/attente', requireAuth, async (req, res) => {
     const enriched = clients.map(c => ({
       id:          c._id.toString(),
       clientId:    c.clientId,
-      clientName:  c.clientName ?? null,
+      clientName:  c.clientName  ?? null,
+      prenom:      c.prenom      ?? null,
+      nom:         c.nom         ?? null,
+      telephone:   c.telephone   ?? null,
       ticketId:    c.ticketId,
       agentId:     c.agentId,
       agentName:   agentMap[c.agentId]?.name  ?? null,

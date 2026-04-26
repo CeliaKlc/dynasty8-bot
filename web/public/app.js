@@ -1255,14 +1255,24 @@ function renderAttenteList() {
       ? `<button class="attente-delete-btn" onclick="deleteAttenteClient('${c.id}')" title="Supprimer">🗑️</button>`
       : '';
 
-    const clientLabel = c.clientName
-      ? `<span class="attente-client-name">${c.clientName}</span>`
-      : `<span class="attente-client-id" title="${c.clientId}">ID ···${c.clientId.slice(-4)}</span>`;
+    // Nom réel si renseigné, sinon pseudo Discord, sinon fragment d'ID
+    const nomReel    = [c.prenom, c.nom].filter(Boolean).join(' ');
+    const phoneHtml  = c.telephone
+      ? `<span class="attente-phone">📞 ${c.telephone}</span>`
+      : '';
+    const discordSub = c.clientName && nomReel
+      ? `<span class="attente-discord-name">🎮 ${c.clientName}</span>`
+      : '';
+    const clientLabel = nomReel
+      ? `<span class="attente-client-name">${nomReel}</span>${discordSub}${phoneHtml}`
+      : c.clientName
+        ? `<span class="attente-client-name">${c.clientName}</span>${phoneHtml}`
+        : `<span class="attente-client-id" title="${c.clientId}">ID ···${c.clientId.slice(-4)}</span>${phoneHtml}`;
 
     card.innerHTML = `
       <div class="attente-card-header">
         <div class="attente-client">
-          ${clientLabel}
+          <div class="attente-client-identity">${clientLabel}</div>
           ${statusCtrl}
         </div>
         <div style="display:flex;align-items:center;gap:8px">
