@@ -3,6 +3,13 @@ const { avecDollar, formatPrix } = require('../utils/formatters');
 const { getDB }  = require('../utils/db');
 const { BIENS }  = require('../utils/annonceBuilder');
 
+// Convertit "210'000" ou "210000" en number, null si N/A ou invalide
+const parsePrice = str => {
+  if (!str || /^n\/a$/i.test(str.trim())) return null;
+  const n = parseInt(String(str).replace(/['\s,.]/g, ''), 10);
+  return isNaN(n) ? null : n;
+};
+
 const TYPES_CHOICES = Object.keys(BIENS).map(t => ({ name: t, value: t }));
 
 module.exports = {
@@ -174,6 +181,34 @@ module.exports = {
         { upsert: true },
       );
     } catch (e) { console.error('[RECLBC] Erreur sauvegarde lien :', e.message); }
+
+    // Enregistrer la vente en attente de confirmation du prix final (/bye)
+    try {
+      await getDB().collection('ventes_lbc').insertOne({
+        annonce,
+        ticketChannelId: interaction.channel.id,
+        // Bien principal
+        type,    adresse,    etage:    etage    || null,
+        // Bien 2 (optionnel)
+        type2:   type2    || null,
+        adresse2: adresse2 || null,
+        etage2:  etage2   || null,
+        // Bien 3 (optionnel)
+        type3:   type3    || null,
+        adresse3: adresse3 || null,
+        etage3:  etage3   || null,
+        // Prix
+        prixDepart:      parsePrice(prixDepart),
+        prixNegociation: parsePrice(negociation), // seuil de négo, pas le prix final
+        commission:      parsePrice(commission),
+        // Méta
+        agentId:    interaction.user.id,
+        statut:     'en_cours',   // → 'vendu' ou 'annule' au /bye
+        prixFinal:  null,         // renseigné par /bye
+        dateRecap:  new Date(),
+        dateVente:  null,
+      });
+    } catch (e) { console.error('[RECLBC] Erreur sauvegarde vente_lbc :', e.message); }
 
     await interaction.editReply({ content: '✅ Récap LBC publié !' });
   },
