@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
-const { getDB }      = require('../utils/db');
+const { getDB }       = require('../utils/db');
 const { scheduleBye } = require('../utils/byeScheduler');
+const { logAction }   = require('../utils/actionLogger');
 
 const AVIS_CLIENTS_CHANNEL_ID = '915921133260386335';
 const GOODBYE_IMAGE_URL = 'https://i.goopics.net/8t3ju4.png';
@@ -89,7 +90,7 @@ module.exports = {
         statut: 'en_cours',
       });
       if (vente) {
-        const prixStr  = interaction.options.getString('prix');
+        const prixStr   = interaction.options.getString('prix');
         const prixSaisi = prixStr
           ? parseInt(prixStr.replace(/['\s,.]/g, ''), 10) || null
           : null;
@@ -98,6 +99,18 @@ module.exports = {
           { _id: vente._id },
           { $set: { prixFinal, statut: 'vendu', dateVente: new Date() } },
         );
+        await logAction({
+          type:      'vente_cloture',
+          actorId:   interaction.user.id,
+          actorName: interaction.member?.displayName ?? interaction.user.username,
+          details: {
+            annonce:    vente.annonce,
+            type:       vente.type,
+            adresse:    vente.adresse,
+            prixFinal,
+            prixDepart: vente.prixDepart,
+          },
+        });
       }
     } catch (e) { console.error('[BYE] Erreur maj vente_lbc :', e.message); }
 

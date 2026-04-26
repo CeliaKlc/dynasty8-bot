@@ -16,27 +16,34 @@
     <nav class="sidebar-nav">
       <a href="#" class="nav-item active" data-page="dashboard">
         <span class="nav-icon">📊</span> Dashboard
+        <span class="nav-badge nav-badge-danger" id="nav-badge-dashboard" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="agents">
         <span class="nav-icon">👤</span> Agents
       </a>
       <a href="#" class="nav-item" data-page="annonces">
         <span class="nav-icon">🏠</span> Annonces
+        <span class="nav-badge nav-badge-warning" id="nav-badge-annonces" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="sacs">
         <span class="nav-icon">🎒</span> Sacs
       </a>
       <a href="#" class="nav-item" data-page="rdv">
         <span class="nav-icon">📅</span> Rendez-vous
+        <span class="nav-badge nav-badge-info" id="nav-badge-rdv" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="attente">
         <span class="nav-icon">📋</span> Attente
+        <span class="nav-badge nav-badge-danger" id="nav-badge-attente" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="recap">
         <span class="nav-icon">📝</span> Récap Semaine
       </a>
       <a href="#" class="nav-item" data-page="reprise">
         <span class="nav-icon">🏷️</span> Reprise bien
+      </a>
+      <a href="#" class="nav-item" data-page="logs">
+        <span class="nav-icon">📜</span> Historique
       </a>
       <a href="#" class="nav-item" data-page="config">
         <span class="nav-icon">⚙️</span> Configuration
@@ -51,6 +58,11 @@
     <!-- Page : Dashboard -->
     <section id="page-dashboard" class="page active">
       <h2 class="page-title">Dashboard</h2>
+
+      <!-- Alertes -->
+      <div id="alerts-section" style="display:none;margin-bottom:20px">
+        <div id="alerts-list"></div>
+      </div>
 
       <!-- Indicateurs généraux -->
       <div class="stats-grid" id="stats-grid">
@@ -105,17 +117,19 @@
       <div class="agents-grid" id="agents-grid"></div>
     </section>
 
-    <!-- Page : Annonces -->
+    <!-- Page : Annonces / Dossiers -->
     <section id="page-annonces" class="page">
-      <h2 class="page-title">Annonces récentes</h2>
-      <div class="table-wrapper">
-        <table class="data-table" id="annonces-table">
-          <thead>
-            <tr><th>N°</th><th>Agent</th><th>Type</th><th>Statut</th><th>Ticket</th><th>Annonce</th><th>Modifié</th><th></th></tr>
-          </thead>
-          <tbody id="annonces-body"></tbody>
-        </table>
+      <div class="page-header">
+        <h2 class="page-title">Dossiers LBC</h2>
+        <div class="annonces-filters" id="annonces-filters">
+          <button class="annonce-filter-btn active" data-filter="">Tous</button>
+          <button class="annonce-filter-btn" data-filter="en_cours">En cours</button>
+          <button class="annonce-filter-btn annonce-filter-retard" data-filter="retard">⚠️ En retard</button>
+          <button class="annonce-filter-btn" data-filter="vendu">Vendus</button>
+        </div>
       </div>
+      <div id="annonces-count" style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px"></div>
+      <div class="annonces-grid" id="annonces-grid"></div>
     </section>
 
     <!-- Page : Rendez-vous -->
@@ -396,6 +410,38 @@
           </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- Page : Historique des actions -->
+    <section id="page-logs" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Historique des actions</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="logs-filter-type" class="logs-filter-select">
+            <option value="">Tous les types</option>
+            <option value="recap_lbc">📋 Récap LBC</option>
+            <option value="vente_cloture">✅ Vente confirmée</option>
+            <option value="attente_add">➕ Ajout attente</option>
+            <option value="attente_remove">❌ Retrait attente</option>
+            <option value="attente_update">✏️ Mise à jour attente</option>
+            <option value="recap_semaine">📣 Récap semaine</option>
+            <option value="agent_create">👤 Agent créé</option>
+            <option value="agent_update">📝 Agent modifié</option>
+            <option value="agent_delete">🗑️ Agent supprimé</option>
+            <option value="sac_donner">🎒 Sac attribué</option>
+            <option value="sac_retirer">📤 Sac retiré</option>
+          </select>
+          <select id="logs-filter-actor" class="logs-filter-select">
+            <option value="">Tous les agents</option>
+          </select>
+          <button class="btn" id="btn-logs-refresh" style="background:var(--bg3);color:var(--text)">🔄 Rafraîchir</button>
+        </div>
+      </div>
+
+      <div id="logs-timeline"></div>
+      <div id="logs-empty" style="display:none;color:var(--text-muted);font-size:.875rem;padding:24px 0">
+        Aucune action enregistrée pour ces filtres.
       </div>
     </section>
 

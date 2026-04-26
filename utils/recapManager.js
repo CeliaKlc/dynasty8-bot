@@ -3,6 +3,7 @@
 
 const { getDB }     = require('./db');
 const { buildRecap, GRADE_ROLE_IDS, GRADES_CHOICES } = require('../commands/recapSemaine');
+const { logAction } = require('./actionLogger');
 
 async function sendRecap(client, recap) {
   try {
@@ -48,6 +49,12 @@ async function sendRecap(client, recap) {
       { id: recap.id },
       { $set: { statut: 'envoyé', publishedAt: new Date() } },
     );
+    await logAction({
+      type:      'recap_semaine',
+      actorId:   recap.createdBy ?? 'web',
+      actorName: recap.createdBy ?? 'Panel web',
+      details:   { canalId: recap.canalId, recapId: recap.id },
+    });
     console.log(`[RECAP] ✅ Récap envoyé : ${recap.id}`);
   } catch (err) {
     console.error(`[RECAP] ❌ Erreur envoi ${recap.id} :`, err.message);

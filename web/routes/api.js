@@ -7,6 +7,7 @@ const { ObjectId } = require('mongodb');
 const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManager');
 const { calculerReprise, getResumeTousTypes } = require('../../utils/repriseManager');
 const { BIENS }                              = require('../../utils/annonceBuilder');
+const { logAction }                          = require('../../utils/actionLogger');
 
 const router = Router();
 
@@ -154,6 +155,12 @@ router.post('/agents', requireAdmin, async (req, res) => {
 
     await getDB().collection('agents').insertOne(doc);
     await agentCache.refresh(getDB());
+    await logAction({
+      type:      'agent_create',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { name: doc.name, slug: doc.slug },
+    });
     res.status(201).json({ ok: true });
   } catch (err) {
     console.error('[API] POST /agents :', err);
@@ -178,6 +185,12 @@ router.put('/agents/:slug', requireAdmin, async (req, res) => {
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Agent introuvable' });
 
     await agentCache.refresh(getDB());
+    await logAction({
+      type:      'agent_update',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { slug },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /agents :', err);
@@ -192,6 +205,12 @@ router.delete('/agents/:slug', requireAdmin, async (req, res) => {
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Agent introuvable' });
 
     await agentCache.refresh(getDB());
+    await logAction({
+      type:      'agent_delete',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { slug: req.params.slug },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] DELETE /agents :', err);
@@ -215,27 +234,78 @@ router.post('/agents/refresh', requireAdmin, async (req, res) => {
 
 router.get('/annonces', requireAuth, async (req, res) => {
   try {
-    const annonces = await getDB()
-      .collection('annonce_links')
+    const db = getDB();
+
+    // Récupère toutes les annonces (augmenté à 100)
+    const annonces = await db.collection('annonce_links')
       .find({})
       .sort({ updatedAt: -1 })
-      .limit(50)
+      .limit(100)
       .toArray();
 
-    // Enrichir avec les infos agent du cache
+    // Joint les ventes_lbc par ticketChannelId (prend la plus récente si plusieurs)
+    const ticketIds = annonces.map(a => a.ticketChannelId).filter(Boolean);
+    const ventes    = await db.collection('ventes_lbc')
+      .find({ ticketChannelId: { $in: ticketIds } })
+      .sort({ dateRecap: -1 })
+      .toArray();
+
+    // ticketChannelId → vente la plus récente
+    const venteMap = {};
+    ventes.forEach(v => {
+      if (!venteMap[v.ticketChannelId]) venteMap[v.ticketChannelId] = v;
+    });
+
     const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
-    const enriched = annonces.map(a => ({
-      ...a,
-      id:    a._id.toString(),
-      agent: a.agentId ? {
-        name:  agentMap[a.agentId]?.name  ?? 'Inconnu',
-        emoji: agentMap[a.agentId]?.emoji ?? '',
-        photo: agentMap[a.agentId]?.photo ?? null,
-      } : null,
-    }));
+    const now      = new Date();
+
+    const enriched = annonces.map(a => {
+      const vente    = a.ticketChannelId ? (venteMap[a.ticketChannelId] ?? null) : null;
+      // Agent : depuis annonce_links d'abord, sinon depuis ventes_lbc
+      const agentId  = a.agentId ?? vente?.agentId ?? null;
+      const agent    = agentId ? agentMap[agentId] : null;
+
+      // Statut consolidé
+      const statutDossier = vente?.statut ?? (a.vendu === true ? 'vendu' : null);
+
+      // Jours depuis l'ouverture du dossier
+      const dateRef    = vente?.dateRecap ? new Date(vente.dateRecap) : (a.updatedAt ? new Date(a.updatedAt) : null);
+      const joursOuverts = dateRef ? Math.floor((now - dateRef) / 86_400_000) : null;
+      const retard       = statutDossier === 'en_cours' && joursOuverts != null && joursOuverts >= 7;
+
+      return {
+        id:                    a._id.toString(),
+        numero:                a.numero                ?? null,
+        ticketChannelId:       a.ticketChannelId       ?? null,
+        announcementChannelId: a.announcementChannelId ?? null,
+        updatedAt:             a.updatedAt             ?? null,
+        agent: agent ? { id: agent.id, name: agent.name, emoji: agent.emoji, photo: agent.photo } : null,
+        vente: vente ? {
+          type:       vente.type      ?? null,
+          adresse:    vente.adresse   ?? null,
+          etage:      vente.etage     ?? null,
+          prixDepart: vente.prixDepart ?? null,
+          prixFinal:  vente.prixFinal  ?? null,
+          statut:     vente.statut,
+          dateRecap:  vente.dateRecap  ?? null,
+          dateVente:  vente.dateVente  ?? null,
+        } : null,
+        statutDossier,
+        joursOuverts,
+        retard,
+      };
+    });
+
+    // Tri : en retard → en cours → vendus → sans dossier
+    const order = { en_cours: 1, vendu: 2 };
+    enriched.sort((a, b) => {
+      if (a.retard !== b.retard) return a.retard ? -1 : 1;
+      return (order[a.statutDossier] ?? 3) - (order[b.statutDossier] ?? 3);
+    });
 
     res.json(enriched);
   } catch (err) {
+    console.error('[API] /annonces :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -322,6 +392,12 @@ router.put('/sacs/:agentId/donner', requireAdmin, async (req, res) => {
       },
       { upsert: true },
     );
+    await logAction({
+      type:      'sac_donner',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { agentId, agentName: agent.name, sacs },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /sacs/donner :', err);
@@ -341,6 +417,13 @@ router.put('/sacs/:agentId/retirer', requireAdmin, async (req, res) => {
       { agentId },
       { $pull: { sacs: { $in: sacs } }, $set: { updatedAt: new Date() } },
     );
+    const agent = agentCache.getById(agentId);
+    await logAction({
+      type:      'sac_retirer',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { agentId, agentName: agent?.name ?? 'Inconnu', sacs },
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /sacs/retirer :', err);
@@ -767,6 +850,157 @@ router.post('/recap', requireAdmin, async (req, res) => {
     res.json({ ok: true, id: recap.id });
   } catch (err) {
     console.error('[API] POST /recap :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// ALERTES
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/alerts', requireAuth, async (req, res) => {
+  try {
+    const db  = getDB();
+    const now = new Date();
+
+    const cutoff15j = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+    const cutoff7j  = new Date(now.getTime() -  7 * 24 * 60 * 60 * 1000);
+    const cutoff30j = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Bornes du jour courant (ISO string pour les RDV)
+    const todayStr = now.toISOString().slice(0, 10); // "2025-04-26"
+
+    const [
+      attenteActiveCount,
+      attenteContacteCount,
+      dossiersLbcCount,
+      rdvAujourdhui,
+    ] = await Promise.all([
+      // Clients "active" sans contact depuis +15 jours
+      db.collection('waiting_list').countDocuments({
+        status:    'active',
+        createdAt: { $lt: cutoff15j },
+      }),
+      // Clients "contacté" sans clôture depuis +30 jours
+      db.collection('waiting_list').countDocuments({
+        status:    'contacté',
+        createdAt: { $lt: cutoff30j },
+      }),
+      // Dossiers LBC en cours depuis +7 jours
+      db.collection('ventes_lbc').countDocuments({
+        statut:    'en_cours',
+        dateRecap: { $exists: true, $lt: cutoff7j },
+      }),
+      // RDV prévus aujourd'hui
+      db.collection('rendez_vous')
+        .find({ statut: 'prévu', datetime: { $gte: `${todayStr}T00:00:00.000Z`, $lte: `${todayStr}T23:59:59.999Z` } })
+        .toArray(),
+    ]);
+
+    const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
+
+    const alerts = [];
+
+    if (attenteActiveCount > 0) {
+      alerts.push({
+        id:    'attente_active',
+        level: 'danger',
+        icon:  '⏰',
+        count: attenteActiveCount,
+        label: `client${attenteActiveCount > 1 ? 's' : ''} en attente sans contact depuis plus de 15 jours`,
+        page:  'attente',
+      });
+    }
+
+    if (dossiersLbcCount > 0) {
+      alerts.push({
+        id:    'dossiers_lbc',
+        level: 'warning',
+        icon:  '📋',
+        count: dossiersLbcCount,
+        label: `dossier${dossiersLbcCount > 1 ? 's' : ''} LBC ouvert${dossiersLbcCount > 1 ? 's' : ''} depuis plus de 7 jours sans clôture`,
+        page:  'annonces',
+      });
+    }
+
+    if (attenteContacteCount > 0) {
+      alerts.push({
+        id:    'attente_contacte',
+        level: 'warning',
+        icon:  '📞',
+        count: attenteContacteCount,
+        label: `client${attenteContacteCount > 1 ? 's' : ''} contacté${attenteContacteCount > 1 ? 's' : ''} sans réponse depuis plus de 30 jours`,
+        page:  'attente',
+      });
+    }
+
+    if (rdvAujourdhui.length > 0) {
+      alerts.push({
+        id:    'rdv_today',
+        level: 'info',
+        icon:  '📅',
+        count: rdvAujourdhui.length,
+        label: `rendez-vous aujourd'hui`,
+        page:  'rdv',
+        items: rdvAujourdhui.slice(0, 5).map(r => ({
+          datetime:    r.datetime,
+          description: r.description,
+          clientName:  r.clientName ?? null,
+          agentName:   agentMap[r.agentId]?.name  ?? 'Inconnu',
+          agentEmoji:  agentMap[r.agentId]?.emoji ?? '',
+        })),
+      });
+    }
+
+    res.json({
+      alerts,
+      urgentCount: alerts
+        .filter(a => a.level === 'danger')
+        .reduce((s, a) => s + a.count, 0),
+    });
+  } catch (err) {
+    console.error('[API] GET /alerts :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// HISTORIQUE DES ACTIONS
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/logs', requireAuth, async (req, res) => {
+  try {
+    const limit    = Math.min(parseInt(req.query.limit) || 100, 200);
+    const { type, actorId } = req.query;
+
+    const query = {};
+    if (type)    query.type    = type;
+    if (actorId) query.actorId = actorId;
+
+    const logs = await getDB().collection('action_logs')
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+
+    const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
+
+    const enriched = logs.map(l => ({
+      id:         l._id.toString(),
+      type:       l.type,
+      icon:       l.icon,
+      label:      l.label,
+      actorId:    l.actorId,
+      actorName:  l.actorName,
+      actorEmoji: agentMap[l.actorId]?.emoji ?? '',
+      actorPhoto: agentMap[l.actorId]?.photo ?? null,
+      details:    l.details,
+      createdAt:  l.createdAt,
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('[API] GET /logs :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
