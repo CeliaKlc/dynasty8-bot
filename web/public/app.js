@@ -50,6 +50,89 @@ function loadPage(page) {
   if (page === 'config')    loadConfig();
 }
 
+// ── Alertes ───────────────────────────────────────────────────────────────────
+
+async function loadAlerts() {
+  const data = await api('/alerts');
+  if (!data) return;
+
+  const { alerts, urgentCount } = data;
+
+  // ── Badges sidebar ────────────────────────────────────────────────────────
+  const badgeDashboard = document.getElementById('nav-badge-dashboard');
+  const badgeAttente   = document.getElementById('nav-badge-attente');
+  const badgeAnnonces  = document.getElementById('nav-badge-annonces');
+  const badgeRdv       = document.getElementById('nav-badge-rdv');
+
+  // Reset
+  [badgeDashboard, badgeAttente, badgeAnnonces, badgeRdv].forEach(b => { if (b) b.style.display = 'none'; });
+
+  alerts.forEach(a => {
+    if (a.id === 'attente_active' || a.id === 'attente_contacte') {
+      const b = document.getElementById('nav-badge-attente');
+      if (b) { b.textContent = a.count; b.style.display = ''; }
+    }
+    if (a.id === 'dossiers_lbc') {
+      const b = document.getElementById('nav-badge-annonces');
+      if (b) { b.textContent = a.count; b.style.display = ''; }
+    }
+    if (a.id === 'rdv_today') {
+      const b = document.getElementById('nav-badge-rdv');
+      if (b) { b.textContent = a.count; b.style.display = ''; }
+    }
+  });
+
+  if (urgentCount > 0 && badgeDashboard) {
+    badgeDashboard.textContent = urgentCount;
+    badgeDashboard.style.display = '';
+  }
+
+  // ── Section alertes dashboard ─────────────────────────────────────────────
+  const section = document.getElementById('alerts-section');
+  const list    = document.getElementById('alerts-list');
+  if (!section || !list) return;
+
+  if (!alerts.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+  list.innerHTML = '';
+
+  alerts.forEach(a => {
+    const card = document.createElement('div');
+    card.className = `alert-card alert-${a.level}`;
+
+    // Détail des RDV du jour
+    let itemsHtml = '';
+    if (a.items?.length) {
+      itemsHtml = `<div class="alert-items">${
+        a.items.map(r => {
+          const heure = new Date(r.datetime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          return `<span class="alert-item-chip">${r.agentEmoji} ${r.agentName} · ${r.description}${r.clientName ? ` — ${r.clientName}` : ''} <strong>${heure}</strong></span>`;
+        }).join('')
+      }</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="alert-icon-wrap">${a.icon}</div>
+      <div class="alert-body">
+        <span class="alert-count">${a.count}</span>
+        <span class="alert-label">${a.label}</span>
+        ${itemsHtml}
+      </div>
+      <button class="alert-link btn" onclick="goToPage('${a.page}')">Voir →</button>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function goToPage(page) {
+  const link = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (link) link.click();
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 // Formatte un montant en $, style "175'000$" ou "1'200'000$"
@@ -59,6 +142,7 @@ function fmtCA(n) {
 }
 
 async function loadDashboard() {
+  loadAlerts(); // non bloquant — met à jour les badges et la section alertes
   const data = await api('/stats');
   if (!data) return;
 
@@ -457,57 +541,134 @@ document.getElementById('btn-delete-agent').addEventListener('click', async () =
   }
 });
 
-// ── Annonces ──────────────────────────────────────────────────────────────────
+// ── Annonces / Dossiers ───────────────────────────────────────────────────────
+
+let annoncesData   = [];
+let annoncesFilter = '';
 
 async function loadAnnonces() {
-  const annonces = await api('/annonces');
-  if (!annonces) return;
+  annoncesData = await api('/annonces');
+  if (!annoncesData) return;
+  renderAnnonces();
 
-  const tbody = document.getElementById('annonces-body');
-  tbody.innerHTML = '';
+  // Filtres
+  document.getElementById('annonces-filters').addEventListener('click', e => {
+    const btn = e.target.closest('.annonce-filter-btn');
+    if (!btn) return;
+    document.querySelectorAll('.annonce-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    annoncesFilter = btn.dataset.filter;
+    renderAnnonces();
+  }, { once: true });
+}
 
-  annonces.forEach(a => {
-    const tr = document.createElement('tr');
-    const vendu = a.vendu === true;
-    const date  = a.updatedAt ? new Date(a.updatedAt).toLocaleDateString('fr-FR') : '—';
+function renderAnnonces() {
+  const grid = document.getElementById('annonces-grid');
+  const countEl = document.getElementById('annonces-count');
+  grid.innerHTML = '';
 
+  let list = annoncesData;
+
+  // Filtre client-side sur les données déjà chargées
+  if (annoncesFilter === 'en_cours') list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
+  if (annoncesFilter === 'retard')   list = list.filter(a => a.retard);
+  if (annoncesFilter === 'vendu')    list = list.filter(a => a.statutDossier === 'vendu');
+
+  countEl.textContent = `${list.length} dossier${list.length > 1 ? 's' : ''}`;
+
+  if (!list.length) {
+    grid.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem;padding:8px 0">Aucun dossier pour ce filtre.</p>';
+    return;
+  }
+
+  const discordBase = guildId ? `https://discord.com/channels/${guildId}` : null;
+
+  list.forEach(a => {
+    const card = document.createElement('div');
+    card.className = `annonce-card${a.retard ? ' annonce-retard' : a.statutDossier === 'vendu' ? ' annonce-vendu' : ''}`;
+
+    // Badge statut + délai
+    let badgeHtml = '';
+    if (a.retard) {
+      badgeHtml = `<span class="annonce-badge annonce-badge-retard">⚠️ En retard · ${a.joursOuverts}j</span>`;
+    } else if (a.statutDossier === 'en_cours') {
+      badgeHtml = `<span class="annonce-badge annonce-badge-encours">En cours${a.joursOuverts != null ? ` · ${a.joursOuverts}j` : ''}</span>`;
+    } else if (a.statutDossier === 'vendu') {
+      badgeHtml = `<span class="annonce-badge annonce-badge-vendu">✅ Vendu</span>`;
+    } else {
+      badgeHtml = `<span class="annonce-badge annonce-badge-unknown">Sans dossier</span>`;
+    }
+
+    // Agent
     const agentHtml = a.agent
-      ? `<div style="display:flex;align-items:center;gap:6px">
-           ${a.agent.photo ? `<img src="${a.agent.photo}" style="width:24px;height:24px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">` : `<span>${a.agent.emoji}</span>`}
-           <span>${a.agent.name}</span>
-         </div>`
-      : '<span style="color:var(--text-muted)">—</span>';
+      ? `${a.agent.photo
+          ? `<img class="annonce-agent-avatar" src="${a.agent.photo}" alt="" onerror="this.style.display='none'">`
+          : `<span class="annonce-agent-emoji">${a.agent.emoji || '👤'}</span>`}
+         <span class="annonce-agent-name">${a.agent.name}</span>`
+      : `<span style="color:var(--text-muted)">Agent inconnu</span>`;
 
-    const discordBase   = guildId ? `https://discord.com/channels/${guildId}` : null;
-    const ticketLink    = (discordBase && a.ticketChannelId)
-      ? `<a href="${discordBase}/${a.ticketChannelId}" target="_blank" style="color:var(--accent)">Voir</a>`
-      : '—';
-    const annonceLink   = (discordBase && a.announcementChannelId)
-      ? `<a href="${discordBase}/${a.announcementChannelId}" target="_blank" style="color:var(--accent)">Voir</a>`
-      : '—';
-    const deleteBtn     = currentUser?.isAdmin
-      ? `<button onclick="deleteAnnonce('${a.id}','${a.numero || ''}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.85rem;padding:2px 6px;border-radius:4px;transition:color .15s" title="Supprimer" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'">🗑️</button>`
+    // Bien
+    const typeHtml    = a.vente?.type    ? `<span class="annonce-type">${a.vente.type}</span>` : '';
+    const adresseHtml = a.vente?.adresse
+      ? `<span class="annonce-adresse">📍 ${a.vente.adresse}${a.vente.etage ? ` · Étage ${a.vente.etage}` : ''}</span>`
       : '';
 
-    tr.innerHTML = `
-      <td><strong>${a.numero || '—'}</strong></td>
-      <td>${agentHtml}</td>
-      <td style="color:var(--text-muted);font-size:.8rem">${a.type || '—'}</td>
-      <td>
-        <span class="status-dot ${vendu ? 'status-sold' : 'status-active'}"></span>
-        ${vendu ? 'Vendu' : 'En cours'}
-      </td>
-      <td>${ticketLink}</td>
-      <td>${annonceLink}</td>
-      <td style="color:var(--text-muted)">${date}</td>
-      <td>${deleteBtn}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+    // Prix
+    let prixHtml = '';
+    if (a.vente?.prixDepart) {
+      prixHtml = `<span class="annonce-prix-depart">💰 ${fmtCA(a.vente.prixDepart)}</span>`;
+      if (a.vente.prixFinal && a.vente.prixFinal !== a.vente.prixDepart) {
+        prixHtml += `<span class="annonce-prix-final">→ ${fmtCA(a.vente.prixFinal)}</span>`;
+      }
+    }
 
-  if (annonces.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:32px">Aucune annonce</td></tr>';
-  }
+    // Dates
+    const dateOuverture = a.vente?.dateRecap
+      ? new Date(a.vente.dateRecap).toLocaleDateString('fr-FR')
+      : a.updatedAt ? new Date(a.updatedAt).toLocaleDateString('fr-FR') : null;
+    const dateVente = a.vente?.dateVente
+      ? new Date(a.vente.dateVente).toLocaleDateString('fr-FR') : null;
+
+    const dateHtml = dateVente
+      ? `<span class="annonce-date">Vendu le ${dateVente}</span>`
+      : dateOuverture
+        ? `<span class="annonce-date">Ouvert le ${dateOuverture}</span>`
+        : '';
+
+    // Liens Discord
+    const ticketLink  = discordBase && a.ticketChannelId
+      ? `<a class="annonce-link" href="${discordBase}/${a.ticketChannelId}" target="_blank">🎫 Ticket</a>`
+      : '';
+    const annonceLink = discordBase && a.announcementChannelId
+      ? `<a class="annonce-link" href="${discordBase}/${a.announcementChannelId}" target="_blank">📢 Salon</a>`
+      : '';
+
+    const deleteBtn = currentUser?.isAdmin
+      ? `<button class="annonce-delete-btn" onclick="deleteAnnonce('${a.id}','${a.numero || ''}')" title="Supprimer">🗑️</button>`
+      : '';
+
+    card.innerHTML = `
+      <div class="annonce-card-header">
+        <div class="annonce-numero">#${a.numero || '—'}</div>
+        ${badgeHtml}
+      </div>
+      <div class="annonce-bien">
+        ${typeHtml}${adresseHtml}
+      </div>
+      <div class="annonce-card-body">
+        <div class="annonce-agent">${agentHtml}</div>
+        <div class="annonce-prix">${prixHtml}</div>
+      </div>
+      <div class="annonce-card-footer">
+        <div class="annonce-links">${ticketLink}${annonceLink}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${dateHtml}
+          ${deleteBtn}
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
 }
 
 async function deleteAnnonce(id, numero) {
@@ -516,7 +677,8 @@ async function deleteAnnonce(id, numero) {
   const res = await api(`/annonces/${id}`, { method: 'DELETE' });
   if (res?.ok) {
     toast('🗑️ Annonce supprimée');
-    loadAnnonces();
+    annoncesData = annoncesData.filter(a => a.id !== id);
+    renderAnnonces();
   } else {
     toast(res?.error || 'Erreur', 'error');
   }
@@ -1866,5 +2028,7 @@ async function initUser() {
   // Récupérer le guild ID pour les liens Discord
   const cfg = await api('/config');
   if (cfg?.guildId) guildId = cfg.guildId;
+  // Charger les alertes dès le départ (met les badges sur tous les items de nav)
+  loadAlerts();
   loadDashboard();
 })();

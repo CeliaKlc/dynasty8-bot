@@ -16,21 +16,25 @@
     <nav class="sidebar-nav">
       <a href="#" class="nav-item active" data-page="dashboard">
         <span class="nav-icon">📊</span> Dashboard
+        <span class="nav-badge nav-badge-danger" id="nav-badge-dashboard" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="agents">
         <span class="nav-icon">👤</span> Agents
       </a>
       <a href="#" class="nav-item" data-page="annonces">
         <span class="nav-icon">🏠</span> Annonces
+        <span class="nav-badge nav-badge-warning" id="nav-badge-annonces" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="sacs">
         <span class="nav-icon">🎒</span> Sacs
       </a>
       <a href="#" class="nav-item" data-page="rdv">
         <span class="nav-icon">📅</span> Rendez-vous
+        <span class="nav-badge nav-badge-info" id="nav-badge-rdv" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="attente">
         <span class="nav-icon">📋</span> Attente
+        <span class="nav-badge nav-badge-danger" id="nav-badge-attente" style="display:none"></span>
       </a>
       <a href="#" class="nav-item" data-page="recap">
         <span class="nav-icon">📝</span> Récap Semaine
@@ -54,6 +58,11 @@
     <!-- Page : Dashboard -->
     <section id="page-dashboard" class="page active">
       <h2 class="page-title">Dashboard</h2>
+
+      <!-- Alertes -->
+      <div id="alerts-section" style="display:none;margin-bottom:20px">
+        <div id="alerts-list"></div>
+      </div>
 
       <!-- Indicateurs généraux -->
       <div class="stats-grid" id="stats-grid">
@@ -108,17 +117,19 @@
       <div class="agents-grid" id="agents-grid"></div>
     </section>
 
-    <!-- Page : Annonces -->
+    <!-- Page : Annonces / Dossiers -->
     <section id="page-annonces" class="page">
-      <h2 class="page-title">Annonces récentes</h2>
-      <div class="table-wrapper">
-        <table class="data-table" id="annonces-table">
-          <thead>
-            <tr><th>N°</th><th>Agent</th><th>Type</th><th>Statut</th><th>Ticket</th><th>Annonce</th><th>Modifié</th><th></th></tr>
-          </thead>
-          <tbody id="annonces-body"></tbody>
-        </table>
+      <div class="page-header">
+        <h2 class="page-title">Dossiers LBC</h2>
+        <div class="annonces-filters" id="annonces-filters">
+          <button class="annonce-filter-btn active" data-filter="">Tous</button>
+          <button class="annonce-filter-btn" data-filter="en_cours">En cours</button>
+          <button class="annonce-filter-btn annonce-filter-retard" data-filter="retard">⚠️ En retard</button>
+          <button class="annonce-filter-btn" data-filter="vendu">Vendus</button>
+        </div>
       </div>
+      <div id="annonces-count" style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px"></div>
+      <div class="annonces-grid" id="annonces-grid"></div>
     </section>
 
     <!-- Page : Rendez-vous -->
