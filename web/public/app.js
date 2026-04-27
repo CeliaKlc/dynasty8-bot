@@ -2468,7 +2468,7 @@ async function loadReprise() {
   const types = await api('/reprise/types');
   if (!types) return;
 
-  // Remplir le select
+  // Remplir le select individuel
   const sel = document.getElementById('reprise-type-select');
   sel.innerHTML = '<option value="">— Choisir un type —</option>';
   types.forEach(t => {
@@ -2476,6 +2476,20 @@ async function loadReprise() {
     opt.value       = t.type;
     opt.textContent = t.type;
     sel.appendChild(opt);
+  });
+
+  // Remplir les selects du lot
+  const lotSelIds = ['lot-type1-select', 'lot-type2-select', 'lot-type3-select'];
+  const lotDefaults = ['— Choisir —', '— Choisir —', '— Aucun —'];
+  lotSelIds.forEach((id, i) => {
+    const s = document.getElementById(id);
+    s.innerHTML = `<option value="">${lotDefaults[i]}</option>`;
+    types.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value       = t.type;
+      opt.textContent = t.type;
+      s.appendChild(opt);
+    });
   });
 
   // Remplir le tableau récapitulatif
@@ -2527,15 +2541,34 @@ async function doCalculerReprise(type) {
 
   // Badge de fiabilité
   const badge = document.getElementById('reprise-fiabilite-badge');
-  if (!stats.count) {
+  if (!stats.count && !stats.bundlesExclus) {
     badge.textContent = 'Aucune donnée';
     badge.className   = 'reprise-badge reprise-badge-none';
+  } else if (!stats.count && stats.bundlesExclus) {
+    badge.textContent = 'Ventes solo introuvables';
+    badge.className   = 'reprise-badge reprise-badge-warn';
   } else if (stats.fiable) {
     badge.textContent = `✅ Données fiables (${stats.count} ventes)`;
     badge.className   = 'reprise-badge reprise-badge-ok';
   } else {
     badge.textContent = `⚠️ Données limitées — ${stats.count} vente${stats.count > 1 ? 's' : ''}`;
     badge.className   = 'reprise-badge reprise-badge-warn';
+  }
+
+  // Note lots exclus
+  let lotNote = document.getElementById('reprise-lot-note');
+  if (!lotNote) {
+    lotNote = document.createElement('p');
+    lotNote.id = 'reprise-lot-note';
+    lotNote.style.cssText = 'font-size:.78rem;color:var(--text-muted);margin-top:6px;font-style:italic';
+    document.getElementById('reprise-fiabilite-badge').insertAdjacentElement('afterend', lotNote);
+  }
+  if (stats.bundlesExclus > 0) {
+    const n = stats.bundlesExclus;
+    lotNote.textContent = `ℹ️ ${n} vente${n > 1 ? 's' : ''} en lot exclue${n > 1 ? 's' : ''} du calcul (prix de lot ≠ prix individuel)`;
+    lotNote.style.display = '';
+  } else {
+    lotNote.style.display = 'none';
   }
 
   // Stats générales
@@ -2553,6 +2586,57 @@ async function doCalculerReprise(type) {
 
 document.getElementById('btn-reprise-calculer').addEventListener('click', () => {
   doCalculerReprise(document.getElementById('reprise-type-select').value);
+});
+
+async function doCalculerRepriseLot() {
+  const t1 = document.getElementById('lot-type1-select').value;
+  const t2 = document.getElementById('lot-type2-select').value;
+  const t3 = document.getElementById('lot-type3-select').value;
+
+  if (!t1 || !t2) { toast('Sélectionnez au moins 2 biens pour le lot', 'error'); return; }
+  if (t1 === t2 && !t3) { toast('Les deux biens doivent être différents (ou ajoutez un 3ème)', 'error'); return; }
+
+  const params = new URLSearchParams({ type1: t1, type2: t2 });
+  if (t3) params.append('type3', t3);
+
+  const stats = await api(`/reprise/lot?${params}`);
+  if (!stats) return;
+
+  const resultDiv = document.getElementById('lot-result');
+  resultDiv.style.display = '';
+
+  // Titre
+  const label = [t1, t2, t3].filter(Boolean).join(' + ');
+  document.getElementById('lot-result-title').textContent = `📦 Lot — ${label}`;
+
+  // Badge fiabilité
+  const badge = document.getElementById('lot-fiabilite-badge');
+  if (!stats.count) {
+    badge.textContent = 'Aucune donnée pour ce lot';
+    badge.className   = 'reprise-badge reprise-badge-none';
+  } else if (stats.fiable) {
+    badge.textContent = `✅ Données fiables (${stats.count} ventes)`;
+    badge.className   = 'reprise-badge reprise-badge-ok';
+  } else {
+    badge.textContent = `⚠️ Données limitées — ${stats.count} vente${stats.count > 1 ? 's' : ''}`;
+    badge.className   = 'reprise-badge reprise-badge-warn';
+  }
+
+  // Stats
+  document.getElementById('lot-count').textContent  = stats.count ?? '0';
+  document.getElementById('lot-median').textContent = fmtReprisePrix(stats.mediane);
+  document.getElementById('lot-min').textContent    = fmtReprisePrix(stats.min);
+  document.getElementById('lot-max').textContent    = fmtReprisePrix(stats.max);
+
+  // Paliers
+  const r = stats.reprises;
+  document.getElementById('lot-prudent').textContent   = r ? `≤ ${fmtReprisePrix(r.prudent)}`   : '—';
+  document.getElementById('lot-standard').textContent  = r ? `≤ ${fmtReprisePrix(r.standard)}`  : '—';
+  document.getElementById('lot-optimiste').textContent = r ? `≤ ${fmtReprisePrix(r.optimiste)}` : '—';
+}
+
+document.getElementById('btn-lot-calculer').addEventListener('click', () => {
+  doCalculerRepriseLot();
 });
 
 // ── Sidebar utilisateur ───────────────────────────────────────────────────────

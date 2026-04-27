@@ -66,6 +66,13 @@ async function sendRdvReminder(client, rdv, isPreReminder = false) {
 }
 
 function scheduleRdv(client, rdv) {
+  // Garde-fou anti-doublon : si le RDV est déjà dans la map (planifié par le bot via /rdv),
+  // le change stream ne doit pas le re-planifier une deuxième fois.
+  if (timeouts.has(rdv.id)) {
+    console.log(`[RDV] ⚠️ RDV ${rdv.id} déjà planifié — doublon ignoré`);
+    return;
+  }
+
   const now = Date.now();
   const rdvTime = new Date(rdv.datetime).getTime();
   const ids = [];

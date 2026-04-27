@@ -1744,6 +1744,15 @@ body.login-page {
 }
 .reprise-form-row .btn { white-space: nowrap; }
 
+.reprise-lot-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.reprise-lot-form .form-group { flex: 1; min-width: 140px; margin: 0; }
+.reprise-lot-form .btn        { white-space: nowrap; align-self: flex-end; }
+
 .reprise-result-header {
   display: flex;
   align-items: center;
