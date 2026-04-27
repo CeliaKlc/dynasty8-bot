@@ -1,4 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const bienCache = require('../utils/bienCache');
+const { BIENS }  = require('../utils/annonceBuilder');
 const { handleAnnonceButton, handleAnnonceModal } = require('../commands/annonce');
 const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
 const { buildListeDetaillee } = require('../utils/attenteManager');
@@ -17,6 +19,24 @@ const ROLES_AUTORISES = [
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction) {
+
+    // === AUTOCOMPLETE ===
+    if (interaction.isAutocomplete()) {
+      const { commandName } = interaction;
+      const focused = interaction.options.getFocused(true);
+
+      // Autocomplete du champ "type" pour /annonce et /editannonce
+      if ((commandName === 'annonce' || commandName === 'editannonce') && focused.name === 'type') {
+        const query = focused.value.toLowerCase();
+        // Types prédéfinis + custom (bienCache inclut les deux après seed)
+        const allTypes = Object.keys({ ...BIENS, ...bienCache.getAll() });
+        const filtered = allTypes
+          .filter(t => t.toLowerCase().includes(query))
+          .slice(0, 25); // Discord limite à 25 suggestions
+        await interaction.respond(filtered.map(t => ({ name: t, value: t }))).catch(() => {});
+      }
+      return;
+    }
 
     // === BOUTONS ===
     if (interaction.isButton()) {

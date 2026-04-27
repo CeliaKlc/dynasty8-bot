@@ -15,6 +15,7 @@ const {
   buildAnnonceContent,
 } = require('../utils/annonceBuilder');
 const agentCache = require('../utils/agentCache');
+const bienCache  = require('../utils/bienCache');
 
 // ── Parse un message annonce existant ────────────────────────────────────────
 function parseAnnonceMessage(content, components) {
@@ -33,8 +34,10 @@ function parseAnnonceMessage(content, components) {
   const titleMatch = content.match(/✨ \*\*(?:À VENDRE|À LOUER) : (.+?)\*\* ✨/);
   const titlePart  = titleMatch ? titleMatch[1] : '';
 
-  const matchingTypes = Object.keys(BIENS).filter(t => {
-    const displayName = BIENS[t].titre ?? t;
+  // Inclure BIENS + types custom du cache
+  const allBiens = { ...BIENS, ...bienCache.getAll() };
+  const matchingTypes = Object.keys(allBiens).filter(t => {
+    const displayName = allBiens[t].titre ?? t;
     return titlePart === displayName || titlePart.startsWith(displayName + ' ');
   });
 
@@ -43,7 +46,7 @@ function parseAnnonceMessage(content, components) {
   // Disambiguïser les variantes Duplex selon la présence du frigo dans le stockage
   if (matchingTypes.length > 1) {
     const hasFrigo = content.includes('dans le frigo');
-    type = matchingTypes.find(t => (BIENS[t].frigo > 0) === hasFrigo) ?? matchingTypes[0];
+    type = matchingTypes.find(t => ((allBiens[t].frigo ?? 0) > 0) === hasFrigo) ?? matchingTypes[0];
   }
 
   // Quartier
@@ -114,11 +117,11 @@ module.exports = {
             .forEach(a => opt.addChoices({ name: a.name, value: a.id }));
       return opt;
     })
-    .addStringOption(opt => {
-      opt.setName('type').setDescription('Type de bien').setRequired(false);
-      Object.keys(BIENS).forEach(t => opt.addChoices({ name: t, value: t }));
-      return opt;
-    })
+    .addStringOption(opt => opt
+      .setName('type')
+      .setDescription('Type de bien — tapez pour rechercher')
+      .setRequired(false)
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('image')
       .setDescription('URL de l\'image à afficher sur l\'annonce (laisser vide = conserver)')
