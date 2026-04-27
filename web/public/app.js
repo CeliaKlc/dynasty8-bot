@@ -2102,24 +2102,35 @@ function buildLogDetails(log) {
 
 // ── Types de biens ────────────────────────────────────────────────────────────
 
-let biensData       = [];    // tableau [{type, base, frigo, caracteristiques, ...}]
-let biensSelected   = null;  // type string sélectionné
+let biensData     = [];    // [{type, base, frigo, caracteristiques, custom, ...}]
+let biensSelected = null;  // type string sélectionné
 
 async function loadBiens() {
   biensData = await api('/biens') ?? [];
   renderBiensList();
-  // Si un type était déjà sélectionné, le re-rendre
-  if (biensSelected) renderBiensEditor(biensSelected);
+  if (biensSelected) {
+    // Re-rendre l'éditeur si le type existe encore
+    if (biensData.find(b => b.type === biensSelected)) renderBiensEditor(biensSelected);
+    else { biensSelected = null; document.getElementById('biens-editor-col').innerHTML = '<div class="biens-empty-state"><span style="font-size:2.5rem">🏗️</span><p>Sélectionnez un type de bien à gauche pour l\'éditer.</p></div>'; }
+  }
 }
 
 function renderBiensList() {
   const col = document.getElementById('biens-list-col');
   col.innerHTML = '';
+
+  // Bouton "+ Nouveau type" en haut
+  const newBtn = document.createElement('button');
+  newBtn.className = 'biens-new-btn';
+  newBtn.innerHTML = '＋ Nouveau type de bien';
+  newBtn.addEventListener('click', openBienCreateModal);
+  col.appendChild(newBtn);
+
   biensData.forEach(b => {
     const item = document.createElement('div');
     item.className = 'biens-type-item' + (b.type === biensSelected ? ' active' : '');
     item.dataset.type = b.type;
-    item.innerHTML = `<span class="biens-type-dot"></span><span>${b.type}</span>`;
+    item.innerHTML = `<span class="biens-type-dot"></span><span style="flex:1">${b.type}</span>${b.custom ? '<span class="biens-type-badge">custom</span>' : ''}`;
     item.addEventListener('click', () => {
       biensSelected = b.type;
       document.querySelectorAll('.biens-type-item').forEach(el => el.classList.remove('active'));
@@ -2135,10 +2146,14 @@ function renderBiensEditor(type) {
   const bien = biensData.find(b => b.type === type);
   if (!bien) return;
 
-  const caract = bien.caracteristiques ?? [];
+  const caract   = bien.caracteristiques ?? [];
+  const isCustom = Boolean(bien.custom);
 
   col.innerHTML = `
-    <div class="biens-editor-title">✏️ ${type}</div>
+    <div class="biens-editor-title">
+      ✏️ ${escHtml(type)}
+      ${isCustom ? '<span class="biens-type-badge" style="font-size:.7rem;vertical-align:middle;margin-left:8px">custom</span>' : ''}
+    </div>
 
     <div class="biens-section-label">📦 Stockage</div>
     <div class="biens-storage-row">
@@ -2160,18 +2175,10 @@ function renderBiensEditor(type) {
 
     <div class="biens-section-label">✨ Options</div>
     <div class="biens-options-grid">
-      <label class="biens-option-label">
-        <input type="checkbox" id="b-modifiable" ${bien.modifiable ? 'checked' : ''}> 🔧 Intérieur modifiable
-      </label>
-      <label class="biens-option-label">
-        <input type="checkbox" id="b-ordinateur" ${bien.ordinateur ? 'checked' : ''}> 💻 Ordinateur
-      </label>
-      <label class="biens-option-label">
-        <input type="checkbox" id="b-cafe" ${bien.cafe ? 'checked' : ''}> ☕ Machine à café
-      </label>
-      <label class="biens-option-label">
-        <input type="checkbox" id="b-entreprise" ${bien.entrepriseOnly ? 'checked' : ''}> 🏭 Entreprises uniquement
-      </label>
+      <label class="biens-option-label"><input type="checkbox" id="b-modifiable" ${bien.modifiable ? 'checked' : ''}> 🔧 Intérieur modifiable</label>
+      <label class="biens-option-label"><input type="checkbox" id="b-ordinateur" ${bien.ordinateur ? 'checked' : ''}> 💻 Ordinateur</label>
+      <label class="biens-option-label"><input type="checkbox" id="b-cafe"       ${bien.cafe       ? 'checked' : ''}> ☕ Machine à café</label>
+      <label class="biens-option-label"><input type="checkbox" id="b-entreprise" ${bien.entrepriseOnly ? 'checked' : ''}> 🏭 Entreprises uniquement</label>
     </div>
 
     <div class="biens-section-label">ℹ️ Informations textuelles</div>
@@ -2181,16 +2188,17 @@ function renderBiensEditor(type) {
     </div>
     <div class="form-row" style="margin-bottom:0">
       <div class="form-group" style="margin-bottom:0">
-        <label>Titre affiché (optionnel — remplace le nom dans l'annonce)</label>
+        <label>Titre affiché <span style="color:var(--text-muted)">(optionnel)</span></label>
         <input type="text" id="b-titre" class="config-input" value="${escHtml(bien.titre ?? '')}" placeholder="Laisser vide pour utiliser le nom par défaut" style="width:100%">
       </div>
       <div class="form-group" style="margin-bottom:0">
-        <label>Couleur intérieure (optionnel)</label>
+        <label>Couleur intérieure <span style="color:var(--text-muted)">(optionnel)</span></label>
         <input type="text" id="b-couleur" class="config-input" value="${escHtml(bien.couleur ?? '')}" placeholder="ex : ⚪ Intérieur Blanc" style="width:100%">
       </div>
     </div>
 
     <div class="biens-editor-footer">
+      ${isCustom ? '<button class="biens-delete-btn" id="b-delete">🗑️ Supprimer ce type</button>' : ''}
       <button class="btn btn-primary" id="b-save">💾 Enregistrer</button>
     </div>
   `;
@@ -2198,9 +2206,8 @@ function renderBiensEditor(type) {
   // Ajouter une caractéristique
   document.getElementById('b-add-caract').addEventListener('click', () => {
     const list = document.getElementById('b-caract-list');
-    const idx  = list.children.length;
     const row  = document.createElement('div');
-    row.innerHTML = buildCaractRow('', idx);
+    row.innerHTML = buildCaractRow('', list.children.length);
     list.appendChild(row.firstElementChild);
     list.lastElementChild.querySelector('input').focus();
     bindCaractDelete(list.lastElementChild);
@@ -2209,11 +2216,16 @@ function renderBiensEditor(type) {
   // Bind delete sur items existants
   col.querySelectorAll('.biens-caract-item').forEach(el => bindCaractDelete(el));
 
+  // Bouton supprimer (custom seulement)
+  if (isCustom) {
+    document.getElementById('b-delete').addEventListener('click', () => deleteBien(type));
+  }
+
   // Sauvegarder
   document.getElementById('b-save').addEventListener('click', () => saveBien(type));
 }
 
-function buildCaractRow(value, idx) {
+function buildCaractRow(value) {
   return `<div class="biens-caract-item">
     <input class="biens-caract-input" type="text" value="${escHtml(value)}" placeholder="Ex : Chambre avec dressing">
     <button class="biens-caract-del" title="Supprimer">✕</button>
@@ -2232,7 +2244,7 @@ async function saveBien(type) {
   const base    = parseInt(document.getElementById('b-base').value, 10)  || 0;
   const frigo   = parseInt(document.getElementById('b-frigo').value, 10) || 0;
   const article = document.getElementById('b-article').value.trim();
-  const titre   = document.getElementById('b-titre').value.trim() || null;
+  const titre   = document.getElementById('b-titre').value.trim()   || null;
   const couleur = document.getElementById('b-couleur').value.trim() || null;
 
   const caracteristiques = Array.from(
@@ -2258,11 +2270,92 @@ async function saveBien(type) {
 
   if (res?.ok) {
     toast(`✅ Type « ${type} » mis à jour`);
-    // Mettre à jour le cache local
     const idx = biensData.findIndex(b => b.type === type);
     if (idx !== -1) biensData[idx] = { ...biensData[idx], ...payload };
   } else {
     toast(res?.error || 'Erreur lors de la sauvegarde', 'error');
+  }
+}
+
+async function deleteBien(type) {
+  if (!confirm(`Supprimer définitivement le type « ${type} » ?`)) return;
+
+  const res = await api(`/biens/${encodeURIComponent(type)}`, { method: 'DELETE' });
+  if (res?.ok) {
+    toast(`🗑️ Type « ${type} » supprimé`);
+    biensSelected = null;
+    await loadBiens();
+  } else {
+    toast(res?.error || 'Erreur lors de la suppression', 'error');
+  }
+}
+
+// ── Modal : création d'un nouveau type ───────────────────────────────────────
+
+function openBienCreateModal() {
+  // Réinitialiser les champs
+  ['bc-type','bc-article','bc-titre','bc-couleur','bc-caract'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('bc-base').value  = '0';
+  document.getElementById('bc-frigo').value = '0';
+  ['bc-modifiable','bc-ordinateur','bc-cafe','bc-entreprise'].forEach(id => {
+    document.getElementById(id).checked = false;
+  });
+  document.getElementById('bien-create-overlay').style.display = 'flex';
+}
+
+function initBienCreateModal() {
+  document.getElementById('bien-create-close').addEventListener('click', () => {
+    document.getElementById('bien-create-overlay').style.display = 'none';
+  });
+  document.getElementById('bien-create-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('bien-create-overlay'))
+      document.getElementById('bien-create-overlay').style.display = 'none';
+  });
+  document.getElementById('bc-submit').addEventListener('click', submitBienCreate);
+}
+
+async function submitBienCreate() {
+  const type    = document.getElementById('bc-type').value.trim();
+  const article = document.getElementById('bc-article').value.trim();
+  const base    = parseInt(document.getElementById('bc-base').value, 10) || 0;
+  const frigo   = parseInt(document.getElementById('bc-frigo').value, 10) || 0;
+  const titre   = document.getElementById('bc-titre').value.trim()   || null;
+  const couleur = document.getElementById('bc-couleur').value.trim() || null;
+
+  if (!type)    return toast('Nom du type requis', 'error');
+  if (!article) return toast('Article requis (ex : Le Penthouse)', 'error');
+
+  // Caractéristiques depuis le textarea (une par ligne)
+  const caracteristiques = document.getElementById('bc-caract').value
+    .split('\n').map(l => l.trim()).filter(Boolean);
+
+  const payload = {
+    type, article, titre, couleur, base, frigo,
+    caracteristiques,
+    modifiable:     document.getElementById('bc-modifiable').checked,
+    ordinateur:     document.getElementById('bc-ordinateur').checked,
+    cafe:           document.getElementById('bc-cafe').checked,
+    entrepriseOnly: document.getElementById('bc-entreprise').checked,
+  };
+
+  const btn = document.getElementById('bc-submit');
+  btn.disabled = true;
+  btn.textContent = '⏳ Création…';
+
+  const res = await api('/biens', { method: 'POST', body: payload });
+  btn.disabled = false;
+  btn.textContent = '✅ Créer le type';
+
+  if (res?.ok) {
+    document.getElementById('bien-create-overlay').style.display = 'none';
+    toast(`✅ Type « ${type} » créé`);
+    biensSelected = type;
+    await loadBiens();
+  } else {
+    toast(res?.error || 'Erreur lors de la création', 'error');
   }
 }
 
@@ -2489,6 +2582,7 @@ async function initUser() {
   initSSE();
   // Listeners statiques (une seule fois)
   initAnnoncesFilters();
+  initBienCreateModal();
   // Charger les alertes dès le départ (met les badges sur tous les items de nav)
   loadAlerts();
   loadDashboard();

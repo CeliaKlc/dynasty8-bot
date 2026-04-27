@@ -1090,40 +1090,97 @@ router.get('/search', requireAuth, async (req, res) => {
 // TYPES DE BIENS — édition via panel
 // ════════════════════════════════════════════════════════════════════════════
 
-// Liste complète (ordre stable = ordre BIENS hardcodé)
+// Liste complète : types prédéfinis (ordre BIENS) + types custom ajoutés depuis le panel
 router.get('/biens', requireAuth, (req, res) => {
   const all = bienCache.getAll();
-  // Retourner un tableau trié dans l'ordre naturel des clés BIENS
-  const types = Object.keys(BIENS);
-  const result = types.map(type => ({
-    type,
-    ...(all[type] ?? BIENS[type] ?? {}),
-  }));
+  // Types prédéfinis dans l'ordre hardcodé
+  const baseTypes   = Object.keys(BIENS);
+  // Types custom présents en base mais absents de BIENS
+  const customTypes = Object.keys(all).filter(t => !BIENS[t]);
+
+  const result = [
+    ...baseTypes.map(type => ({
+      type,
+      custom: false,
+      ...(all[type] ?? BIENS[type] ?? {}),
+    })),
+    ...customTypes.map(type => ({
+      type,
+      custom: true,
+      ...all[type],
+    })),
+  ];
   res.json(result);
 });
 
-// Mise à jour d'un type (caractéristiques, stockage, options…)
+// Création d'un nouveau type custom
+router.post('/biens', requireAdmin, async (req, res) => {
+  const { type, article, titre, base, frigo, caracteristiques, modifiable, ordinateur, cafe, entrepriseOnly, couleur } = req.body;
+
+  const typeName = String(type || '').trim();
+  if (!typeName) return res.status(400).json({ error: 'Nom du type requis' });
+  if (typeof base !== 'number' || base < 0) return res.status(400).json({ error: 'base doit être un entier positif' });
+
+  // Unicité : ni dans les prédéfinis ni déjà en base
+  if (BIENS[typeName]) return res.status(409).json({ error: 'Ce nom correspond à un type prédéfini' });
+  const existing = await getDB().collection('bien_types').findOne({ type: typeName });
+  if (existing) return res.status(409).json({ error: 'Ce type existe déjà' });
+
+  const doc = {
+    type:             typeName,
+    article:          String(article || '').trim() || typeName,
+    titre:            titre ? String(titre).trim() : null,
+    base:             Math.round(base),
+    frigo:            typeof frigo === 'number' ? Math.round(frigo) : 0,
+    caracteristiques: Array.isArray(caracteristiques)
+      ? caracteristiques.map(c => String(c).trim()).filter(Boolean)
+      : [],
+    modifiable:       Boolean(modifiable),
+    ordinateur:       Boolean(ordinateur),
+    cafe:             Boolean(cafe),
+    entrepriseOnly:   Boolean(entrepriseOnly),
+    couleur:          couleur ? String(couleur).trim() : null,
+    custom:           true,
+  };
+
+  try {
+    await getDB().collection('bien_types').insertOne(doc);
+    await bienCache.refresh(getDB());
+    await logAction({ type: 'bien_create', actor: req.session.user.name, details: `Type « ${typeName} » créé` });
+    res.json({ ok: true, type: typeName });
+  } catch (err) {
+    console.error('[API] POST /biens :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Mise à jour d'un type (prédéfini ou custom)
 router.put('/biens/:type', requireAdmin, async (req, res) => {
-  const type = decodeURIComponent(req.params.type);
-  if (!BIENS[type]) return res.status(404).json({ error: 'Type de bien inconnu' });
+  const type      = decodeURIComponent(req.params.type);
+  const isBuiltin = Boolean(BIENS[type]);
+  const isCustom  = Boolean(bienCache.get(type)?.custom);
+
+  if (!isBuiltin && !isCustom) return res.status(404).json({ error: 'Type de bien inconnu' });
 
   const { article, titre, base, frigo, caracteristiques, modifiable, ordinateur, cafe, entrepriseOnly, couleur } = req.body;
 
-  // Validation minimale
   if (typeof base !== 'number' || base < 0) return res.status(400).json({ error: 'base doit être un entier positif' });
   if (!Array.isArray(caracteristiques)) return res.status(400).json({ error: 'caracteristiques doit être un tableau' });
 
+  const fallback = BIENS[type] ?? {};
   const update = {
-    article:         String(article  || '').trim() || BIENS[type].article,
-    titre:           titre ? String(titre).trim() : (BIENS[type].titre ?? null),
-    base:            Math.round(base),
-    frigo:           typeof frigo === 'number' ? Math.round(frigo) : 0,
+    article:          String(article  || '').trim() || fallback.article || type,
+    titre:            titre ? String(titre).trim() : (fallback.titre ?? null),
+    base:             Math.round(base),
+    frigo:            typeof frigo === 'number' ? Math.round(frigo) : 0,
     caracteristiques: caracteristiques.map(c => String(c).trim()).filter(Boolean),
     modifiable:       Boolean(modifiable),
     ordinateur:       Boolean(ordinateur),
     cafe:             Boolean(cafe),
     entrepriseOnly:   Boolean(entrepriseOnly),
-    couleur:          couleur ? String(couleur).trim() : (BIENS[type].couleur ?? null),
+    couleur:          couleur ? String(couleur).trim() : (fallback.couleur ?? null),
+    // Conserver le flag custom si présent
+    ...(isCustom ? { custom: true } : {}),
   };
 
   try {
@@ -1133,16 +1190,29 @@ router.put('/biens/:type', requireAdmin, async (req, res) => {
       { upsert: true },
     );
     await bienCache.refresh(getDB());
-
-    await logAction({
-      type:    'bien_update',
-      actor:   req.session.user.name,
-      details: `Type « ${type} » modifié`,
-    });
-
+    await logAction({ type: 'bien_update', actor: req.session.user.name, details: `Type « ${type} » modifié` });
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /biens/:type :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Suppression d'un type custom uniquement (les prédéfinis sont protégés)
+router.delete('/biens/:type', requireAdmin, async (req, res) => {
+  const type = decodeURIComponent(req.params.type);
+
+  if (BIENS[type]) return res.status(403).json({ error: 'Impossible de supprimer un type prédéfini' });
+
+  try {
+    const result = await getDB().collection('bien_types').deleteOne({ type, custom: true });
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'Type non trouvé ou non supprimable' });
+
+    await bienCache.refresh(getDB());
+    await logAction({ type: 'bien_delete', actor: req.session.user.name, details: `Type « ${type} » supprimé` });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] DELETE /biens/:type :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

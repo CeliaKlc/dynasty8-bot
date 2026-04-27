@@ -2002,6 +2002,73 @@ body.login-page {
   border-top: 1px solid var(--border);
 }
 
+/* Badge "custom" dans la liste */
+.biens-type-badge {
+  margin-left: auto;
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: rgba(232,201,142,.15);
+  color: var(--accent2);
+  border: 1px solid rgba(232,201,142,.3);
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+/* Bouton "Nouveau type" en haut de la liste */
+.biens-new-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--success);
+  background: rgba(46,204,113,.08);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .15s;
+  border: none;
+  width: 100%;
+  text-align: center;
+}
+.biens-new-btn:hover { background: rgba(46,204,113,.16); }
+
+/* Notice info dans le modal */
+.biens-create-notice {
+  background: rgba(52,152,219,.12);
+  border: 1px solid rgba(52,152,219,.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: .8rem;
+  color: #7ec8f8;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.biens-create-notice code {
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: .78rem;
+}
+
+/* Bouton supprimer dans l'éditeur */
+.biens-delete-btn {
+  background: rgba(231,76,60,.1);
+  border: 1px solid rgba(231,76,60,.3);
+  color: var(--danger);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: .8rem;
+  cursor: pointer;
+  transition: background .15s;
+  margin-right: auto;
+}
+.biens-delete-btn:hover { background: rgba(231,76,60,.22); }
+
 /* Responsive */
 @media (max-width: 900px) {
   .biens-layout { grid-template-columns: 1fr; }

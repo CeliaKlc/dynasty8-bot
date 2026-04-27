@@ -669,6 +669,62 @@
     </div>
   </div>
 
+  <!-- Modal : Nouveau type de bien -->
+  <div class="modal-overlay" id="bien-create-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🏗️ Nouveau type de bien</h3>
+        <button class="modal-close" id="bien-create-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="biens-create-notice">
+          ℹ️ Le type sera immédiatement utilisable dans <code>buildAnnonceContent</code>. Pour qu'il apparaisse dans le menu <code>/annonce</code> Discord, un re-déploiement des commandes sera nécessaire.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du type *</label>
+            <input type="text" id="bc-type" class="config-input" placeholder="ex : Penthouse de Luxe">
+          </div>
+          <div class="form-group">
+            <label>Article (texte stockage) *</label>
+            <input type="text" id="bc-article" class="config-input" placeholder="ex : Le Penthouse de Luxe">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Unités de base *</label>
+            <input type="number" id="bc-base" class="config-input" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label>Frigo (0 = aucun)</label>
+            <input type="number" id="bc-frigo" class="config-input" value="0" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Titre affiché dans l'annonce <span style="color:var(--text-muted)">(optionnel — laissez vide pour utiliser le nom)</span></label>
+          <input type="text" id="bc-titre" class="config-input" placeholder="ex : Penthouse">
+        </div>
+        <div class="form-group">
+          <label>Couleur intérieure <span style="color:var(--text-muted)">(optionnel)</span></label>
+          <input type="text" id="bc-couleur" class="config-input" placeholder="ex : ⚪ Intérieur Blanc">
+        </div>
+        <div class="form-group">
+          <label>Caractéristiques intérieur <span style="color:var(--text-muted)">(une par ligne)</span></label>
+          <textarea id="bc-caract" class="recap-textarea" rows="4" placeholder="Chambre avec dressing&#10;Salle de bain&#10;Salon avec cuisine ouverte&#10;2 Télévisions"></textarea>
+        </div>
+        <div class="biens-options-grid" style="margin-top:4px">
+          <label class="biens-option-label"><input type="checkbox" id="bc-modifiable"> 🔧 Intérieur modifiable</label>
+          <label class="biens-option-label"><input type="checkbox" id="bc-ordinateur"> 💻 Ordinateur</label>
+          <label class="biens-option-label"><input type="checkbox" id="bc-cafe"> ☕ Machine à café</label>
+          <label class="biens-option-label"><input type="checkbox" id="bc-entreprise"> 🏭 Entreprises uniquement</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="bc-submit">✅ Créer le type</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal : Recherche globale -->
   <div class="search-overlay" id="search-overlay" style="display:none" onclick="onSearchOverlayClick(event)">
     <div class="search-modal">
