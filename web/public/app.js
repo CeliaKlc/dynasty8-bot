@@ -2527,15 +2527,34 @@ async function doCalculerReprise(type) {
 
   // Badge de fiabilité
   const badge = document.getElementById('reprise-fiabilite-badge');
-  if (!stats.count) {
+  if (!stats.count && !stats.bundlesExclus) {
     badge.textContent = 'Aucune donnée';
     badge.className   = 'reprise-badge reprise-badge-none';
+  } else if (!stats.count && stats.bundlesExclus) {
+    badge.textContent = 'Ventes solo introuvables';
+    badge.className   = 'reprise-badge reprise-badge-warn';
   } else if (stats.fiable) {
     badge.textContent = `✅ Données fiables (${stats.count} ventes)`;
     badge.className   = 'reprise-badge reprise-badge-ok';
   } else {
     badge.textContent = `⚠️ Données limitées — ${stats.count} vente${stats.count > 1 ? 's' : ''}`;
     badge.className   = 'reprise-badge reprise-badge-warn';
+  }
+
+  // Note lots exclus
+  let lotNote = document.getElementById('reprise-lot-note');
+  if (!lotNote) {
+    lotNote = document.createElement('p');
+    lotNote.id = 'reprise-lot-note';
+    lotNote.style.cssText = 'font-size:.78rem;color:var(--text-muted);margin-top:6px;font-style:italic';
+    document.getElementById('reprise-fiabilite-badge').insertAdjacentElement('afterend', lotNote);
+  }
+  if (stats.bundlesExclus > 0) {
+    const n = stats.bundlesExclus;
+    lotNote.textContent = `ℹ️ ${n} vente${n > 1 ? 's' : ''} en lot exclue${n > 1 ? 's' : ''} du calcul (prix de lot ≠ prix individuel)`;
+    lotNote.style.display = '';
+  } else {
+    lotNote.style.display = 'none';
   }
 
   // Stats générales

@@ -31,23 +31,47 @@ function mediane(arr) {
  * @returns {object|null} stats ou null si aucune vente enregistrée
  */
 async function calculerReprise(type) {
-  const ventes = await getDB().collection('ventes_lbc')
-    .find({ type, statut: 'vendu', prixFinal: { $gt: 0 } })
+  const db = getDB();
+
+  // Ventes SOLO uniquement : exclure les lots (type2 ou type3 non null).
+  // En MongoDB, { field: null } correspond aux documents où le champ est null OU absent.
+  const ventes = await db.collection('ventes_lbc')
+    .find({ type, statut: 'vendu', prixFinal: { $gt: 0 }, type2: null, type3: null })
     .sort({ dateVente: -1 })
     .limit(MAX_VENTES)
     .toArray();
 
-  if (!ventes.length) return null;
+  // Compter les ventes en lot qui impliquent ce type (position 1, 2 ou 3)
+  // mais dont le prix reflète un ensemble de biens et non ce type seul.
+  const bundlesExclus = await db.collection('ventes_lbc').countDocuments({
+    statut: 'vendu',
+    prixFinal: { $gt: 0 },
+    $and: [
+      // Ce type apparaît quelque part dans la vente
+      { $or: [{ type }, { type2: type }, { type3: type }] },
+      // La vente est un lot (au moins un 2ème bien)
+      { $or: [{ type2: { $ne: null } }, { type3: { $ne: null } }] },
+    ],
+  });
+
+  // Aucune donnée du tout
+  if (!ventes.length && bundlesExclus === 0) return null;
+
+  // Seulement des lots, pas de vente solo
+  if (!ventes.length) {
+    return { count: 0, bundlesExclus, fiable: false, mediane: null, min: null, max: null, reprises: null };
+  }
 
   const prix = ventes.map(v => v.prixFinal).sort((a, b) => a - b);
   const med  = mediane(prix);
 
   return {
-    count:    prix.length,
-    fiable:   prix.length >= SEUIL_FIABILITE,
-    mediane:  med,
-    min:      prix[0],
-    max:      prix[prix.length - 1],
+    count:         prix.length,
+    bundlesExclus,
+    fiable:        prix.length >= SEUIL_FIABILITE,
+    mediane:       med,
+    min:           prix[0],
+    max:           prix[prix.length - 1],
     reprises: {
       prudent:   Math.floor(med * (1 - MARGES.prudent)),
       standard:  Math.floor(med * (1 - MARGES.standard)),
@@ -71,7 +95,8 @@ async function getVentesParType(type) {
  */
 async function getResumeTousTypes() {
   return getDB().collection('ventes_lbc').aggregate([
-    { $match: { statut: 'vendu', prixFinal: { $gt: 0 } } },
+    // Exclure les ventes en lot : le prix d'un lot ne reflète pas le prix d'un seul bien.
+    { $match: { statut: 'vendu', prixFinal: { $gt: 0 }, type2: null, type3: null } },
     { $group: {
       _id:    '$type',
       count:  { $sum: 1 },

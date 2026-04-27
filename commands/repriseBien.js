@@ -26,12 +26,23 @@ module.exports = {
     const type  = interaction.options.getString('type');
     const stats = await calculerReprise(type);
 
-    // ── Aucune donnée disponible ──────────────────────────────────────────────
+    // ── Aucune donnée du tout ─────────────────────────────────────────────────
     if (!stats) {
       return interaction.editReply({
         content:
           `❌ Aucune vente enregistrée pour **${type}**.\n` +
           `Impossible de calculer un prix de reprise sans historique de ventes.`,
+      });
+    }
+
+    // ── Seulement des ventes en lot, aucune vente solo ────────────────────────
+    if (stats.count === 0) {
+      const n = stats.bundlesExclus;
+      return interaction.editReply({
+        content:
+          `⚠️ Aucune vente **individuelle** de **${type}** enregistrée.\n` +
+          `${n} vente${n > 1 ? 's' : ''} en lot incluant ce bien exist${n > 1 ? 'ent' : 'e'}, ` +
+          `mais le prix couvre plusieurs biens à la fois — impossible d'isoler la valeur individuelle.`,
       });
     }
 
@@ -65,13 +76,23 @@ module.exports = {
         },
       );
 
+    // Note sur les lots exclus
+    if (stats.bundlesExclus > 0) {
+      const n = stats.bundlesExclus;
+      embed.addFields({
+        name:  'ℹ️ Ventes en lot exclues',
+        value: `${n} vente${n > 1 ? 's' : ''} incluant **${type}** avec d'autres biens ${n > 1 ? 'ont été exclues' : 'a été exclue'} du calcul — le prix d'un lot ne reflète pas la valeur individuelle du bien.`,
+        inline: false,
+      });
+    }
+
     if (!stats.fiable) {
       embed.setFooter({
         text: `⚠️ Données limitées (${stats.count} vente${stats.count > 1 ? 's' : ''} — seuil de fiabilité : ${SEUIL_FIABILITE}). Résultat indicatif.`,
       });
     } else {
       embed.setFooter({
-        text: `Basé sur les ${stats.count} dernières ventes confirmées pour ce type de bien.`,
+        text: `Basé sur les ${stats.count} dernières ventes individuelles confirmées pour ce type de bien.`,
       });
     }
 
