@@ -6,6 +6,9 @@ const agentCache = require('../utils/agentCache');
 const DELAI_RAPPEL  = 3 * 60 * 60 * 1000; // 3h
 const DELAI_REPONSE = 10 * 60 * 1000;      // 10 min
 
+// Seul salon où le rappel 3h est actif (salon de mise en service officiel)
+const SALON_CARTE_ID = '1326253602074792027';
+
 // Durées disponibles pour le timer prédéfini (en ms)
 const TIMERS = {
   '30m':  30 * 60 * 1000,
@@ -83,6 +86,8 @@ async function executerSuppression(client, session) {
 // ─── Rappel dans le bunker (flow sans timer prédéfini) ────────────────────────
 
 async function executerRappel(client, session) {
+  // Rappel uniquement si la carte a été affichée dans le salon officiel
+  if (session.cardChannelId !== SALON_CARTE_ID) return;
   if (!session.bunkerChannelId) return;
 
   try {
