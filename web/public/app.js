@@ -48,6 +48,7 @@ function loadPage(page) {
   if (page === 'attente')   loadAttente();
   if (page === 'recap')     loadRecap();
   if (page === 'reprise')   loadReprise();
+  if (page === 'biens')     loadBiens();
   if (page === 'logs')      loadLogs();
   if (page === 'config')    loadConfig();
 }
@@ -730,8 +731,9 @@ async function loadAnnonces() {
   annoncesData = await api('/annonces');
   if (!annoncesData) return;
   renderAnnonces();
+}
 
-  // Filtres
+function initAnnoncesFilters() {
   document.getElementById('annonces-filters').addEventListener('click', e => {
     const btn = e.target.closest('.annonce-filter-btn');
     if (!btn) return;
@@ -739,7 +741,7 @@ async function loadAnnonces() {
     btn.classList.add('active');
     annoncesFilter = btn.dataset.filter;
     renderAnnonces();
-  }, { once: true });
+  });
 }
 
 function renderAnnonces() {
@@ -2098,6 +2100,172 @@ function buildLogDetails(log) {
   }
 }
 
+// ── Types de biens ────────────────────────────────────────────────────────────
+
+let biensData       = [];    // tableau [{type, base, frigo, caracteristiques, ...}]
+let biensSelected   = null;  // type string sélectionné
+
+async function loadBiens() {
+  biensData = await api('/biens') ?? [];
+  renderBiensList();
+  // Si un type était déjà sélectionné, le re-rendre
+  if (biensSelected) renderBiensEditor(biensSelected);
+}
+
+function renderBiensList() {
+  const col = document.getElementById('biens-list-col');
+  col.innerHTML = '';
+  biensData.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'biens-type-item' + (b.type === biensSelected ? ' active' : '');
+    item.dataset.type = b.type;
+    item.innerHTML = `<span class="biens-type-dot"></span><span>${b.type}</span>`;
+    item.addEventListener('click', () => {
+      biensSelected = b.type;
+      document.querySelectorAll('.biens-type-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      renderBiensEditor(b.type);
+    });
+    col.appendChild(item);
+  });
+}
+
+function renderBiensEditor(type) {
+  const col  = document.getElementById('biens-editor-col');
+  const bien = biensData.find(b => b.type === type);
+  if (!bien) return;
+
+  const caract = bien.caracteristiques ?? [];
+
+  col.innerHTML = `
+    <div class="biens-editor-title">✏️ ${type}</div>
+
+    <div class="biens-section-label">📦 Stockage</div>
+    <div class="biens-storage-row">
+      <div class="form-group">
+        <label>Unités de base</label>
+        <input type="number" id="b-base" class="config-input" value="${bien.base ?? 0}" min="0" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Frigo (0 = aucun)</label>
+        <input type="number" id="b-frigo" class="config-input" value="${bien.frigo ?? 0}" min="0" style="width:100%">
+      </div>
+    </div>
+
+    <div class="biens-section-label">🛋️ Caractéristiques intérieur</div>
+    <div class="biens-caract-list" id="b-caract-list">
+      ${caract.map((c, i) => buildCaractRow(c, i)).join('')}
+    </div>
+    <button class="btn-biens-add-caract" id="b-add-caract">+ Ajouter une caractéristique</button>
+
+    <div class="biens-section-label">✨ Options</div>
+    <div class="biens-options-grid">
+      <label class="biens-option-label">
+        <input type="checkbox" id="b-modifiable" ${bien.modifiable ? 'checked' : ''}> 🔧 Intérieur modifiable
+      </label>
+      <label class="biens-option-label">
+        <input type="checkbox" id="b-ordinateur" ${bien.ordinateur ? 'checked' : ''}> 💻 Ordinateur
+      </label>
+      <label class="biens-option-label">
+        <input type="checkbox" id="b-cafe" ${bien.cafe ? 'checked' : ''}> ☕ Machine à café
+      </label>
+      <label class="biens-option-label">
+        <input type="checkbox" id="b-entreprise" ${bien.entrepriseOnly ? 'checked' : ''}> 🏭 Entreprises uniquement
+      </label>
+    </div>
+
+    <div class="biens-section-label">ℹ️ Informations textuelles</div>
+    <div class="form-group" style="margin-bottom:8px">
+      <label>Article (utilisé dans les textes de stockage)</label>
+      <input type="text" id="b-article" class="config-input" value="${escHtml(bien.article ?? type)}" style="width:100%">
+    </div>
+    <div class="form-row" style="margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Titre affiché (optionnel — remplace le nom dans l'annonce)</label>
+        <input type="text" id="b-titre" class="config-input" value="${escHtml(bien.titre ?? '')}" placeholder="Laisser vide pour utiliser le nom par défaut" style="width:100%">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Couleur intérieure (optionnel)</label>
+        <input type="text" id="b-couleur" class="config-input" value="${escHtml(bien.couleur ?? '')}" placeholder="ex : ⚪ Intérieur Blanc" style="width:100%">
+      </div>
+    </div>
+
+    <div class="biens-editor-footer">
+      <button class="btn btn-primary" id="b-save">💾 Enregistrer</button>
+    </div>
+  `;
+
+  // Ajouter une caractéristique
+  document.getElementById('b-add-caract').addEventListener('click', () => {
+    const list = document.getElementById('b-caract-list');
+    const idx  = list.children.length;
+    const row  = document.createElement('div');
+    row.innerHTML = buildCaractRow('', idx);
+    list.appendChild(row.firstElementChild);
+    list.lastElementChild.querySelector('input').focus();
+    bindCaractDelete(list.lastElementChild);
+  });
+
+  // Bind delete sur items existants
+  col.querySelectorAll('.biens-caract-item').forEach(el => bindCaractDelete(el));
+
+  // Sauvegarder
+  document.getElementById('b-save').addEventListener('click', () => saveBien(type));
+}
+
+function buildCaractRow(value, idx) {
+  return `<div class="biens-caract-item">
+    <input class="biens-caract-input" type="text" value="${escHtml(value)}" placeholder="Ex : Chambre avec dressing">
+    <button class="biens-caract-del" title="Supprimer">✕</button>
+  </div>`;
+}
+
+function bindCaractDelete(el) {
+  el.querySelector('.biens-caract-del').addEventListener('click', () => el.remove());
+}
+
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function saveBien(type) {
+  const base    = parseInt(document.getElementById('b-base').value, 10)  || 0;
+  const frigo   = parseInt(document.getElementById('b-frigo').value, 10) || 0;
+  const article = document.getElementById('b-article').value.trim();
+  const titre   = document.getElementById('b-titre').value.trim() || null;
+  const couleur = document.getElementById('b-couleur').value.trim() || null;
+
+  const caracteristiques = Array.from(
+    document.getElementById('b-caract-list').querySelectorAll('.biens-caract-input'),
+  ).map(i => i.value.trim()).filter(Boolean);
+
+  const payload = {
+    base, frigo, article, titre, couleur,
+    caracteristiques,
+    modifiable:     document.getElementById('b-modifiable').checked,
+    ordinateur:     document.getElementById('b-ordinateur').checked,
+    cafe:           document.getElementById('b-cafe').checked,
+    entrepriseOnly: document.getElementById('b-entreprise').checked,
+  };
+
+  const btn = document.getElementById('b-save');
+  btn.disabled = true;
+  btn.textContent = '⏳ Enregistrement…';
+
+  const res = await api(`/biens/${encodeURIComponent(type)}`, { method: 'PUT', body: payload });
+  btn.disabled = false;
+  btn.textContent = '💾 Enregistrer';
+
+  if (res?.ok) {
+    toast(`✅ Type « ${type} » mis à jour`);
+    // Mettre à jour le cache local
+    const idx = biensData.findIndex(b => b.type === type);
+    if (idx !== -1) biensData[idx] = { ...biensData[idx], ...payload };
+  } else {
+    toast(res?.error || 'Erreur lors de la sauvegarde', 'error');
+  }
+}
+
 async function loadLogs() {
   const typeFilter  = document.getElementById('logs-filter-type').value;
   const actorFilter = document.getElementById('logs-filter-actor').value;
@@ -2319,6 +2487,8 @@ async function initUser() {
   if (cfg?.guildId) guildId = cfg.guildId;
   // Connexion SSE — mises à jour temps réel
   initSSE();
+  // Listeners statiques (une seule fois)
+  initAnnoncesFilters();
   // Charger les alertes dès le départ (met les badges sur tous les items de nav)
   loadAlerts();
   loadDashboard();

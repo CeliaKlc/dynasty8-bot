@@ -3,6 +3,7 @@
 const { Router } = require('express');
 const { getDB }  = require('../../utils/db');
 const agentCache = require('../../utils/agentCache');
+const bienCache  = require('../../utils/bienCache');
 const { ObjectId } = require('mongodb');
 const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManager');
 const { calculerReprise, getResumeTousTypes } = require('../../utils/repriseManager');
@@ -1081,6 +1082,67 @@ router.get('/search', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('[API] GET /search :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// TYPES DE BIENS — édition via panel
+// ════════════════════════════════════════════════════════════════════════════
+
+// Liste complète (ordre stable = ordre BIENS hardcodé)
+router.get('/biens', requireAuth, (req, res) => {
+  const all = bienCache.getAll();
+  // Retourner un tableau trié dans l'ordre naturel des clés BIENS
+  const types = Object.keys(BIENS);
+  const result = types.map(type => ({
+    type,
+    ...(all[type] ?? BIENS[type] ?? {}),
+  }));
+  res.json(result);
+});
+
+// Mise à jour d'un type (caractéristiques, stockage, options…)
+router.put('/biens/:type', requireAdmin, async (req, res) => {
+  const type = decodeURIComponent(req.params.type);
+  if (!BIENS[type]) return res.status(404).json({ error: 'Type de bien inconnu' });
+
+  const { article, titre, base, frigo, caracteristiques, modifiable, ordinateur, cafe, entrepriseOnly, couleur } = req.body;
+
+  // Validation minimale
+  if (typeof base !== 'number' || base < 0) return res.status(400).json({ error: 'base doit être un entier positif' });
+  if (!Array.isArray(caracteristiques)) return res.status(400).json({ error: 'caracteristiques doit être un tableau' });
+
+  const update = {
+    article:         String(article  || '').trim() || BIENS[type].article,
+    titre:           titre ? String(titre).trim() : (BIENS[type].titre ?? null),
+    base:            Math.round(base),
+    frigo:           typeof frigo === 'number' ? Math.round(frigo) : 0,
+    caracteristiques: caracteristiques.map(c => String(c).trim()).filter(Boolean),
+    modifiable:       Boolean(modifiable),
+    ordinateur:       Boolean(ordinateur),
+    cafe:             Boolean(cafe),
+    entrepriseOnly:   Boolean(entrepriseOnly),
+    couleur:          couleur ? String(couleur).trim() : (BIENS[type].couleur ?? null),
+  };
+
+  try {
+    await getDB().collection('bien_types').updateOne(
+      { type },
+      { $set: { type, ...update } },
+      { upsert: true },
+    );
+    await bienCache.refresh(getDB());
+
+    await logAction({
+      type:    'bien_update',
+      actor:   req.session.user.name,
+      details: `Type « ${type} » modifié`,
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PUT /biens/:type :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

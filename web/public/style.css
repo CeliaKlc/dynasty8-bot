@@ -1827,3 +1827,183 @@ body.login-page {
   from { transform: translateY(20px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+
+/* ── Types de biens ──────────────────────────────────────────────────────── */
+
+.biens-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  align-items: start;
+  margin-top: 4px;
+}
+
+/* Liste des types (colonne gauche) */
+.biens-list-col {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.biens-type-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+  font-size: .875rem;
+  color: var(--text);
+}
+.biens-type-item:last-child { border-bottom: none; }
+.biens-type-item:hover { background: var(--bg3); }
+.biens-type-item.active {
+  background: rgba(7,102,51,.25);
+  color: var(--success);
+  font-weight: 600;
+}
+.biens-type-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.biens-type-item.active .biens-type-dot { background: var(--success); }
+
+/* Éditeur (colonne droite) */
+.biens-editor-col {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  min-height: 300px;
+}
+
+.biens-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 0;
+  color: var(--text-muted);
+  font-size: .875rem;
+  text-align: center;
+}
+
+.biens-editor-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.biens-section-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  margin: 18px 0 8px;
+}
+.biens-section-label:first-of-type { margin-top: 0; }
+
+.biens-storage-row {
+  display: flex;
+  gap: 12px;
+}
+.biens-storage-row .form-group { flex: 1; margin: 0; }
+
+/* Caractéristiques — liste éditable */
+.biens-caract-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.biens-caract-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 4px 4px 10px;
+}
+
+.biens-caract-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: .875rem;
+  outline: none;
+  padding: 4px 0;
+}
+.biens-caract-input::placeholder { color: var(--text-muted); }
+
+.biens-caract-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+.biens-caract-del:hover { color: var(--danger); background: rgba(231,76,60,.12); }
+
+.btn-biens-add-caract {
+  background: var(--bg3);
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: .8rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: color .15s, border-color .15s;
+  margin-top: 2px;
+}
+.btn-biens-add-caract:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* Options checkboxes */
+.biens-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.biens-option-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  user-select: none;
+}
+.biens-option-label input[type="checkbox"] {
+  accent-color: var(--success);
+  width: 15px; height: 15px;
+}
+
+/* Pied de page éditeur */
+.biens-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .biens-layout { grid-template-columns: 1fr; }
+  .biens-list-col { max-height: 220px; overflow-y: auto; }
+}

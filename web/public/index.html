@@ -46,6 +46,9 @@
       <a href="#" class="nav-item" data-page="reprise">
         <span class="nav-icon">🏷️</span> Reprise bien
       </a>
+      <a href="#" class="nav-item" data-page="biens">
+        <span class="nav-icon">🏗️</span> Types de biens
+      </a>
       <a href="#" class="nav-item" data-page="logs">
         <span class="nav-icon">📜</span> Historique
       </a>
@@ -414,6 +417,25 @@
           </div>
         </div>
 
+      </div>
+    </section>
+
+    <!-- Page : Types de biens -->
+    <section id="page-biens" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Types de biens</h2>
+        <p style="color:var(--text-muted);font-size:.825rem;margin:0">Modifiez les caractéristiques, le stockage et les options de chaque type. Les changements sont reflétés immédiatement dans <code>/annonce</code>.</p>
+      </div>
+      <div class="biens-layout">
+        <!-- Liste des types -->
+        <div class="biens-list-col" id="biens-list-col"></div>
+        <!-- Éditeur -->
+        <div class="biens-editor-col" id="biens-editor-col">
+          <div class="biens-empty-state">
+            <span style="font-size:2.5rem">🏗️</span>
+            <p>Sélectionnez un type de bien à gauche pour l'éditer.</p>
+          </div>
+        </div>
       </div>
     </section>
 

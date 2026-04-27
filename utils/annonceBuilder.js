@@ -1,4 +1,5 @@
 const { toMathSansBold } = require('./formatters');
+const bienCache          = require('./bienCache');
 
 // ─── Constantes partagées ─────────────────────────────────────────────────────
 
@@ -398,7 +399,8 @@ const DYNASTY8 = toMathSansBold('DYNASTY 8');
 // Params : { type, transaction, quartier, garage1, garage2, garageLuxe,
 //            salleASac, jardin, piscine, terrasse, etageres, description }
 function buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description }) {
-  const bien           = BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
+  // Priorité : données en base (éditables via le panel) > données hardcodées
+  const bien           = bienCache.get(type) ?? BIENS[type] ?? { article: 'Le bien', base: 0, frigo: 0, caracteristiques: [] };
   const isTypeLuxe     = type === 'Villa de Luxe' || type === 'Maison de Luxe';
   const transLabel     = transaction === 'vente' ? 'À VENDRE' : 'À LOUER';
 
