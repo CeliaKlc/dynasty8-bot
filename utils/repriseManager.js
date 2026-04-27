@@ -108,4 +108,58 @@ async function getResumeTousTypes() {
   ]).toArray();
 }
 
-module.exports = { calculerReprise, getVentesParType, getResumeTousTypes, SEUIL_FIABILITE };
+// ── Utilitaire : toutes les permutations d'un tableau ────────────────────────
+function permutations(arr) {
+  if (arr.length <= 1) return [[...arr]];
+  const result = [];
+  for (let i = 0; i < arr.length; i++) {
+    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    for (const perm of permutations(rest)) {
+      result.push([arr[i], ...perm]);
+    }
+  }
+  return result;
+}
+
+/**
+ * Calcule les statistiques de vente pour un lot de 2 ou 3 biens vendus ensemble.
+ * Cherche toutes les ventes où EXACTEMENT ces types apparaissent (dans n'importe quel ordre).
+ * @param {string[]} types — tableau de 2 ou 3 types
+ */
+async function calculerRepriseLot(types) {
+  if (!Array.isArray(types) || types.length < 2 || types.length > 3) return null;
+
+  // Générer toutes les permutations pour matcher l'ordre peu importe l'ordre d'encodage
+  const perms = permutations(types);
+  const $or   = perms.map(perm => ({
+    type:  perm[0],
+    type2: perm[1] ?? null,
+    type3: perm[2] ?? null,
+  }));
+
+  const ventes = await getDB().collection('ventes_lbc')
+    .find({ statut: 'vendu', prixFinal: { $gt: 0 }, $or })
+    .sort({ dateVente: -1 })
+    .limit(MAX_VENTES)
+    .toArray();
+
+  if (!ventes.length) return { count: 0 };
+
+  const prix = ventes.map(v => v.prixFinal).sort((a, b) => a - b);
+  const med  = mediane(prix);
+
+  return {
+    count:   prix.length,
+    fiable:  prix.length >= SEUIL_FIABILITE,
+    mediane: med,
+    min:     prix[0],
+    max:     prix[prix.length - 1],
+    reprises: {
+      prudent:   Math.floor(med * (1 - MARGES.prudent)),
+      standard:  Math.floor(med * (1 - MARGES.standard)),
+      optimiste: Math.floor(med * (1 - MARGES.optimiste)),
+    },
+  };
+}
+
+module.exports = { calculerReprise, calculerRepriseLot, getVentesParType, getResumeTousTypes, SEUIL_FIABILITE };

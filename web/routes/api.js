@@ -6,7 +6,7 @@ const agentCache = require('../../utils/agentCache');
 const bienCache  = require('../../utils/bienCache');
 const { ObjectId } = require('mongodb');
 const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManager');
-const { calculerReprise, getResumeTousTypes } = require('../../utils/repriseManager');
+const { calculerReprise, calculerRepriseLot, getResumeTousTypes } = require('../../utils/repriseManager');
 const { BIENS }                              = require('../../utils/annonceBuilder');
 const { logAction }                          = require('../../utils/actionLogger');
 const { addClient, removeClient }            = require('../utils/sse');
@@ -1005,6 +1005,20 @@ router.get('/reprise', requireAuth, async (req, res) => {
     res.json(stats);
   } catch (err) {
     console.error('[API] GET /reprise :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Estimation d'un lot (2 ou 3 biens vendus ensemble)
+router.get('/reprise/lot', requireAuth, async (req, res) => {
+  try {
+    const types = [req.query.type1, req.query.type2, req.query.type3].filter(Boolean);
+    if (types.length < 2) return res.status(400).json({ error: 'Au moins 2 types requis' });
+    const stats = await calculerRepriseLot(types);
+    if (!stats) return res.json({ count: 0 });
+    res.json(stats);
+  } catch (err) {
+    console.error('[API] GET /reprise/lot :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

@@ -394,6 +394,75 @@
             </div>
           </div>
 
+          <!-- ── Section Lot ─────────────────────────────────── -->
+          <div class="recap-card reprise-lot-card" style="margin-top:1rem">
+            <div class="recap-card-title">📦 Estimer un lot (2 ou 3 biens)</div>
+            <div class="reprise-lot-form">
+              <div class="form-group" style="flex:1;margin:0">
+                <label>Bien 1</label>
+                <select id="lot-type1-select">
+                  <option value="">— Choisir —</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;margin:0">
+                <label>Bien 2</label>
+                <select id="lot-type2-select">
+                  <option value="">— Choisir —</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;margin:0">
+                <label>Bien 3 <span style="color:var(--text-muted);font-size:.8em">(optionnel)</span></label>
+                <select id="lot-type3-select">
+                  <option value="">— Aucun —</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="btn-lot-calculer">Calculer</button>
+            </div>
+
+            <!-- Résultats lot (masqués au départ) -->
+            <div id="lot-result" style="display:none;margin-top:1rem">
+              <div class="reprise-result-header" style="margin-bottom:.75rem">
+                <div class="recap-card-title" id="lot-result-title" style="margin:0;font-size:.95rem">📦 —</div>
+                <span id="lot-fiabilite-badge" class="reprise-badge"></span>
+              </div>
+
+              <div class="reprise-stats-row">
+                <div class="reprise-stat-box">
+                  <div class="reprise-stat-label">Ventes analysées</div>
+                  <div class="reprise-stat-value" id="lot-count">—</div>
+                </div>
+                <div class="reprise-stat-box">
+                  <div class="reprise-stat-label">Prix médian du lot</div>
+                  <div class="reprise-stat-value" id="lot-median">—</div>
+                </div>
+                <div class="reprise-stat-box">
+                  <div class="reprise-stat-label">Min observé</div>
+                  <div class="reprise-stat-value" id="lot-min">—</div>
+                </div>
+                <div class="reprise-stat-box">
+                  <div class="reprise-stat-label">Max observé</div>
+                  <div class="reprise-stat-value" id="lot-max">—</div>
+                </div>
+              </div>
+
+              <div class="reprise-section-label">Prix de reprise maximum conseillé pour ce lot</div>
+              <div class="reprise-tiers">
+                <div class="reprise-tier reprise-tier-prudent">
+                  <div class="reprise-tier-label">🛡️ Prudent <small>(marge 20%)</small></div>
+                  <div class="reprise-tier-price" id="lot-prudent">—</div>
+                </div>
+                <div class="reprise-tier reprise-tier-standard">
+                  <div class="reprise-tier-label">⚖️ Standard <small>(marge 15%)</small></div>
+                  <div class="reprise-tier-price" id="lot-standard">—</div>
+                </div>
+                <div class="reprise-tier reprise-tier-optimiste">
+                  <div class="reprise-tier-label">🚀 Optimiste <small>(marge 10%)</small></div>
+                  <div class="reprise-tier-price" id="lot-optimiste">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- Colonne droite : vue d'ensemble -->
