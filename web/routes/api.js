@@ -863,8 +863,10 @@ router.get('/alerts', requireAuth, async (req, res) => {
     const cutoff7j  = new Date(now.getTime() -  7 * 24 * 60 * 60 * 1000);
     const cutoff30j = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Bornes du jour courant (ISO string pour les RDV)
-    const todayStr = now.toISOString().slice(0, 10); // "2025-04-26"
+    // Bornes du jour courant (UTC) — les RDV sont stockés en ISO string UTC
+    const todayStr  = now.toISOString().slice(0, 10); // "2025-04-26"
+    const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
+    const todayEnd   = new Date(`${todayStr}T23:59:59.999Z`);
 
     const [
       attenteActiveCount,
@@ -887,9 +889,9 @@ router.get('/alerts', requireAuth, async (req, res) => {
         statut:    'en_cours',
         dateRecap: { $exists: true, $lt: cutoff7j },
       }),
-      // RDV prévus aujourd'hui
+      // RDV prévus aujourd'hui (comparaison sur Date objects, pas strings)
       db.collection('rendez_vous')
-        .find({ statut: 'prévu', datetime: { $gte: `${todayStr}T00:00:00.000Z`, $lte: `${todayStr}T23:59:59.999Z` } })
+        .find({ statut: 'prévu', datetime: { $gte: todayStart.toISOString(), $lte: todayEnd.toISOString() } })
         .toArray(),
     ]);
 

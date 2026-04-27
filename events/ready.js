@@ -6,6 +6,7 @@ const { initByeScheduler } = require('../utils/byeScheduler');
 const { restaurerSessions } = require('../commands/carte');
 const { updateGuide } = require('../utils/guideManager');
 const { updateSacDashboard } = require('../utils/sacManager');
+const { updateDashboard: updateAttenteDashboard } = require('../utils/attenteManager');
 const { getDB } = require('../utils/db');
 const agentCache = require('../utils/agentCache');
 
@@ -53,6 +54,20 @@ module.exports = {
       console.log('[SAC] Change stream actif — dashboard se met à jour automatiquement');
     } catch (err) {
       console.error('[SAC] Impossible d\'activer le change stream :', err.message);
+    }
+
+    // ── Change stream : mise à jour auto du dashboard liste d'attente ─────────
+    // Déclenché quand le panel change un statut ou supprime un client (waiting_list)
+    try {
+      const attenteStream = getDB().collection('waiting_list').watch([], { fullDocument: 'updateLookup' });
+      attenteStream.on('change', () => {
+        updateAttenteDashboard(client).catch(err =>
+          console.error('[ATTENTE] Erreur mise à jour dashboard :', err.message),
+        );
+      });
+      console.log('[ATTENTE] Change stream actif — dashboard se met à jour automatiquement');
+    } catch (err) {
+      console.error('[ATTENTE] Impossible d\'activer le change stream :', err.message);
     }
 
     // ── Change stream : auto-planification des RDV créés depuis le panel ─────────
