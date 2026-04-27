@@ -788,23 +788,24 @@ body.login-page {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 16px 18px;
   margin-bottom: 20px;
-  max-width: 400px;
 }
 
 .rdv-cal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .rdv-cal-title {
+  flex: 1;
   font-size: .9rem;
   font-weight: 600;
   color: var(--text);
   text-transform: capitalize;
+  text-align: center;
 }
 
 .rdv-cal-nav {
@@ -812,17 +813,43 @@ body.login-page {
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text-muted);
-  padding: 3px 9px;
+  padding: 4px 10px;
   cursor: pointer;
   font-size: .78rem;
   transition: border-color .15s, color .15s;
+  flex-shrink: 0;
 }
 .rdv-cal-nav:hover { border-color: var(--accent); color: var(--text); }
 
+/* Toggle Mois / Semaine */
+.rdv-cal-view-toggle {
+  display: flex;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rdv-cal-view-btn {
+  padding: 4px 12px;
+  font-size: .75rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.rdv-cal-view-btn.active {
+  background: var(--accent);
+  color: #111;
+  font-weight: 600;
+}
+
+/* ── Vue Mois ──────────────────────────────────────────────────────────── */
 .rdv-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
+  gap: 2px;
 }
 
 .rdv-cal-dow {
@@ -839,36 +866,51 @@ body.login-page {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 2px;
-  border-radius: 5px;
-  min-height: 40px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  min-height: 52px;
 }
 .rdv-cal-cell.in-month         { cursor: pointer; transition: background .15s; }
 .rdv-cal-cell.in-month:hover   { background: var(--bg3); }
-.rdv-cal-cell.selected         { background: rgba(155,89,182,.15); }
-.rdv-cal-cell.rdv-cal-out      { opacity: .25; cursor: default; }
+.rdv-cal-cell.selected         { background: rgba(155,89,182,.18); outline: 1px solid rgba(155,89,182,.4); }
+.rdv-cal-cell.rdv-cal-out      { opacity: .2; cursor: default; }
 .rdv-cal-cell.today .rdv-cal-day {
   background: var(--accent);
   color: #111;
   border-radius: 50%;
-  width: 20px; height: 20px;
+  width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700;
 }
 
+.rdv-cal-day-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .rdv-cal-day {
-  font-size: .75rem;
+  font-size: .78rem;
   color: var(--text);
   line-height: 1;
-  padding: 2px;
-  min-width: 20px;
+  min-width: 22px;
   text-align: center;
+}
+
+.rdv-cal-count {
+  font-size: .6rem;
+  background: rgba(155,89,182,.3);
+  color: #c39bd3;
+  border-radius: 8px;
+  padding: 1px 5px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .rdv-cal-dots {
   display: flex;
   gap: 2px;
-  margin-top: 3px;
+  margin-top: 4px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -876,6 +918,99 @@ body.login-page {
 .rdv-cal-dot.prevu  { background: #9B59B6; }
 .rdv-cal-dot.passe  { background: var(--success); }
 .rdv-cal-dot.annule { background: var(--danger); }
+
+/* ── Vue Semaine ───────────────────────────────────────────────────────── */
+.rdv-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.rdv-week-col {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  min-height: 100px;
+  transition: border-color .15s;
+  display: flex;
+  flex-direction: column;
+}
+.rdv-week-col:hover   { border-color: var(--accent); }
+.rdv-week-col.selected { border-color: #9B59B6; background: rgba(155,89,182,.08); }
+
+.rdv-week-col-header {
+  padding: 7px 6px 5px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.rdv-week-col.today .rdv-week-col-header { background: rgba(7,102,51,.15); }
+
+.rdv-week-dow {
+  font-size: .6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 700;
+}
+
+.rdv-week-day {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 2px;
+  line-height: 1;
+}
+.rdv-week-col.today .rdv-week-day {
+  background: var(--accent);
+  color: #111;
+  border-radius: 50%;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 2px auto 0;
+  font-size: .85rem;
+}
+
+.rdv-week-count {
+  font-size: .6rem;
+  background: rgba(155,89,182,.3);
+  color: #c39bd3;
+  border-radius: 8px;
+  padding: 1px 5px;
+  font-weight: 700;
+  margin-top: 3px;
+  display: inline-block;
+}
+
+.rdv-week-events {
+  padding: 5px 5px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.rdv-week-event {
+  font-size: .65rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(155,89,182,.2);
+  color: var(--text);
+  line-height: 1.4;
+}
+.rdv-week-event.passe  { background: rgba(46,204,113,.15); }
+.rdv-week-event.annule { background: rgba(231,76,60,.12); opacity: .7; }
+
+.rdv-week-event-more {
+  font-size: .6rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding-top: 1px;
+}
 
 /* ── Configuration ───────────────────────────────────────────────────────── */
 .config-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }

@@ -1041,7 +1041,23 @@ let rdvParAgent    = [];
 let rdvAgentFilter = null;
 let rdvShowPasses  = false;
 let rdvCalMonth    = new Date(); // mois affiché dans le calendrier
+let rdvCalWeek     = getMonday(new Date()); // lundi de la semaine affichée
+let rdvCalView     = 'month';   // 'month' | 'week'
 let rdvDayFilter   = null;       // 'YYYY-MM-DD' ou null (filtre par jour)
+
+/** Retourne le lundi de la semaine contenant `date`. */
+function getMonday(date) {
+  const d   = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Formate une Date en 'YYYY-MM-DD'. */
+function fmtISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 async function loadRdv() {
   const mode = rdvShowPasses ? 'passes' : 'avenir';
@@ -1198,71 +1214,101 @@ async function cancelRdv(id) {
 function renderRdvCalendar() {
   const container = document.getElementById('rdv-calendar');
   if (!container) return;
+  if (rdvCalView === 'week') renderWeekView(container);
+  else                       renderMonthView(container);
+}
 
+/** Construit la barre commune : navigation ◀ ▶ + toggle Mois/Semaine */
+function buildCalHeader(label) {
+  return `
+    <div class="rdv-cal-header">
+      <button class="rdv-cal-nav" id="rdv-cal-prev">◀</button>
+      <span class="rdv-cal-title">${label}</span>
+      <button class="rdv-cal-nav" id="rdv-cal-next">▶</button>
+      <div class="rdv-cal-view-toggle">
+        <button class="rdv-cal-view-btn${rdvCalView === 'month' ? ' active' : ''}" data-view="month">Mois</button>
+        <button class="rdv-cal-view-btn${rdvCalView === 'week'  ? ' active' : ''}" data-view="week">Semaine</button>
+      </div>
+    </div>`;
+}
+
+/** Attache les listeners communs (nav + toggle vue) après inject HTML */
+function attachCalListeners(onPrev, onNext) {
+  document.getElementById('rdv-cal-prev').addEventListener('click', onPrev);
+  document.getElementById('rdv-cal-next').addEventListener('click', onNext);
+  document.querySelectorAll('.rdv-cal-view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rdvCalView   = btn.dataset.view;
+      rdvDayFilter = null;
+      // Sync les deux états de date au changement de vue
+      if (rdvCalView === 'week') rdvCalWeek = getMonday(rdvCalMonth);
+      else                       rdvCalMonth = new Date(rdvCalWeek.getFullYear(), rdvCalWeek.getMonth(), 1);
+      renderRdvCalendar();
+      renderRdvList();
+    });
+  });
+}
+
+// ── Vue Mois ──────────────────────────────────────────────────────────────────
+
+function renderMonthView(container) {
   const year    = rdvCalMonth.getFullYear();
   const month   = rdvCalMonth.getMonth();
+  const todayStr = fmtISO(new Date());
 
-  // Points colorés filtrés par agent si besoin
-  const dotsSource = rdvAgentFilter
-    ? rdvData.filter(r => r.agentId === rdvAgentFilter)
-    : rdvData;
+  const source = rdvAgentFilter ? rdvData.filter(r => r.agentId === rdvAgentFilter) : rdvData;
 
-  const dotsByDay = {};
-  dotsSource.forEach(r => {
+  // Regrouper par numéro de jour
+  const byDay = {};
+  source.forEach(r => {
     const dt = new Date(r.datetime);
     if (dt.getFullYear() === year && dt.getMonth() === month) {
       const d = dt.getDate();
-      if (!dotsByDay[d]) dotsByDay[d] = [];
-      dotsByDay[d].push(r.statut);
+      if (!byDay[d]) byDay[d] = [];
+      byDay[d].push(r);
     }
   });
 
-  const today      = new Date();
-  const todayStr   = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const monthLabel = rdvCalMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-
-  // Décalage lundi-first
+  const monthLabel    = rdvCalMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const firstDow      = new Date(year, month, 1).getDay();
   const offset        = (firstDow + 6) % 7;
   const daysInMonth   = new Date(year, month + 1, 0).getDate();
   const prevMonthDays = new Date(year, month, 0).getDate();
 
-  let html = `
-    <div class="rdv-cal-header">
-      <button class="rdv-cal-nav" id="rdv-cal-prev">◀</button>
-      <span class="rdv-cal-title">${monthLabel}</span>
-      <button class="rdv-cal-nav" id="rdv-cal-next">▶</button>
-    </div>
+  let html = buildCalHeader(monthLabel);
+  html += `
     <div class="rdv-cal-grid">
       <div class="rdv-cal-dow">Lu</div><div class="rdv-cal-dow">Ma</div>
       <div class="rdv-cal-dow">Me</div><div class="rdv-cal-dow">Je</div>
       <div class="rdv-cal-dow">Ve</div><div class="rdv-cal-dow">Sa</div>
-      <div class="rdv-cal-dow">Di</div>
-  `;
+      <div class="rdv-cal-dow">Di</div>`;
 
-  // Jours mois précédent
   for (let i = offset - 1; i >= 0; i--)
     html += `<div class="rdv-cal-cell rdv-cal-out"><span class="rdv-cal-day">${prevMonthDays - i}</span></div>`;
 
-  // Jours du mois courant
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr    = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const isToday    = dateStr === todayStr;
     const isSelected = rdvDayFilter === dateStr;
-    const statuts    = dotsByDay[d] || [];
+    const rdvs       = byDay[d] || [];
 
-    const dotsHtml = statuts.slice(0, 4).map(s => {
-      const cls = s === 'prévu' ? 'prevu' : s === 'passé' ? 'passe' : 'annule';
+    const dotsHtml = rdvs.slice(0, 4).map(r => {
+      const cls = r.statut === 'prévu' ? 'prevu' : r.statut === 'passé' ? 'passe' : 'annule';
       return `<span class="rdv-cal-dot ${cls}"></span>`;
     }).join('');
 
+    const countHtml = rdvs.length > 0
+      ? `<span class="rdv-cal-count">${rdvs.length}</span>`
+      : '';
+
     html += `<div class="rdv-cal-cell in-month${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}" data-date="${dateStr}">
-      <span class="rdv-cal-day">${d}</span>
+      <div class="rdv-cal-day-row">
+        <span class="rdv-cal-day">${d}</span>${countHtml}
+      </div>
       ${dotsHtml ? `<div class="rdv-cal-dots">${dotsHtml}</div>` : ''}
     </div>`;
   }
 
-  // Compléter la dernière ligne
   const totalCells = offset + daysInMonth;
   const remainder  = (7 - (totalCells % 7)) % 7;
   for (let i = 1; i <= remainder; i++)
@@ -1271,23 +1317,83 @@ function renderRdvCalendar() {
   html += '</div>';
   container.innerHTML = html;
 
-  document.getElementById('rdv-cal-prev').addEventListener('click', () => {
-    rdvCalMonth  = new Date(year, month - 1, 1);
-    rdvDayFilter = null;
-    renderRdvCalendar();
-    renderRdvList();
-  });
-  document.getElementById('rdv-cal-next').addEventListener('click', () => {
-    rdvCalMonth  = new Date(year, month + 1, 1);
-    rdvDayFilter = null;
-    renderRdvCalendar();
-    renderRdvList();
-  });
+  attachCalListeners(
+    () => { rdvCalMonth = new Date(year, month - 1, 1); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+    () => { rdvCalMonth = new Date(year, month + 1, 1); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+  );
 
   container.querySelectorAll('.rdv-cal-cell.in-month').forEach(cell => {
     cell.addEventListener('click', () => {
-      const date   = cell.dataset.date;
-      rdvDayFilter = rdvDayFilter === date ? null : date;
+      rdvDayFilter = rdvDayFilter === cell.dataset.date ? null : cell.dataset.date;
+      renderRdvCalendar();
+      renderRdvList();
+    });
+  });
+}
+
+// ── Vue Semaine ───────────────────────────────────────────────────────────────
+
+function renderWeekView(container) {
+  const monday   = new Date(rdvCalWeek);
+  const sunday   = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const todayStr = fmtISO(new Date());
+
+  const source = rdvAgentFilter ? rdvData.filter(r => r.agentId === rdvAgentFilter) : rdvData;
+
+  // Regrouper par date ISO
+  const byDay = {};
+  source.forEach(r => {
+    const key = fmtISO(new Date(r.datetime));
+    if (!byDay[key]) byDay[key] = [];
+    byDay[key].push(r);
+  });
+
+  const weekLabel = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} – ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+  const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+  let html = buildCalHeader(weekLabel);
+  html += '<div class="rdv-week-grid">';
+
+  for (let i = 0; i < 7; i++) {
+    const day      = new Date(monday); day.setDate(monday.getDate() + i);
+    const dateStr  = fmtISO(day);
+    const isToday  = dateStr === todayStr;
+    const isSel    = rdvDayFilter === dateStr;
+    const rdvs     = byDay[dateStr] || [];
+    const MAX      = 4;
+    const shown    = rdvs.slice(0, MAX);
+    const extra    = rdvs.length - MAX;
+
+    const eventsHtml = shown.map(r => {
+      const heure = new Date(r.datetime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const cls   = r.statut === 'passé' ? 'passe' : r.statut === 'annulé' ? 'annule' : '';
+      return `<div class="rdv-week-event ${cls}" title="${r.description}">${heure} ${r.description}</div>`;
+    }).join('');
+
+    const moreHtml = extra > 0 ? `<div class="rdv-week-event-more">+${extra} autre${extra > 1 ? 's' : ''}</div>` : '';
+
+    html += `
+      <div class="rdv-week-col${isToday ? ' today' : ''}${isSel ? ' selected' : ''}" data-date="${dateStr}">
+        <div class="rdv-week-col-header">
+          <div class="rdv-week-dow">${DOW_LABELS[i]}</div>
+          <div class="rdv-week-day">${day.getDate()}</div>
+          ${rdvs.length ? `<div class="rdv-week-count">${rdvs.length}</div>` : ''}
+        </div>
+        <div class="rdv-week-events">${eventsHtml}${moreHtml}</div>
+      </div>`;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  attachCalListeners(
+    () => { rdvCalWeek = new Date(rdvCalWeek); rdvCalWeek.setDate(rdvCalWeek.getDate() - 7); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+    () => { rdvCalWeek = new Date(rdvCalWeek); rdvCalWeek.setDate(rdvCalWeek.getDate() + 7); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+  );
+
+  container.querySelectorAll('.rdv-week-col').forEach(col => {
+    col.addEventListener('click', () => {
+      rdvDayFilter = rdvDayFilter === col.dataset.date ? null : col.dataset.date;
       renderRdvCalendar();
       renderRdvList();
     });
