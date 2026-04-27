@@ -37,9 +37,20 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const prix     = interaction.options.getString('prix');
+    const prixRaw  = interaction.options.getString('prix');
     const dureeKey = interaction.options.getString('duree');
     const duree    = dureeKey ? DUREES[dureeKey] : null;
+
+    // ── Nettoyage et formatage du prix ───────────────────────────────────────
+    // Accepte : 1600000 / 1'600'000 / 1.600.000 / 1,600,000 / 1600000$
+    // Produit toujours : 1'600'000 (sans $, le $ est ajouté dans le message)
+    const prixNum = parseInt(prixRaw.replace(/[$'\s.,]/g, ''), 10);
+    if (isNaN(prixNum) || prixNum <= 0) {
+      return interaction.editReply({
+        content: '❌ Prix invalide. Exemples acceptés : `1600000`, `1\'600\'000`, `1 600 000`, `1600000$`',
+      });
+    }
+    const prix = prixNum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
 
     const contenu = duree
       ? `# **<a:407265yellowsiren:1489238394826522664>OFFRE EXCEPTIONNELLE : LE PRIX BAISSE ET PASSE À ${prix}$ PENDANT ${duree.label} <a:407265yellowsiren:1489238394826522664>** <@&${ROLE_NOTIFICATIONS_LBC_ID}>`
