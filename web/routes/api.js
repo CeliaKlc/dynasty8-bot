@@ -8,6 +8,7 @@ const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManage
 const { calculerReprise, getResumeTousTypes } = require('../../utils/repriseManager');
 const { BIENS }                              = require('../../utils/annonceBuilder');
 const { logAction }                          = require('../../utils/actionLogger');
+const { addClient, removeClient }            = require('../utils/sse');
 
 const router = Router();
 
@@ -1005,6 +1006,38 @@ router.get('/reprise', requireAuth, async (req, res) => {
     console.error('[API] GET /reprise :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// SERVER-SENT EVENTS — mises à jour temps réel
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/events', requireAuth, (req, res) => {
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // désactive le buffering nginx si présent
+  res.flushHeaders();
+
+  // Confirmation de connexion
+  res.write('event: connected\ndata: {}\n\n');
+
+  addClient(res);
+
+  // Heartbeat toutes les 25s pour maintenir la connexion ouverte
+  const heartbeat = setInterval(() => {
+    try {
+      res.write('event: ping\ndata: {}\n\n');
+    } catch {
+      clearInterval(heartbeat);
+      removeClient(res);
+    }
+  }, 25_000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    removeClient(res);
+  });
 });
 
 module.exports = router;

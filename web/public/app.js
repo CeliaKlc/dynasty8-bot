@@ -2,6 +2,7 @@
 
 let currentUser = null;
 let guildId     = null;
+let currentPage = 'dashboard';
 
 // ── Utilitaires ───────────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ document.querySelectorAll('.nav-item').forEach(link => {
   link.addEventListener('click', e => {
     e.preventDefault();
     const page = link.dataset.page;
+    currentPage = page;
     document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     link.classList.add('active');
@@ -131,6 +133,44 @@ async function loadAlerts() {
 function goToPage(page) {
   const link = document.querySelector(`.nav-item[data-page="${page}"]`);
   if (link) link.click();
+}
+
+// ── SSE — mises à jour temps réel ─────────────────────────────────────────────
+
+function initSSE() {
+  const indicator = document.getElementById('sse-status');
+  const setStatus = (state, title) => {
+    if (!indicator) return;
+    indicator.className = `sse-dot ${state}`;
+    indicator.title     = title;
+  };
+
+  const evtSource = new EventSource('/api/events');
+
+  evtSource.addEventListener('connected', () => {
+    setStatus('sse-connected', 'Temps réel actif');
+  });
+
+  // Heartbeat — rien à faire côté client
+  evtSource.addEventListener('ping', () => {});
+
+  evtSource.addEventListener('refresh', e => {
+    const { sections } = JSON.parse(e.data);
+
+    // Toujours rafraîchir les alertes si les sections concernées changent
+    if (sections.includes('alerts') || sections.includes('rdv') || sections.includes('dashboard')) {
+      loadAlerts();
+    }
+
+    // Rafraîchir la page courante si elle est concernée
+    if (sections.includes(currentPage)) {
+      loadPage(currentPage);
+    }
+  });
+
+  evtSource.onerror = () => {
+    setStatus('sse-disconnected', 'Connexion perdue — reconnexion automatique...');
+  };
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -2031,6 +2071,8 @@ async function initUser() {
   // Récupérer le guild ID pour les liens Discord
   const cfg = await api('/config');
   if (cfg?.guildId) guildId = cfg.guildId;
+  // Connexion SSE — mises à jour temps réel
+  initSSE();
   // Charger les alertes dès le départ (met les badges sur tous les items de nav)
   loadAlerts();
   loadDashboard();

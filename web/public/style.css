@@ -87,6 +87,33 @@ body.login-page {
 .sidebar-logo {
   padding: 24px 20px 16px;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Indicateur connexion SSE ─────────────────────────────────────────────── */
+.sse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  display: inline-block;
+  flex-shrink: 0;
+  transition: background 0.4s, box-shadow 0.4s;
+}
+.sse-dot.sse-connected {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+.sse-dot.sse-disconnected {
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
+  animation: sse-blink 1.2s ease-in-out infinite;
+}
+@keyframes sse-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
 }
 .logo-text {
   font-size: 1.25rem;
