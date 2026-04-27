@@ -12,7 +12,11 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <span class="logo-text">Dynasty 8</span>
+      <span class="sse-dot" id="sse-status" title="Connexion en cours..."></span>
     </div>
+    <button class="search-trigger" onclick="openSearch()">
+      <span>🔍</span> Rechercher <kbd>Ctrl K</kbd>
+    </button>
     <nav class="sidebar-nav">
       <a href="#" class="nav-item active" data-page="dashboard">
         <span class="nav-icon">📊</span> Dashboard
@@ -640,6 +644,23 @@
           <button type="submit" class="btn btn-primary">📅 Créer le rendez-vous</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal : Recherche globale -->
+  <div class="search-overlay" id="search-overlay" style="display:none" onclick="onSearchOverlayClick(event)">
+    <div class="search-modal">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Rechercher un agent, une annonce, un client, un RDV…" autocomplete="off" spellcheck="false">
+        <kbd class="search-esc-hint">Esc</kbd>
+      </div>
+      <div id="search-results" class="search-results"></div>
+      <div class="search-footer">
+        <span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span>
+        <span><kbd>↵</kbd> ouvrir</span>
+        <span><kbd>Esc</kbd> fermer</span>
+      </div>
     </div>
   </div>
 

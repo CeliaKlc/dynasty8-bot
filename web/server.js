@@ -10,8 +10,9 @@ const path    = require('path');
 
 const authRoutes = require('./routes/auth');
 const apiRoutes  = require('./routes/api');
-const { connectDB } = require('../utils/db');
+const { connectDB, getDB } = require('../utils/db');
 const agentCache    = require('../utils/agentCache');
+const { broadcast } = require('./utils/sse');
 
 const PORT = process.env.WEB_PORT || 3000;
 
@@ -48,7 +49,32 @@ app.use('/api',  apiRoutes);
 // ── Démarrage ─────────────────────────────────────────────────────────────────
 (async () => {
   await connectDB();
-  await agentCache.init(require('../utils/db').getDB());
+  await agentCache.init(getDB());
+
+  // ── Change streams → diffusion SSE temps réel ────────────────────────────
+  // Chaque modification en base est immédiatement poussée aux clients connectés.
+  const streams = [
+    { collection: 'annonce_links', sections: ['annonces'] },
+    { collection: 'ventes_lbc',    sections: ['annonces', 'dashboard'] },
+    { collection: 'rendez_vous',   sections: ['rdv', 'alerts'] },
+    { collection: 'waiting_list',  sections: ['attente'] },
+    { collection: 'agents',        sections: ['agents', 'dashboard'] },
+    { collection: 'sac_registry',  sections: ['sacs', 'dashboard'] },
+    { collection: 'action_logs',   sections: ['logs'] },
+    { collection: 'recap_hebdo',   sections: ['recap', 'dashboard'] },
+  ];
+
+  for (const { collection, sections } of streams) {
+    try {
+      getDB().collection(collection)
+        .watch([], { fullDocument: 'updateLookup' })
+        .on('change', () => broadcast('refresh', { sections }))
+        .on('error',  err => console.error(`[SSE] Erreur watch ${collection} :`, err.message));
+    } catch (err) {
+      console.error(`[SSE] Impossible de surveiller ${collection} :`, err.message);
+    }
+  }
+  console.log('[SSE] Change streams actifs — diffusion temps réel activée');
 
   app.listen(PORT, () => {
     console.log(`\n🌐 Panel Dynasty 8 démarré sur http://localhost:${PORT}`);

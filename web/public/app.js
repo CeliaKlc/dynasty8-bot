@@ -2,6 +2,7 @@
 
 let currentUser = null;
 let guildId     = null;
+let currentPage = 'dashboard';
 
 // ── Utilitaires ───────────────────────────────────────────────────────────────
 
@@ -29,6 +30,7 @@ document.querySelectorAll('.nav-item').forEach(link => {
   link.addEventListener('click', e => {
     e.preventDefault();
     const page = link.dataset.page;
+    currentPage = page;
     document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     link.classList.add('active');
@@ -131,6 +133,184 @@ async function loadAlerts() {
 function goToPage(page) {
   const link = document.querySelector(`.nav-item[data-page="${page}"]`);
   if (link) link.click();
+}
+
+// ── Recherche globale ─────────────────────────────────────────────────────────
+
+let searchDebounce  = null;
+let searchActiveIdx = -1;
+
+function openSearch() {
+  const overlay = document.getElementById('search-overlay');
+  const input   = document.getElementById('search-input');
+  overlay.style.display = '';
+  input.value = '';
+  document.getElementById('search-results').innerHTML = '';
+  searchActiveIdx = -1;
+  requestAnimationFrame(() => input.focus());
+}
+
+function closeSearch() {
+  document.getElementById('search-overlay').style.display = 'none';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+  searchActiveIdx = -1;
+  clearTimeout(searchDebounce);
+}
+
+function onSearchOverlayClick(e) {
+  if (e.target === document.getElementById('search-overlay')) closeSearch();
+}
+
+// Raccourci clavier global
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const overlay = document.getElementById('search-overlay');
+    overlay.style.display === 'none' ? openSearch() : closeSearch();
+    return;
+  }
+  if (e.key === 'Escape') { closeSearch(); return; }
+
+  // Navigation clavier dans les résultats
+  if (document.getElementById('search-overlay').style.display !== 'none') {
+    const items = document.querySelectorAll('.search-result-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      searchActiveIdx = Math.min(searchActiveIdx + 1, items.length - 1);
+      updateSearchActive(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      searchActiveIdx = Math.max(searchActiveIdx - 1, 0);
+      updateSearchActive(items);
+    } else if (e.key === 'Enter' && searchActiveIdx >= 0) {
+      e.preventDefault();
+      items[searchActiveIdx]?.click();
+    }
+  }
+});
+
+function updateSearchActive(items) {
+  items.forEach((el, i) => el.classList.toggle('search-active', i === searchActiveIdx));
+  items[searchActiveIdx]?.scrollIntoView({ block: 'nearest' });
+}
+
+document.getElementById('search-input')?.addEventListener('input', e => {
+  clearTimeout(searchDebounce);
+  const q = e.target.value.trim();
+  if (q.length < 2) {
+    document.getElementById('search-results').innerHTML = '';
+    searchActiveIdx = -1;
+    return;
+  }
+  searchDebounce = setTimeout(() => doSearch(q), 280);
+});
+
+async function doSearch(q) {
+  const data = await api(`/search?q=${encodeURIComponent(q)}`);
+  if (!data) return;
+  renderSearchResults(data);
+}
+
+function renderSearchResults(data) {
+  const container = document.getElementById('search-results');
+  searchActiveIdx = -1;
+
+  const groups = [
+    { key: 'agents',   label: '👤 Agents'          },
+    { key: 'annonces', label: '🏠 Annonces LBC'     },
+    { key: 'attente',  label: '📋 Liste d\'attente' },
+    { key: 'rdv',      label: '📅 Rendez-vous'      },
+  ];
+
+  const total = groups.reduce((s, g) => s + (data[g.key]?.length || 0), 0);
+  if (total === 0) {
+    container.innerHTML = '<div class="search-empty">Aucun résultat</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  for (const group of groups) {
+    const items = data[group.key] || [];
+    if (!items.length) continue;
+
+    const section = document.createElement('div');
+    section.className = 'search-group';
+    section.innerHTML = `<div class="search-group-label">${group.label}</div>`;
+
+    for (const item of items) {
+      const el = document.createElement('div');
+      el.className = 'search-result-item';
+
+      // Icône ou photo
+      const iconHtml = item.photo
+        ? `<img class="search-result-photo" src="${item.photo}" alt="" onerror="this.style.display='none'">`
+        : `<span class="search-result-icon">${item.emoji || '🔹'}</span>`;
+
+      // Meta à droite (agent name pour annonces/rdv, statut pour attente)
+      let metaHtml = '';
+      if (item.agentName) metaHtml = `<span class="search-result-meta">${item.agentEmoji || ''} ${item.agentName}</span>`;
+      if (item.status)    metaHtml = `<span class="search-status search-status-${item.status}">${item.status}</span>`;
+
+      el.innerHTML = `
+        ${iconHtml}
+        <div class="search-result-body">
+          <div class="search-result-title">${item.title}</div>
+          ${item.subtitle ? `<div class="search-result-sub">${item.subtitle}</div>` : ''}
+        </div>
+        ${metaHtml}
+      `;
+
+      el.addEventListener('click', () => {
+        goToPage(item.page);
+        closeSearch();
+      });
+
+      section.appendChild(el);
+    }
+
+    container.appendChild(section);
+  }
+}
+
+// ── SSE — mises à jour temps réel ─────────────────────────────────────────────
+
+function initSSE() {
+  const indicator = document.getElementById('sse-status');
+  const setStatus = (state, title) => {
+    if (!indicator) return;
+    indicator.className = `sse-dot ${state}`;
+    indicator.title     = title;
+  };
+
+  const evtSource = new EventSource('/api/events');
+
+  evtSource.addEventListener('connected', () => {
+    setStatus('sse-connected', 'Temps réel actif');
+  });
+
+  // Heartbeat — rien à faire côté client
+  evtSource.addEventListener('ping', () => {});
+
+  evtSource.addEventListener('refresh', e => {
+    const { sections } = JSON.parse(e.data);
+
+    // Toujours rafraîchir les alertes si les sections concernées changent
+    if (sections.includes('alerts') || sections.includes('rdv') || sections.includes('dashboard')) {
+      loadAlerts();
+    }
+
+    // Rafraîchir la page courante si elle est concernée
+    if (sections.includes(currentPage)) {
+      loadPage(currentPage);
+    }
+  });
+
+  evtSource.onerror = () => {
+    setStatus('sse-disconnected', 'Connexion perdue — reconnexion automatique...');
+  };
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -2031,6 +2211,8 @@ async function initUser() {
   // Récupérer le guild ID pour les liens Discord
   const cfg = await api('/config');
   if (cfg?.guildId) guildId = cfg.guildId;
+  // Connexion SSE — mises à jour temps réel
+  initSSE();
   // Charger les alertes dès le départ (met les badges sur tous les items de nav)
   loadAlerts();
   loadDashboard();
