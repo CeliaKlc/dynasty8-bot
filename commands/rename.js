@@ -21,11 +21,9 @@ module.exports = {
     .setDescription('✏️ Renommer le ticket avec agent, statut, numéro et description')
     .addStringOption(opt => opt
       .setName('agent')
-      .setDescription('L\'agent responsable du dossier')
+      .setDescription('L\'agent responsable du dossier — tapez pour rechercher')
       .setRequired(true)
-      .addChoices(
-        ...lbcAgents().map(a => ({ name: `${a.name} ${a.emoji}`, value: a.slug })),
-      ))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('statut')
       .setDescription('Statut du dossier')
