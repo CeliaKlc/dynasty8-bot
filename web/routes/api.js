@@ -1009,6 +1009,83 @@ router.get('/reprise', requireAuth, async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// RECHERCHE GLOBALE
+// ════════════════════════════════════════════════════════════════════════════
+
+router.get('/search', requireAuth, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json({ agents: [], annonces: [], attente: [], rdv: [] });
+
+  try {
+    const db      = getDB();
+    const regex   = { $regex: q, $options: 'i' };
+    const LIMIT   = 5;
+    const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
+
+    // Recherche agents directement dans le cache (plus rapide)
+    const agentsRaw = agentCache.getAll().filter(a =>
+      [a.name, a.titre].some(v => v && new RegExp(q, 'i').test(v)),
+    ).slice(0, LIMIT);
+
+    const [annoncesRaw, attenteRaw, rdvRaw] = await Promise.all([
+      db.collection('annonce_links').find({
+        $or: [{ numero: regex }, { adresse: regex }, { type: regex }],
+      }).limit(LIMIT).toArray(),
+
+      db.collection('waiting_list').find({
+        $or: [{ prenom: regex }, { nom: regex }, { telephone: regex }, { clientName: regex }, { notes: regex }],
+      }).limit(LIMIT).toArray(),
+
+      db.collection('rendez_vous').find({
+        statut: 'prévu',
+        $or: [{ description: regex }, { lieu: regex }],
+      }).sort({ datetime: 1 }).limit(LIMIT).toArray(),
+    ]);
+
+    res.json({
+      agents: agentsRaw.map(a => ({
+        type:     'agent',
+        title:    a.name,
+        subtitle: a.titre ?? '',
+        emoji:    a.emoji ?? '👤',
+        photo:    a.photo ?? null,
+        page:     'agents',
+      })),
+
+      annonces: annoncesRaw.map(a => ({
+        type:      'annonce',
+        title:     `#${a.numero} — ${a.type}`,
+        subtitle:  a.adresse ?? '',
+        agentName: agentMap[a.agentId]?.name ?? null,
+        agentEmoji:agentMap[a.agentId]?.emoji ?? '',
+        page:      'annonces',
+      })),
+
+      attente: attenteRaw.map(c => ({
+        type:     'attente',
+        title:    [c.prenom, c.nom].filter(Boolean).join(' ') || c.clientName || `Client ${c.clientId}`,
+        subtitle: c.biens?.map(b => b.type).slice(0, 2).join(', ') ?? '',
+        status:   c.status,
+        page:     'attente',
+      })),
+
+      rdv: rdvRaw.map(r => ({
+        type:      'rdv',
+        title:     r.description,
+        subtitle:  new Date(r.datetime).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+        agentName: agentMap[r.agentId]?.name  ?? '',
+        agentEmoji:agentMap[r.agentId]?.emoji ?? '',
+        lieu:      r.lieu ?? null,
+        page:      'rdv',
+      })),
+    });
+  } catch (err) {
+    console.error('[API] GET /search :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 // SERVER-SENT EVENTS — mises à jour temps réel
 // ════════════════════════════════════════════════════════════════════════════
 

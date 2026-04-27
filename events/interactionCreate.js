@@ -125,13 +125,27 @@ module.exports = {
         return;
       }
 
-      // Bouton confirmation fermeture — éjecte le client et envoie les contrôles agents
+      // Bouton confirmation fermeture — éjecte le(s) client(s) et envoie les contrôles agents
       if (interaction.customId === 'ticket_fermer_confirmer') {
         const member  = interaction.member;
         const channel = interaction.channel;
         try {
-          // Éjecter le client du salon
-          await channel.permissionOverwrites.edit(member.id, { ViewChannel: false });
+          // Trouver tous les membres (pas les rôles) qui ont un accès ViewChannel explicite
+          // = le ou les clients qui ont ouvert ce ticket
+          const memberOverwrites = channel.permissionOverwrites.cache.filter(
+            ow => ow.type === 1 && ow.allow.has('ViewChannel'),
+          );
+
+          const clientIds = [];
+          for (const [id] of memberOverwrites) {
+            await channel.permissionOverwrites.edit(id, { ViewChannel: false }).catch(() => {});
+            clientIds.push(id);
+          }
+          // Fallback si aucun overwrite individuel trouvé
+          if (!clientIds.length) {
+            await channel.permissionOverwrites.edit(member.id, { ViewChannel: false }).catch(() => {});
+            clientIds.push(member.id);
+          }
 
           // Mettre à jour le message éphémère
           await interaction.update({ content: '🔒 Ticket fermé.', components: [] });
@@ -147,7 +161,8 @@ module.exports = {
 
           const controlRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-              .setCustomId(`ticket_reouvrir_${member.id}`)
+              // On encode tous les IDs client séparés par une virgule
+              .setCustomId(`ticket_reouvrir_${clientIds.join(',')}`)
               .setLabel('🔓Ré-ouvrir le ticket')
               .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
@@ -164,20 +179,24 @@ module.exports = {
         return;
       }
 
-      // Bouton ré-ouverture — remet l'accès au client (agents uniquement)
+      // Bouton ré-ouverture — remet l'accès au(x) client(s) (agents uniquement)
       if (interaction.customId.startsWith('ticket_reouvrir_')) {
         const aAcces = ROLES_AUTORISES.some(id => interaction.member.roles.cache.has(id));
         if (!aAcces) {
           return interaction.reply({ content: '❌ Seuls les agents peuvent ré-ouvrir un ticket.', ephemeral: true });
         }
-        const memberId = interaction.customId.replace('ticket_reouvrir_', '');
+        // Peut contenir plusieurs IDs séparés par des virgules
+        const memberIds = interaction.customId.replace('ticket_reouvrir_', '').split(',');
         try {
-          await interaction.channel.permissionOverwrites.edit(memberId, {
-            ViewChannel: true,
-            SendMessages: true,
-            ReadMessageHistory: true,
-          });
-          await interaction.reply({ content: `✅ Ticket ré-ouvert. <@${memberId}> a de nouveau accès au salon.` });
+          for (const memberId of memberIds) {
+            await interaction.channel.permissionOverwrites.edit(memberId, {
+              ViewChannel: true,
+              SendMessages: true,
+              ReadMessageHistory: true,
+            });
+          }
+          const mentions = memberIds.map(id => `<@${id}>`).join(', ');
+          await interaction.reply({ content: `✅ Ticket ré-ouvert. ${mentions} ${memberIds.length > 1 ? 'ont' : 'a'} de nouveau accès au salon.` });
         } catch (err) {
           console.error('❌ Erreur ré-ouverture ticket :', err);
           await interaction.reply({ content: '❌ Impossible de ré-ouvrir le ticket.', ephemeral: true });
