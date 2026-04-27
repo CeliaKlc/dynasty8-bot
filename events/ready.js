@@ -6,7 +6,9 @@ const { initByeScheduler } = require('../utils/byeScheduler');
 const { restaurerSessions } = require('../commands/carte');
 const { updateGuide } = require('../utils/guideManager');
 const { updateSacDashboard } = require('../utils/sacManager');
+const { updateDashboard: updateAttenteDashboard } = require('../utils/attenteManager');
 const { getDB } = require('../utils/db');
+const agentCache = require('../utils/agentCache');
 
 module.exports = {
   name: 'ready',
@@ -52,6 +54,20 @@ module.exports = {
       console.log('[SAC] Change stream actif — dashboard se met à jour automatiquement');
     } catch (err) {
       console.error('[SAC] Impossible d\'activer le change stream :', err.message);
+    }
+
+    // ── Change stream : mise à jour auto du dashboard liste d'attente ─────────
+    // Déclenché quand le panel change un statut ou supprime un client (waiting_list)
+    try {
+      const attenteStream = getDB().collection('waiting_list').watch([], { fullDocument: 'updateLookup' });
+      attenteStream.on('change', () => {
+        updateAttenteDashboard(client).catch(err =>
+          console.error('[ATTENTE] Erreur mise à jour dashboard :', err.message),
+        );
+      });
+      console.log('[ATTENTE] Change stream actif — dashboard se met à jour automatiquement');
+    } catch (err) {
+      console.error('[ATTENTE] Impossible d\'activer le change stream :', err.message);
     }
 
     // ── Change stream : auto-planification des RDV créés depuis le panel ─────────
@@ -108,6 +124,30 @@ module.exports = {
           for (const recap of pending) sendRecap(client, recap);
         } catch (e) { /* silencieux */ }
       }, 10_000);
+    }
+
+    // ── Change stream : sync du cache agents depuis le panel web ─────────────────
+    // Quand une modification arrive sur la collection `agents` (photo, habilitations…)
+    // on recharge le cache du bot pour que /carte reflète immédiatement les changements.
+    try {
+      const agentStream = getDB().collection('agents').watch([], { fullDocument: 'updateLookup' });
+      agentStream.on('change', async () => {
+        try {
+          await agentCache.refresh(getDB());
+          console.log('[AgentCache] 🔄 Cache rechargé suite à une modification web');
+        } catch (err) {
+          console.error('[AgentCache] Erreur refresh après change stream :', err.message);
+        }
+      });
+      agentStream.on('error', err =>
+        console.error('[AgentCache] Erreur change stream :', err.message),
+      );
+      console.log('[AgentCache] Change stream actif — cache synchronisé automatiquement');
+    } catch (err) {
+      console.error('[AgentCache] Change stream impossible, fallback polling 30s :', err.message);
+      setInterval(() => agentCache.refresh(getDB()).catch(e =>
+        console.error('[AgentCache] Erreur polling refresh :', e.message),
+      ), 30_000);
     }
   },
 };

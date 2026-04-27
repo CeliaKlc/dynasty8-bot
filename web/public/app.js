@@ -574,6 +574,9 @@ function renderAnnonces() {
   if (annoncesFilter === 'retard')   list = list.filter(a => a.retard);
   if (annoncesFilter === 'vendu')    list = list.filter(a => a.statutDossier === 'vendu');
 
+  // Tri par numéro d'annonce croissant (1396 avant 1401)
+  list = [...list].sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
+
   countEl.textContent = `${list.length} dossier${list.length > 1 ? 's' : ''}`;
 
   if (!list.length) {
