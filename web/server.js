@@ -12,6 +12,8 @@ const authRoutes = require('./routes/auth');
 const apiRoutes  = require('./routes/api');
 const { connectDB, getDB } = require('../utils/db');
 const agentCache    = require('../utils/agentCache');
+const bienCache     = require('../utils/bienCache');
+const { BIENS }     = require('../utils/annonceBuilder');
 const { broadcast } = require('./utils/sse');
 
 const PORT = process.env.WEB_PORT || 3000;
@@ -50,6 +52,7 @@ app.use('/api',  apiRoutes);
 (async () => {
   await connectDB();
   await agentCache.init(getDB());
+  await bienCache.init(getDB(), BIENS);
 
   // ── Change streams → diffusion SSE temps réel ────────────────────────────
   // Chaque modification en base est immédiatement poussée aux clients connectés.
@@ -62,6 +65,7 @@ app.use('/api',  apiRoutes);
     { collection: 'sac_registry',  sections: ['sacs', 'dashboard'] },
     { collection: 'action_logs',   sections: ['logs'] },
     { collection: 'recap_hebdo',   sections: ['recap', 'dashboard'] },
+    { collection: 'bien_types',    sections: ['biens'] },
   ];
 
   for (const { collection, sections } of streams) {

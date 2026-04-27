@@ -43,34 +43,9 @@ module.exports = {
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('type')
-      .setDescription('Type de bien')
+      .setDescription('Type de bien — tapez pour rechercher')
       .setRequired(true)
-      .addChoices(
-        { name: 'Appartement Simple',             value: 'Appartement Simple' },
-        { name: 'Appartement Basique',            value: 'Appartement Basique' },
-        { name: 'Maison Simple',                  value: 'Maison Simple' },
-        { name: 'Caravane',                       value: 'Caravane' },
-        { name: 'Appartement Favelas',            value: 'Appartement Favelas' },
-        { name: 'Maison Favelas',                 value: 'Maison Favelas' },
-        { name: 'Studio de Luxe',                 value: 'Studio de Luxe' },
-        { name: 'Appartement Moderne',            value: 'Appartement Moderne' },
-        { name: 'Duplex (avec Frigo)',            value: 'Duplex (avec Frigo)' },
-        { name: 'Duplex (sans Frigo)',            value: 'Duplex (sans Frigo)' },
-        { name: 'Appartement de Luxe Modifiable', value: 'Appartement de Luxe Modifiable' },
-        { name: 'Villa Blanche',                  value: 'Villa Blanche' },
-        { name: 'Villa Rouge',                    value: 'Villa Rouge' },
-        { name: 'Maison de Luxe',                 value: 'Maison de Luxe' },
-        { name: 'Villa de Luxe',                  value: 'Villa de Luxe' },
-        { name: 'Bureau',                         value: 'Bureau' },
-        { name: 'Agence',                         value: 'Agence' },
-        { name: 'Hangar',                         value: 'Hangar' },
-        { name: 'Entrepôt',                       value: 'Entrepôt' },
-        { name: 'Garage 2 places',                value: 'Garage 2 places' },
-        { name: 'Garage 6 places',                value: 'Garage 6 places' },
-        { name: 'Garage 10 places',               value: 'Garage 10 places' },
-        { name: 'Garage 26 places',               value: 'Garage 26 places' },
-        { name: 'Loft Garage',                    value: 'Loft Garage' },
-      ))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('transaction')
       .setDescription('Type de transaction')

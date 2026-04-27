@@ -48,6 +48,7 @@ function loadPage(page) {
   if (page === 'attente')   loadAttente();
   if (page === 'recap')     loadRecap();
   if (page === 'reprise')   loadReprise();
+  if (page === 'biens')     loadBiens();
   if (page === 'logs')      loadLogs();
   if (page === 'config')    loadConfig();
 }
@@ -730,8 +731,9 @@ async function loadAnnonces() {
   annoncesData = await api('/annonces');
   if (!annoncesData) return;
   renderAnnonces();
+}
 
-  // Filtres
+function initAnnoncesFilters() {
   document.getElementById('annonces-filters').addEventListener('click', e => {
     const btn = e.target.closest('.annonce-filter-btn');
     if (!btn) return;
@@ -739,7 +741,7 @@ async function loadAnnonces() {
     btn.classList.add('active');
     annoncesFilter = btn.dataset.filter;
     renderAnnonces();
-  }, { once: true });
+  });
 }
 
 function renderAnnonces() {
@@ -1041,7 +1043,23 @@ let rdvParAgent    = [];
 let rdvAgentFilter = null;
 let rdvShowPasses  = false;
 let rdvCalMonth    = new Date(); // mois affiché dans le calendrier
+let rdvCalWeek     = getMonday(new Date()); // lundi de la semaine affichée
+let rdvCalView     = 'month';   // 'month' | 'week'
 let rdvDayFilter   = null;       // 'YYYY-MM-DD' ou null (filtre par jour)
+
+/** Retourne le lundi de la semaine contenant `date`. */
+function getMonday(date) {
+  const d   = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Formate une Date en 'YYYY-MM-DD'. */
+function fmtISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 async function loadRdv() {
   const mode = rdvShowPasses ? 'passes' : 'avenir';
@@ -1198,71 +1216,101 @@ async function cancelRdv(id) {
 function renderRdvCalendar() {
   const container = document.getElementById('rdv-calendar');
   if (!container) return;
+  if (rdvCalView === 'week') renderWeekView(container);
+  else                       renderMonthView(container);
+}
 
+/** Construit la barre commune : navigation ◀ ▶ + toggle Mois/Semaine */
+function buildCalHeader(label) {
+  return `
+    <div class="rdv-cal-header">
+      <button class="rdv-cal-nav" id="rdv-cal-prev">◀</button>
+      <span class="rdv-cal-title">${label}</span>
+      <button class="rdv-cal-nav" id="rdv-cal-next">▶</button>
+      <div class="rdv-cal-view-toggle">
+        <button class="rdv-cal-view-btn${rdvCalView === 'month' ? ' active' : ''}" data-view="month">Mois</button>
+        <button class="rdv-cal-view-btn${rdvCalView === 'week'  ? ' active' : ''}" data-view="week">Semaine</button>
+      </div>
+    </div>`;
+}
+
+/** Attache les listeners communs (nav + toggle vue) après inject HTML */
+function attachCalListeners(onPrev, onNext) {
+  document.getElementById('rdv-cal-prev').addEventListener('click', onPrev);
+  document.getElementById('rdv-cal-next').addEventListener('click', onNext);
+  document.querySelectorAll('.rdv-cal-view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      rdvCalView   = btn.dataset.view;
+      rdvDayFilter = null;
+      // Sync les deux états de date au changement de vue
+      if (rdvCalView === 'week') rdvCalWeek = getMonday(rdvCalMonth);
+      else                       rdvCalMonth = new Date(rdvCalWeek.getFullYear(), rdvCalWeek.getMonth(), 1);
+      renderRdvCalendar();
+      renderRdvList();
+    });
+  });
+}
+
+// ── Vue Mois ──────────────────────────────────────────────────────────────────
+
+function renderMonthView(container) {
   const year    = rdvCalMonth.getFullYear();
   const month   = rdvCalMonth.getMonth();
+  const todayStr = fmtISO(new Date());
 
-  // Points colorés filtrés par agent si besoin
-  const dotsSource = rdvAgentFilter
-    ? rdvData.filter(r => r.agentId === rdvAgentFilter)
-    : rdvData;
+  const source = rdvAgentFilter ? rdvData.filter(r => r.agentId === rdvAgentFilter) : rdvData;
 
-  const dotsByDay = {};
-  dotsSource.forEach(r => {
+  // Regrouper par numéro de jour
+  const byDay = {};
+  source.forEach(r => {
     const dt = new Date(r.datetime);
     if (dt.getFullYear() === year && dt.getMonth() === month) {
       const d = dt.getDate();
-      if (!dotsByDay[d]) dotsByDay[d] = [];
-      dotsByDay[d].push(r.statut);
+      if (!byDay[d]) byDay[d] = [];
+      byDay[d].push(r);
     }
   });
 
-  const today      = new Date();
-  const todayStr   = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const monthLabel = rdvCalMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-
-  // Décalage lundi-first
+  const monthLabel    = rdvCalMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const firstDow      = new Date(year, month, 1).getDay();
   const offset        = (firstDow + 6) % 7;
   const daysInMonth   = new Date(year, month + 1, 0).getDate();
   const prevMonthDays = new Date(year, month, 0).getDate();
 
-  let html = `
-    <div class="rdv-cal-header">
-      <button class="rdv-cal-nav" id="rdv-cal-prev">◀</button>
-      <span class="rdv-cal-title">${monthLabel}</span>
-      <button class="rdv-cal-nav" id="rdv-cal-next">▶</button>
-    </div>
+  let html = buildCalHeader(monthLabel);
+  html += `
     <div class="rdv-cal-grid">
       <div class="rdv-cal-dow">Lu</div><div class="rdv-cal-dow">Ma</div>
       <div class="rdv-cal-dow">Me</div><div class="rdv-cal-dow">Je</div>
       <div class="rdv-cal-dow">Ve</div><div class="rdv-cal-dow">Sa</div>
-      <div class="rdv-cal-dow">Di</div>
-  `;
+      <div class="rdv-cal-dow">Di</div>`;
 
-  // Jours mois précédent
   for (let i = offset - 1; i >= 0; i--)
     html += `<div class="rdv-cal-cell rdv-cal-out"><span class="rdv-cal-day">${prevMonthDays - i}</span></div>`;
 
-  // Jours du mois courant
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr    = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const isToday    = dateStr === todayStr;
     const isSelected = rdvDayFilter === dateStr;
-    const statuts    = dotsByDay[d] || [];
+    const rdvs       = byDay[d] || [];
 
-    const dotsHtml = statuts.slice(0, 4).map(s => {
-      const cls = s === 'prévu' ? 'prevu' : s === 'passé' ? 'passe' : 'annule';
+    const dotsHtml = rdvs.slice(0, 4).map(r => {
+      const cls = r.statut === 'prévu' ? 'prevu' : r.statut === 'passé' ? 'passe' : 'annule';
       return `<span class="rdv-cal-dot ${cls}"></span>`;
     }).join('');
 
+    const countHtml = rdvs.length > 0
+      ? `<span class="rdv-cal-count">${rdvs.length}</span>`
+      : '';
+
     html += `<div class="rdv-cal-cell in-month${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}" data-date="${dateStr}">
-      <span class="rdv-cal-day">${d}</span>
+      <div class="rdv-cal-day-row">
+        <span class="rdv-cal-day">${d}</span>${countHtml}
+      </div>
       ${dotsHtml ? `<div class="rdv-cal-dots">${dotsHtml}</div>` : ''}
     </div>`;
   }
 
-  // Compléter la dernière ligne
   const totalCells = offset + daysInMonth;
   const remainder  = (7 - (totalCells % 7)) % 7;
   for (let i = 1; i <= remainder; i++)
@@ -1271,23 +1319,83 @@ function renderRdvCalendar() {
   html += '</div>';
   container.innerHTML = html;
 
-  document.getElementById('rdv-cal-prev').addEventListener('click', () => {
-    rdvCalMonth  = new Date(year, month - 1, 1);
-    rdvDayFilter = null;
-    renderRdvCalendar();
-    renderRdvList();
-  });
-  document.getElementById('rdv-cal-next').addEventListener('click', () => {
-    rdvCalMonth  = new Date(year, month + 1, 1);
-    rdvDayFilter = null;
-    renderRdvCalendar();
-    renderRdvList();
-  });
+  attachCalListeners(
+    () => { rdvCalMonth = new Date(year, month - 1, 1); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+    () => { rdvCalMonth = new Date(year, month + 1, 1); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+  );
 
   container.querySelectorAll('.rdv-cal-cell.in-month').forEach(cell => {
     cell.addEventListener('click', () => {
-      const date   = cell.dataset.date;
-      rdvDayFilter = rdvDayFilter === date ? null : date;
+      rdvDayFilter = rdvDayFilter === cell.dataset.date ? null : cell.dataset.date;
+      renderRdvCalendar();
+      renderRdvList();
+    });
+  });
+}
+
+// ── Vue Semaine ───────────────────────────────────────────────────────────────
+
+function renderWeekView(container) {
+  const monday   = new Date(rdvCalWeek);
+  const sunday   = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const todayStr = fmtISO(new Date());
+
+  const source = rdvAgentFilter ? rdvData.filter(r => r.agentId === rdvAgentFilter) : rdvData;
+
+  // Regrouper par date ISO
+  const byDay = {};
+  source.forEach(r => {
+    const key = fmtISO(new Date(r.datetime));
+    if (!byDay[key]) byDay[key] = [];
+    byDay[key].push(r);
+  });
+
+  const weekLabel = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} – ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+  const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+  let html = buildCalHeader(weekLabel);
+  html += '<div class="rdv-week-grid">';
+
+  for (let i = 0; i < 7; i++) {
+    const day      = new Date(monday); day.setDate(monday.getDate() + i);
+    const dateStr  = fmtISO(day);
+    const isToday  = dateStr === todayStr;
+    const isSel    = rdvDayFilter === dateStr;
+    const rdvs     = byDay[dateStr] || [];
+    const MAX      = 4;
+    const shown    = rdvs.slice(0, MAX);
+    const extra    = rdvs.length - MAX;
+
+    const eventsHtml = shown.map(r => {
+      const heure = new Date(r.datetime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const cls   = r.statut === 'passé' ? 'passe' : r.statut === 'annulé' ? 'annule' : '';
+      return `<div class="rdv-week-event ${cls}" title="${r.description}">${heure} ${r.description}</div>`;
+    }).join('');
+
+    const moreHtml = extra > 0 ? `<div class="rdv-week-event-more">+${extra} autre${extra > 1 ? 's' : ''}</div>` : '';
+
+    html += `
+      <div class="rdv-week-col${isToday ? ' today' : ''}${isSel ? ' selected' : ''}" data-date="${dateStr}">
+        <div class="rdv-week-col-header">
+          <div class="rdv-week-dow">${DOW_LABELS[i]}</div>
+          <div class="rdv-week-day">${day.getDate()}</div>
+          ${rdvs.length ? `<div class="rdv-week-count">${rdvs.length}</div>` : ''}
+        </div>
+        <div class="rdv-week-events">${eventsHtml}${moreHtml}</div>
+      </div>`;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  attachCalListeners(
+    () => { rdvCalWeek = new Date(rdvCalWeek); rdvCalWeek.setDate(rdvCalWeek.getDate() - 7); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+    () => { rdvCalWeek = new Date(rdvCalWeek); rdvCalWeek.setDate(rdvCalWeek.getDate() + 7); rdvDayFilter = null; renderRdvCalendar(); renderRdvList(); },
+  );
+
+  container.querySelectorAll('.rdv-week-col').forEach(col => {
+    col.addEventListener('click', () => {
+      rdvDayFilter = rdvDayFilter === col.dataset.date ? null : col.dataset.date;
       renderRdvCalendar();
       renderRdvList();
     });
@@ -1992,6 +2100,265 @@ function buildLogDetails(log) {
   }
 }
 
+// ── Types de biens ────────────────────────────────────────────────────────────
+
+let biensData     = [];    // [{type, base, frigo, caracteristiques, custom, ...}]
+let biensSelected = null;  // type string sélectionné
+
+async function loadBiens() {
+  biensData = await api('/biens') ?? [];
+  renderBiensList();
+  if (biensSelected) {
+    // Re-rendre l'éditeur si le type existe encore
+    if (biensData.find(b => b.type === biensSelected)) renderBiensEditor(biensSelected);
+    else { biensSelected = null; document.getElementById('biens-editor-col').innerHTML = '<div class="biens-empty-state"><span style="font-size:2.5rem">🏗️</span><p>Sélectionnez un type de bien à gauche pour l\'éditer.</p></div>'; }
+  }
+}
+
+function renderBiensList() {
+  const col = document.getElementById('biens-list-col');
+  col.innerHTML = '';
+
+  // Bouton "+ Nouveau type" en haut
+  const newBtn = document.createElement('button');
+  newBtn.className = 'biens-new-btn';
+  newBtn.innerHTML = '＋ Nouveau type de bien';
+  newBtn.addEventListener('click', openBienCreateModal);
+  col.appendChild(newBtn);
+
+  biensData.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'biens-type-item' + (b.type === biensSelected ? ' active' : '');
+    item.dataset.type = b.type;
+    item.innerHTML = `<span class="biens-type-dot"></span><span style="flex:1">${b.type}</span>${b.custom ? '<span class="biens-type-badge">custom</span>' : ''}`;
+    item.addEventListener('click', () => {
+      biensSelected = b.type;
+      document.querySelectorAll('.biens-type-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      renderBiensEditor(b.type);
+    });
+    col.appendChild(item);
+  });
+}
+
+function renderBiensEditor(type) {
+  const col  = document.getElementById('biens-editor-col');
+  const bien = biensData.find(b => b.type === type);
+  if (!bien) return;
+
+  const caract   = bien.caracteristiques ?? [];
+  const isCustom = Boolean(bien.custom);
+
+  col.innerHTML = `
+    <div class="biens-editor-title">
+      ✏️ ${escHtml(type)}
+      ${isCustom ? '<span class="biens-type-badge" style="font-size:.7rem;vertical-align:middle;margin-left:8px">custom</span>' : ''}
+    </div>
+
+    <div class="biens-section-label">📦 Stockage</div>
+    <div class="biens-storage-row">
+      <div class="form-group">
+        <label>Unités de base</label>
+        <input type="number" id="b-base" class="config-input" value="${bien.base ?? 0}" min="0" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Frigo (0 = aucun)</label>
+        <input type="number" id="b-frigo" class="config-input" value="${bien.frigo ?? 0}" min="0" style="width:100%">
+      </div>
+    </div>
+
+    <div class="biens-section-label">🛋️ Caractéristiques intérieur</div>
+    <div class="biens-caract-list" id="b-caract-list">
+      ${caract.map((c, i) => buildCaractRow(c, i)).join('')}
+    </div>
+    <button class="btn-biens-add-caract" id="b-add-caract">+ Ajouter une caractéristique</button>
+
+    <div class="biens-section-label">✨ Options</div>
+    <div class="biens-options-grid">
+      <label class="biens-option-label"><input type="checkbox" id="b-modifiable" ${bien.modifiable ? 'checked' : ''}> 🔧 Intérieur modifiable</label>
+      <label class="biens-option-label"><input type="checkbox" id="b-ordinateur" ${bien.ordinateur ? 'checked' : ''}> 💻 Ordinateur</label>
+      <label class="biens-option-label"><input type="checkbox" id="b-cafe"       ${bien.cafe       ? 'checked' : ''}> ☕ Machine à café</label>
+      <label class="biens-option-label"><input type="checkbox" id="b-entreprise" ${bien.entrepriseOnly ? 'checked' : ''}> 🏭 Entreprises uniquement</label>
+    </div>
+
+    <div class="biens-section-label">ℹ️ Informations textuelles</div>
+    <div class="form-group" style="margin-bottom:8px">
+      <label>Article (utilisé dans les textes de stockage)</label>
+      <input type="text" id="b-article" class="config-input" value="${escHtml(bien.article ?? type)}" style="width:100%">
+    </div>
+    <div class="form-row" style="margin-bottom:0">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Titre affiché <span style="color:var(--text-muted)">(optionnel)</span></label>
+        <input type="text" id="b-titre" class="config-input" value="${escHtml(bien.titre ?? '')}" placeholder="Laisser vide pour utiliser le nom par défaut" style="width:100%">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Couleur intérieure <span style="color:var(--text-muted)">(optionnel)</span></label>
+        <input type="text" id="b-couleur" class="config-input" value="${escHtml(bien.couleur ?? '')}" placeholder="ex : ⚪ Intérieur Blanc" style="width:100%">
+      </div>
+    </div>
+
+    <div class="biens-editor-footer">
+      ${isCustom ? '<button class="biens-delete-btn" id="b-delete">🗑️ Supprimer ce type</button>' : ''}
+      <button class="btn btn-primary" id="b-save">💾 Enregistrer</button>
+    </div>
+  `;
+
+  // Ajouter une caractéristique
+  document.getElementById('b-add-caract').addEventListener('click', () => {
+    const list = document.getElementById('b-caract-list');
+    const row  = document.createElement('div');
+    row.innerHTML = buildCaractRow('', list.children.length);
+    list.appendChild(row.firstElementChild);
+    list.lastElementChild.querySelector('input').focus();
+    bindCaractDelete(list.lastElementChild);
+  });
+
+  // Bind delete sur items existants
+  col.querySelectorAll('.biens-caract-item').forEach(el => bindCaractDelete(el));
+
+  // Bouton supprimer (custom seulement)
+  if (isCustom) {
+    document.getElementById('b-delete').addEventListener('click', () => deleteBien(type));
+  }
+
+  // Sauvegarder
+  document.getElementById('b-save').addEventListener('click', () => saveBien(type));
+}
+
+function buildCaractRow(value) {
+  return `<div class="biens-caract-item">
+    <input class="biens-caract-input" type="text" value="${escHtml(value)}" placeholder="Ex : Chambre avec dressing">
+    <button class="biens-caract-del" title="Supprimer">✕</button>
+  </div>`;
+}
+
+function bindCaractDelete(el) {
+  el.querySelector('.biens-caract-del').addEventListener('click', () => el.remove());
+}
+
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function saveBien(type) {
+  const base    = parseInt(document.getElementById('b-base').value, 10)  || 0;
+  const frigo   = parseInt(document.getElementById('b-frigo').value, 10) || 0;
+  const article = document.getElementById('b-article').value.trim();
+  const titre   = document.getElementById('b-titre').value.trim()   || null;
+  const couleur = document.getElementById('b-couleur').value.trim() || null;
+
+  const caracteristiques = Array.from(
+    document.getElementById('b-caract-list').querySelectorAll('.biens-caract-input'),
+  ).map(i => i.value.trim()).filter(Boolean);
+
+  const payload = {
+    base, frigo, article, titre, couleur,
+    caracteristiques,
+    modifiable:     document.getElementById('b-modifiable').checked,
+    ordinateur:     document.getElementById('b-ordinateur').checked,
+    cafe:           document.getElementById('b-cafe').checked,
+    entrepriseOnly: document.getElementById('b-entreprise').checked,
+  };
+
+  const btn = document.getElementById('b-save');
+  btn.disabled = true;
+  btn.textContent = '⏳ Enregistrement…';
+
+  const res = await api(`/biens/${encodeURIComponent(type)}`, { method: 'PUT', body: payload });
+  btn.disabled = false;
+  btn.textContent = '💾 Enregistrer';
+
+  if (res?.ok) {
+    toast(`✅ Type « ${type} » mis à jour`);
+    const idx = biensData.findIndex(b => b.type === type);
+    if (idx !== -1) biensData[idx] = { ...biensData[idx], ...payload };
+  } else {
+    toast(res?.error || 'Erreur lors de la sauvegarde', 'error');
+  }
+}
+
+async function deleteBien(type) {
+  if (!confirm(`Supprimer définitivement le type « ${type} » ?`)) return;
+
+  const res = await api(`/biens/${encodeURIComponent(type)}`, { method: 'DELETE' });
+  if (res?.ok) {
+    toast(`🗑️ Type « ${type} » supprimé`);
+    biensSelected = null;
+    await loadBiens();
+  } else {
+    toast(res?.error || 'Erreur lors de la suppression', 'error');
+  }
+}
+
+// ── Modal : création d'un nouveau type ───────────────────────────────────────
+
+function openBienCreateModal() {
+  // Réinitialiser les champs
+  ['bc-type','bc-article','bc-titre','bc-couleur','bc-caract'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('bc-base').value  = '0';
+  document.getElementById('bc-frigo').value = '0';
+  ['bc-modifiable','bc-ordinateur','bc-cafe','bc-entreprise'].forEach(id => {
+    document.getElementById(id).checked = false;
+  });
+  document.getElementById('bien-create-overlay').style.display = 'flex';
+}
+
+function initBienCreateModal() {
+  document.getElementById('bien-create-close').addEventListener('click', () => {
+    document.getElementById('bien-create-overlay').style.display = 'none';
+  });
+  document.getElementById('bien-create-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('bien-create-overlay'))
+      document.getElementById('bien-create-overlay').style.display = 'none';
+  });
+  document.getElementById('bc-submit').addEventListener('click', submitBienCreate);
+}
+
+async function submitBienCreate() {
+  const type    = document.getElementById('bc-type').value.trim();
+  const article = document.getElementById('bc-article').value.trim();
+  const base    = parseInt(document.getElementById('bc-base').value, 10) || 0;
+  const frigo   = parseInt(document.getElementById('bc-frigo').value, 10) || 0;
+  const titre   = document.getElementById('bc-titre').value.trim()   || null;
+  const couleur = document.getElementById('bc-couleur').value.trim() || null;
+
+  if (!type)    return toast('Nom du type requis', 'error');
+  if (!article) return toast('Article requis (ex : Le Penthouse)', 'error');
+
+  // Caractéristiques depuis le textarea (une par ligne)
+  const caracteristiques = document.getElementById('bc-caract').value
+    .split('\n').map(l => l.trim()).filter(Boolean);
+
+  const payload = {
+    type, article, titre, couleur, base, frigo,
+    caracteristiques,
+    modifiable:     document.getElementById('bc-modifiable').checked,
+    ordinateur:     document.getElementById('bc-ordinateur').checked,
+    cafe:           document.getElementById('bc-cafe').checked,
+    entrepriseOnly: document.getElementById('bc-entreprise').checked,
+  };
+
+  const btn = document.getElementById('bc-submit');
+  btn.disabled = true;
+  btn.textContent = '⏳ Création…';
+
+  const res = await api('/biens', { method: 'POST', body: payload });
+  btn.disabled = false;
+  btn.textContent = '✅ Créer le type';
+
+  if (res?.ok) {
+    document.getElementById('bien-create-overlay').style.display = 'none';
+    toast(`✅ Type « ${type} » créé`);
+    biensSelected = type;
+    await loadBiens();
+  } else {
+    toast(res?.error || 'Erreur lors de la création', 'error');
+  }
+}
+
 async function loadLogs() {
   const typeFilter  = document.getElementById('logs-filter-type').value;
   const actorFilter = document.getElementById('logs-filter-actor').value;
@@ -2213,6 +2580,9 @@ async function initUser() {
   if (cfg?.guildId) guildId = cfg.guildId;
   // Connexion SSE — mises à jour temps réel
   initSSE();
+  // Listeners statiques (une seule fois)
+  initAnnoncesFilters();
+  initBienCreateModal();
   // Charger les alertes dès le départ (met les badges sur tous les items de nav)
   loadAlerts();
   loadDashboard();

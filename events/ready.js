@@ -9,6 +9,8 @@ const { updateSacDashboard } = require('../utils/sacManager');
 const { updateDashboard: updateAttenteDashboard } = require('../utils/attenteManager');
 const { getDB } = require('../utils/db');
 const agentCache = require('../utils/agentCache');
+const bienCache  = require('../utils/bienCache');
+const { BIENS }  = require('../utils/annonceBuilder');
 
 module.exports = {
   name: 'ready',
@@ -35,6 +37,33 @@ module.exports = {
       index = (index + 1) % activites.length;
       client.user.setActivity(activites[index].name, { type: activites[index].type });
     }, 50_000); // change toutes les 15 secondes
+    // ── Init cache des types de biens ─────────────────────────────────────────
+    bienCache.init(getDB(), BIENS).catch(err =>
+      console.error('[BienCache] Erreur init :', err.message),
+    );
+
+    // ── Change stream : sync cache biens depuis le panel ─────────────────────
+    try {
+      const bienStream = getDB().collection('bien_types').watch([], { fullDocument: 'updateLookup' });
+      bienStream.on('change', async () => {
+        try {
+          await bienCache.refresh(getDB());
+          console.log('[BienCache] 🔄 Cache rechargé suite à une modification web');
+        } catch (err) {
+          console.error('[BienCache] Erreur refresh :', err.message);
+        }
+      });
+      bienStream.on('error', err =>
+        console.error('[BienCache] Erreur change stream :', err.message),
+      );
+      console.log('[BienCache] Change stream actif — cache synchronisé automatiquement');
+    } catch (err) {
+      console.error('[BienCache] Change stream impossible, fallback polling 60s :', err.message);
+      setInterval(() => bienCache.refresh(getDB()).catch(e =>
+        console.error('[BienCache] Erreur polling refresh :', e.message),
+      ), 60_000);
+    }
+
     restaurerSessions(client).catch(console.error);
     updateGuide(client).catch(console.error);
     initScheduler(client);

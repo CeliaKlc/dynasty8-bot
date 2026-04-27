@@ -46,6 +46,9 @@
       <a href="#" class="nav-item" data-page="reprise">
         <span class="nav-icon">🏷️</span> Reprise bien
       </a>
+      <a href="#" class="nav-item" data-page="biens">
+        <span class="nav-icon">🏗️</span> Types de biens
+      </a>
       <a href="#" class="nav-item" data-page="logs">
         <span class="nav-icon">📜</span> Historique
       </a>
@@ -417,6 +420,25 @@
       </div>
     </section>
 
+    <!-- Page : Types de biens -->
+    <section id="page-biens" class="page">
+      <div class="page-header">
+        <h2 class="page-title">Types de biens</h2>
+        <p style="color:var(--text-muted);font-size:.825rem;margin:0">Modifiez les caractéristiques, le stockage et les options de chaque type. Les changements sont reflétés immédiatement dans <code>/annonce</code>.</p>
+      </div>
+      <div class="biens-layout">
+        <!-- Liste des types -->
+        <div class="biens-list-col" id="biens-list-col"></div>
+        <!-- Éditeur -->
+        <div class="biens-editor-col" id="biens-editor-col">
+          <div class="biens-empty-state">
+            <span style="font-size:2.5rem">🏗️</span>
+            <p>Sélectionnez un type de bien à gauche pour l'éditer.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Page : Historique des actions -->
     <section id="page-logs" class="page">
       <div class="page-header">
@@ -644,6 +666,62 @@
           <button type="submit" class="btn btn-primary">📅 Créer le rendez-vous</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal : Nouveau type de bien -->
+  <div class="modal-overlay" id="bien-create-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🏗️ Nouveau type de bien</h3>
+        <button class="modal-close" id="bien-create-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="biens-create-notice">
+          ℹ️ Le type sera immédiatement utilisable dans <code>buildAnnonceContent</code>. Pour qu'il apparaisse dans le menu <code>/annonce</code> Discord, un re-déploiement des commandes sera nécessaire.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du type *</label>
+            <input type="text" id="bc-type" class="config-input" placeholder="ex : Penthouse de Luxe">
+          </div>
+          <div class="form-group">
+            <label>Article (texte stockage) *</label>
+            <input type="text" id="bc-article" class="config-input" placeholder="ex : Le Penthouse de Luxe">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Unités de base *</label>
+            <input type="number" id="bc-base" class="config-input" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label>Frigo (0 = aucun)</label>
+            <input type="number" id="bc-frigo" class="config-input" value="0" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Titre affiché dans l'annonce <span style="color:var(--text-muted)">(optionnel — laissez vide pour utiliser le nom)</span></label>
+          <input type="text" id="bc-titre" class="config-input" placeholder="ex : Penthouse">
+        </div>
+        <div class="form-group">
+          <label>Couleur intérieure <span style="color:var(--text-muted)">(optionnel)</span></label>
+          <input type="text" id="bc-couleur" class="config-input" placeholder="ex : ⚪ Intérieur Blanc">
+        </div>
+        <div class="form-group">
+          <label>Caractéristiques intérieur <span style="color:var(--text-muted)">(une par ligne)</span></label>
+          <textarea id="bc-caract" class="recap-textarea" rows="4" placeholder="Chambre avec dressing&#10;Salle de bain&#10;Salon avec cuisine ouverte&#10;2 Télévisions"></textarea>
+        </div>
+        <div class="biens-options-grid" style="margin-top:4px">
+          <label class="biens-option-label"><input type="checkbox" id="bc-modifiable"> 🔧 Intérieur modifiable</label>
+          <label class="biens-option-label"><input type="checkbox" id="bc-ordinateur"> 💻 Ordinateur</label>
+          <label class="biens-option-label"><input type="checkbox" id="bc-cafe"> ☕ Machine à café</label>
+          <label class="biens-option-label"><input type="checkbox" id="bc-entreprise"> 🏭 Entreprises uniquement</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="bc-submit">✅ Créer le type</button>
+      </div>
     </div>
   </div>
 

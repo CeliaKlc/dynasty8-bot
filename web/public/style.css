@@ -788,23 +788,24 @@ body.login-page {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 16px 18px;
   margin-bottom: 20px;
-  max-width: 400px;
 }
 
 .rdv-cal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .rdv-cal-title {
+  flex: 1;
   font-size: .9rem;
   font-weight: 600;
   color: var(--text);
   text-transform: capitalize;
+  text-align: center;
 }
 
 .rdv-cal-nav {
@@ -812,17 +813,43 @@ body.login-page {
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text-muted);
-  padding: 3px 9px;
+  padding: 4px 10px;
   cursor: pointer;
   font-size: .78rem;
   transition: border-color .15s, color .15s;
+  flex-shrink: 0;
 }
 .rdv-cal-nav:hover { border-color: var(--accent); color: var(--text); }
 
+/* Toggle Mois / Semaine */
+.rdv-cal-view-toggle {
+  display: flex;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rdv-cal-view-btn {
+  padding: 4px 12px;
+  font-size: .75rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.rdv-cal-view-btn.active {
+  background: var(--accent);
+  color: #111;
+  font-weight: 600;
+}
+
+/* ── Vue Mois ──────────────────────────────────────────────────────────── */
 .rdv-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
+  gap: 2px;
 }
 
 .rdv-cal-dow {
@@ -839,36 +866,51 @@ body.login-page {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 2px;
-  border-radius: 5px;
-  min-height: 40px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  min-height: 52px;
 }
 .rdv-cal-cell.in-month         { cursor: pointer; transition: background .15s; }
 .rdv-cal-cell.in-month:hover   { background: var(--bg3); }
-.rdv-cal-cell.selected         { background: rgba(155,89,182,.15); }
-.rdv-cal-cell.rdv-cal-out      { opacity: .25; cursor: default; }
+.rdv-cal-cell.selected         { background: rgba(155,89,182,.18); outline: 1px solid rgba(155,89,182,.4); }
+.rdv-cal-cell.rdv-cal-out      { opacity: .2; cursor: default; }
 .rdv-cal-cell.today .rdv-cal-day {
   background: var(--accent);
   color: #111;
   border-radius: 50%;
-  width: 20px; height: 20px;
+  width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   font-weight: 700;
 }
 
+.rdv-cal-day-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .rdv-cal-day {
-  font-size: .75rem;
+  font-size: .78rem;
   color: var(--text);
   line-height: 1;
-  padding: 2px;
-  min-width: 20px;
+  min-width: 22px;
   text-align: center;
+}
+
+.rdv-cal-count {
+  font-size: .6rem;
+  background: rgba(155,89,182,.3);
+  color: #c39bd3;
+  border-radius: 8px;
+  padding: 1px 5px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .rdv-cal-dots {
   display: flex;
   gap: 2px;
-  margin-top: 3px;
+  margin-top: 4px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -876,6 +918,99 @@ body.login-page {
 .rdv-cal-dot.prevu  { background: #9B59B6; }
 .rdv-cal-dot.passe  { background: var(--success); }
 .rdv-cal-dot.annule { background: var(--danger); }
+
+/* ── Vue Semaine ───────────────────────────────────────────────────────── */
+.rdv-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.rdv-week-col {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  min-height: 100px;
+  transition: border-color .15s;
+  display: flex;
+  flex-direction: column;
+}
+.rdv-week-col:hover   { border-color: var(--accent); }
+.rdv-week-col.selected { border-color: #9B59B6; background: rgba(155,89,182,.08); }
+
+.rdv-week-col-header {
+  padding: 7px 6px 5px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.rdv-week-col.today .rdv-week-col-header { background: rgba(7,102,51,.15); }
+
+.rdv-week-dow {
+  font-size: .6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 700;
+}
+
+.rdv-week-day {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 2px;
+  line-height: 1;
+}
+.rdv-week-col.today .rdv-week-day {
+  background: var(--accent);
+  color: #111;
+  border-radius: 50%;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 2px auto 0;
+  font-size: .85rem;
+}
+
+.rdv-week-count {
+  font-size: .6rem;
+  background: rgba(155,89,182,.3);
+  color: #c39bd3;
+  border-radius: 8px;
+  padding: 1px 5px;
+  font-weight: 700;
+  margin-top: 3px;
+  display: inline-block;
+}
+
+.rdv-week-events {
+  padding: 5px 5px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.rdv-week-event {
+  font-size: .65rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(155,89,182,.2);
+  color: var(--text);
+  line-height: 1.4;
+}
+.rdv-week-event.passe  { background: rgba(46,204,113,.15); }
+.rdv-week-event.annule { background: rgba(231,76,60,.12); opacity: .7; }
+
+.rdv-week-event-more {
+  font-size: .6rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding-top: 1px;
+}
 
 /* ── Configuration ───────────────────────────────────────────────────────── */
 .config-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
@@ -1691,4 +1826,251 @@ body.login-page {
 @keyframes slideIn {
   from { transform: translateY(20px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Types de biens ──────────────────────────────────────────────────────── */
+
+.biens-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  align-items: start;
+  margin-top: 4px;
+}
+
+/* Liste des types (colonne gauche) */
+.biens-list-col {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.biens-type-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+  font-size: .875rem;
+  color: var(--text);
+}
+.biens-type-item:last-child { border-bottom: none; }
+.biens-type-item:hover { background: var(--bg3); }
+.biens-type-item.active {
+  background: rgba(7,102,51,.25);
+  color: var(--success);
+  font-weight: 600;
+}
+.biens-type-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.biens-type-item.active .biens-type-dot { background: var(--success); }
+
+/* Éditeur (colonne droite) */
+.biens-editor-col {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  min-height: 300px;
+}
+
+.biens-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 0;
+  color: var(--text-muted);
+  font-size: .875rem;
+  text-align: center;
+}
+
+.biens-editor-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.biens-section-label {
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  margin: 18px 0 8px;
+}
+.biens-section-label:first-of-type { margin-top: 0; }
+
+.biens-storage-row {
+  display: flex;
+  gap: 12px;
+}
+.biens-storage-row .form-group { flex: 1; margin: 0; }
+
+/* Caractéristiques — liste éditable */
+.biens-caract-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.biens-caract-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 4px 4px 10px;
+}
+
+.biens-caract-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: .875rem;
+  outline: none;
+  padding: 4px 0;
+}
+.biens-caract-input::placeholder { color: var(--text-muted); }
+
+.biens-caract-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+.biens-caract-del:hover { color: var(--danger); background: rgba(231,76,60,.12); }
+
+.btn-biens-add-caract {
+  background: var(--bg3);
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: .8rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: color .15s, border-color .15s;
+  margin-top: 2px;
+}
+.btn-biens-add-caract:hover { color: var(--text); border-color: var(--text-muted); }
+
+/* Options checkboxes */
+.biens-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.biens-option-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  user-select: none;
+}
+.biens-option-label input[type="checkbox"] {
+  accent-color: var(--success);
+  width: 15px; height: 15px;
+}
+
+/* Pied de page éditeur */
+.biens-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Badge "custom" dans la liste */
+.biens-type-badge {
+  margin-left: auto;
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: rgba(232,201,142,.15);
+  color: var(--accent2);
+  border: 1px solid rgba(232,201,142,.3);
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+/* Bouton "Nouveau type" en haut de la liste */
+.biens-new-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--success);
+  background: rgba(46,204,113,.08);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .15s;
+  border: none;
+  width: 100%;
+  text-align: center;
+}
+.biens-new-btn:hover { background: rgba(46,204,113,.16); }
+
+/* Notice info dans le modal */
+.biens-create-notice {
+  background: rgba(52,152,219,.12);
+  border: 1px solid rgba(52,152,219,.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: .8rem;
+  color: #7ec8f8;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.biens-create-notice code {
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: .78rem;
+}
+
+/* Bouton supprimer dans l'éditeur */
+.biens-delete-btn {
+  background: rgba(231,76,60,.1);
+  border: 1px solid rgba(231,76,60,.3);
+  color: var(--danger);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: .8rem;
+  cursor: pointer;
+  transition: background .15s;
+  margin-right: auto;
+}
+.biens-delete-btn:hover { background: rgba(231,76,60,.22); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .biens-layout { grid-template-columns: 1fr; }
+  .biens-list-col { max-height: 220px; overflow-y: auto; }
 }
