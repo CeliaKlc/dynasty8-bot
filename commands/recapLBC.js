@@ -4,10 +4,10 @@ const { getDB }       = require('../utils/db');
 const { BIENS }       = require('../utils/annonceBuilder');
 const { logAction }   = require('../utils/actionLogger');
 
-// Convertit "210'000" ou "210000" en number, null si N/A ou invalide
+// Convertit "210'000", "210000", "210.000$", "210 000$" en number, null si N/A ou invalide
 const parsePrice = str => {
   if (!str || /^n\/a$/i.test(str.trim())) return null;
-  const n = parseInt(String(str).replace(/['\s,.]/g, ''), 10);
+  const n = parseInt(String(str).replace(/[$'\s,.]/g, ''), 10);
   return isNaN(n) ? null : n;
 };
 

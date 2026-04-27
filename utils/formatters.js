@@ -32,17 +32,18 @@ function avecDollar(val) {
 
 /**
  * Formate un prix avec des apostrophes comme séparateurs de milliers.
- * Si la valeur contient déjà des apostrophes, elle est d'abord normalisée
- * pour éviter tout doublon.
- * Si la valeur n'est pas un nombre pur (ex : "N/A", texte), elle est
+ * Accepte tous les formats courants : 1600000 / 1'600'000 / 1.600.000 /
+ * 1,600,000 / 1 600 000 / 1600000$ — produit toujours "1'600'000".
+ * Si la valeur n'est pas un nombre (ex : "N/A", texte), elle est
  * retournée telle quelle.
- * Ex : "1600000" → "1'600'000"
- *      "1'600'000" → "1'600'000" (déjà formaté)
- *      "N/A" → "N/A"
+ * Ex : "1600000"    → "1'600'000"
+ *      "1'600'000"  → "1'600'000"
+ *      "1600000$"   → "1'600'000"
+ *      "N/A"        → "N/A"
  */
 function formatPrix(val) {
   if (!val) return val;
-  const stripped = val.replace(/'/g, '');
+  const stripped = String(val).replace(/[$'\s,.]/g, '');
   if (!/^\d+$/.test(stripped)) return val;
   return stripped.replace(/\B(?=(\d{3})+(?!\d))/g, "'");
 }
