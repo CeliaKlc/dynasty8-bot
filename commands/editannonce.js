@@ -111,12 +111,11 @@ module.exports = {
       .setName('message_id')
       .setDescription('ID du message à modifier (clic droit → Copier l\'identifiant)')
       .setRequired(true))
-    .addStringOption(opt => {
-      opt.setName('agent').setDescription('Nouvel agent en charge de l\'annonce').setRequired(false);
-      agentCache.getAll().filter(a => a.id && a.agre.includes('Gestionnaire LeBonCoin'))
-            .forEach(a => opt.addChoices({ name: a.name, value: a.id }));
-      return opt;
-    })
+    .addStringOption(opt => opt
+      .setName('agent')
+      .setDescription('Nouvel agent en charge de l\'annonce — tapez pour rechercher')
+      .setRequired(false)
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('type')
       .setDescription('Type de bien — tapez pour rechercher')

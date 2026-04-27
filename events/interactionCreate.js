@@ -1,6 +1,7 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-const bienCache = require('../utils/bienCache');
-const { BIENS }  = require('../utils/annonceBuilder');
+const bienCache   = require('../utils/bienCache');
+const agentCache  = require('../utils/agentCache');
+const { BIENS }   = require('../utils/annonceBuilder');
 const { handleAnnonceButton, handleAnnonceModal } = require('../commands/annonce');
 const { handlePrepatchnoteModal } = require('../commands/prepatchnote');
 const { buildListeDetaillee } = require('../utils/attenteManager');
@@ -34,7 +35,35 @@ module.exports = {
           .filter(t => t.toLowerCase().includes(query))
           .slice(0, 25); // Discord limite à 25 suggestions
         await interaction.respond(filtered.map(t => ({ name: t, value: t }))).catch(() => {});
+        return;
       }
+
+      // Autocomplete du champ "agent" pour /annonce et /editannonce (valeur = Discord user ID)
+      if ((commandName === 'annonce' || commandName === 'editannonce') && focused.name === 'agent') {
+        const query  = focused.value.toLowerCase();
+        const agents = agentCache.getAll()
+          .filter(a => a.id && a.agre && a.agre.includes('Gestionnaire LeBonCoin'))
+          .filter(a => `${a.name} ${a.emoji ?? ''}`.toLowerCase().includes(query))
+          .slice(0, 25);
+        await interaction.respond(
+          agents.map(a => ({ name: `${a.emoji ? a.emoji + ' ' : ''}${a.name}`, value: a.id }))
+        ).catch(() => {});
+        return;
+      }
+
+      // Autocomplete du champ "agent" pour /rename (valeur = slug)
+      if (commandName === 'rename' && focused.name === 'agent') {
+        const query  = focused.value.toLowerCase();
+        const agents = agentCache.getAll()
+          .filter(a => a.slug && a.agre && a.agre.includes('Gestionnaire LeBonCoin'))
+          .filter(a => `${a.name} ${a.emoji ?? ''}`.toLowerCase().includes(query))
+          .slice(0, 25);
+        await interaction.respond(
+          agents.map(a => ({ name: `${a.name}${a.emoji ? ' ' + a.emoji : ''}`, value: a.slug }))
+        ).catch(() => {});
+        return;
+      }
+
       return;
     }
 
