@@ -84,18 +84,22 @@ module.exports = {
     }
 
     // ── Confirmer le prix de vente final dans ventes_lbc ─────────────────────
+    // Utilise find (et non findOne) pour gérer les tickets multi-annonces :
+    // si /vendu a déjà clôturé certaines, seules les restantes en_cours sont traitées.
     try {
-      const vente = await getDB().collection('ventes_lbc').findOne({
+      const db      = getDB();
+      const prixStr = interaction.options.getString('prix');
+      const ventes  = await db.collection('ventes_lbc').find({
         ticketChannelId: interaction.channel.id,
         statut: 'en_cours',
-      });
-      if (vente) {
-        const prixStr   = interaction.options.getString('prix');
+      }).toArray();
+
+      for (const vente of ventes) {
         const prixSaisi = prixStr
           ? parseInt(prixStr.replace(/['\s,.]/g, ''), 10) || null
           : null;
         const prixFinal = prixSaisi ?? vente.prixDepart; // fallback = prix de départ
-        await getDB().collection('ventes_lbc').updateOne(
+        await db.collection('ventes_lbc').updateOne(
           { _id: vente._id },
           { $set: { prixFinal, statut: 'vendu', dateVente: new Date() } },
         );
