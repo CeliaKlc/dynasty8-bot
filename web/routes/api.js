@@ -859,9 +859,7 @@ router.get('/alerts', requireAuth, async (req, res) => {
     const db  = getDB();
     const now = new Date();
 
-    const cutoff15j = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
     const cutoff7j  = new Date(now.getTime() -  7 * 24 * 60 * 60 * 1000);
-    const cutoff30j = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Bornes du jour courant (UTC) — les RDV sont stockés en ISO string UTC
     const todayStr  = now.toISOString().slice(0, 10); // "2025-04-26"
@@ -869,21 +867,9 @@ router.get('/alerts', requireAuth, async (req, res) => {
     const todayEnd   = new Date(`${todayStr}T23:59:59.999Z`);
 
     const [
-      attenteActiveCount,
-      attenteContacteCount,
       dossiersLbcCount,
       rdvAujourdhui,
     ] = await Promise.all([
-      // Clients "active" sans contact depuis +15 jours
-      db.collection('waiting_list').countDocuments({
-        status:    'active',
-        createdAt: { $lt: cutoff15j },
-      }),
-      // Clients "contacté" sans clôture depuis +30 jours
-      db.collection('waiting_list').countDocuments({
-        status:    'contacté',
-        createdAt: { $lt: cutoff30j },
-      }),
       // Dossiers LBC en cours depuis +7 jours
       db.collection('ventes_lbc').countDocuments({
         statut:    'en_cours',
@@ -899,17 +885,6 @@ router.get('/alerts', requireAuth, async (req, res) => {
 
     const alerts = [];
 
-    if (attenteActiveCount > 0) {
-      alerts.push({
-        id:    'attente_active',
-        level: 'danger',
-        icon:  '⏰',
-        count: attenteActiveCount,
-        label: `client${attenteActiveCount > 1 ? 's' : ''} en attente sans contact depuis plus de 15 jours`,
-        page:  'attente',
-      });
-    }
-
     if (dossiersLbcCount > 0) {
       alerts.push({
         id:    'dossiers_lbc',
@@ -918,17 +893,6 @@ router.get('/alerts', requireAuth, async (req, res) => {
         count: dossiersLbcCount,
         label: `dossier${dossiersLbcCount > 1 ? 's' : ''} LBC ouvert${dossiersLbcCount > 1 ? 's' : ''} depuis plus de 7 jours sans clôture`,
         page:  'annonces',
-      });
-    }
-
-    if (attenteContacteCount > 0) {
-      alerts.push({
-        id:    'attente_contacte',
-        level: 'warning',
-        icon:  '📞',
-        count: attenteContacteCount,
-        label: `client${attenteContacteCount > 1 ? 's' : ''} contacté${attenteContacteCount > 1 ? 's' : ''} sans réponse depuis plus de 30 jours`,
-        page:  'attente',
       });
     }
 
