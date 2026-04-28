@@ -142,10 +142,21 @@ router.post('/agents', requireAdmin, async (req, res) => {
     const { name, id, slug, emoji, feminin, titre, numero, photo, agre, bunker } = req.body;
     if (!name || !slug) return res.status(400).json({ error: 'name et slug sont requis' });
 
+    const normalizedSlug = slug.toLowerCase().replace(/\s+/g, '-');
+
+    // Vérifier l'unicité du slug et de l'ID Discord avant insertion
+    const orConditions = [{ slug: normalizedSlug }];
+    if (id) orConditions.push({ id });
+    const existing = await getDB().collection('agents').findOne({ $or: orConditions });
+    if (existing) {
+      const raison = existing.slug === normalizedSlug ? 'Ce slug est déjà utilisé' : 'Cet ID Discord est déjà utilisé par un autre agent';
+      return res.status(409).json({ error: raison });
+    }
+
     const doc = {
       name,
       id:      id     || null,
-      slug:    slug.toLowerCase().replace(/\s+/g, '-'),
+      slug:    normalizedSlug,
       emoji:   emoji  || '',
       feminin: feminin === true || feminin === 'true',
       titre:   titre  || '',

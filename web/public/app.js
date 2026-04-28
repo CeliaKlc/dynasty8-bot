@@ -245,21 +245,22 @@ function renderSearchResults(data) {
       const el = document.createElement('div');
       el.className = 'search-result-item';
 
-      // Icône ou photo
+      // Icône ou photo (src= n'exécute pas de JS, mais on échappe quand même les guillemets)
+      const safePhoto = item.photo ? item.photo.replace(/"/g, '%22') : '';
       const iconHtml = item.photo
-        ? `<img class="search-result-photo" src="${item.photo}" alt="" onerror="this.style.display='none'">`
-        : `<span class="search-result-icon">${item.emoji || '🔹'}</span>`;
+        ? `<img class="search-result-photo" src="${safePhoto}" alt="" onerror="this.style.display='none'">`
+        : `<span class="search-result-icon">${escHtml(item.emoji || '🔹')}</span>`;
 
       // Meta à droite (agent name pour annonces/rdv, statut pour attente)
       let metaHtml = '';
-      if (item.agentName) metaHtml = `<span class="search-result-meta">${item.agentEmoji || ''} ${item.agentName}</span>`;
-      if (item.status)    metaHtml = `<span class="search-status search-status-${item.status}">${item.status}</span>`;
+      if (item.agentName) metaHtml = `<span class="search-result-meta">${escHtml(item.agentEmoji || '')} ${escHtml(item.agentName)}</span>`;
+      if (item.status)    metaHtml = `<span class="search-status search-status-${escHtml(item.status)}">${escHtml(item.status)}</span>`;
 
       el.innerHTML = `
         ${iconHtml}
         <div class="search-result-body">
-          <div class="search-result-title">${item.title}</div>
-          ${item.subtitle ? `<div class="search-result-sub">${item.subtitle}</div>` : ''}
+          <div class="search-result-title">${escHtml(item.title)}</div>
+          ${item.subtitle ? `<div class="search-result-sub">${escHtml(item.subtitle)}</div>` : ''}
         </div>
         ${metaHtml}
       `;

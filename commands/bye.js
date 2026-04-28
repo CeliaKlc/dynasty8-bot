@@ -64,23 +64,26 @@ module.exports = {
       interaction.channel.setName(newName).catch(() => {});
     }
 
-    // Marquer automatiquement le salon d'annonce comme vendu (✅ → ❌)
+    // Marquer automatiquement les salons d'annonce comme vendus (✅ → ❌)
+    // Utilise find (et non findOne) pour gérer les tickets multi-annonces.
     try {
-      const link = await getDB().collection('annonce_links').findOne({ ticketChannelId: interaction.channel.id });
-      if (link?.announcementChannelId) {
+      const links = await getDB().collection('annonce_links')
+        .find({ ticketChannelId: interaction.channel.id })
+        .toArray();
+      for (const link of links) {
+        if (!link.announcementChannelId) continue;
         const salonAnnonce = await interaction.client.channels.fetch(link.announcementChannelId).catch(() => null);
-        if (salonAnnonce) {
-          const nomActuel = salonAnnonce.name;
-          const nomVendu  = nomActuel.startsWith('✅')
-            ? nomActuel.replace('✅', '❌')
-            : `❌${nomActuel.replace(/^❌/, '')}`;
-          salonAnnonce.setName(nomVendu).catch(err =>
-            console.error('[BYE] Impossible de renommer le salon d\'annonce :', err.message),
-          );
-        }
+        if (!salonAnnonce) continue;
+        const nomActuel = salonAnnonce.name;
+        const nomVendu  = nomActuel.startsWith('✅')
+          ? nomActuel.replace('✅', '❌')
+          : `❌${nomActuel.replace(/^❌/, '')}`;
+        salonAnnonce.setName(nomVendu).catch(err =>
+          console.error('[BYE] Impossible de renommer le salon d\'annonce :', err.message),
+        );
       }
     } catch (err) {
-      console.error('[BYE] Erreur lookup salon annonce :', err.message);
+      console.error('[BYE] Erreur lookup salons annonce :', err.message);
     }
 
     // ── Confirmer le prix de vente final dans ventes_lbc ─────────────────────

@@ -1,8 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
-const { BIENS } = require('../utils/annonceBuilder');
-
-const TYPES_CHOICES = Object.keys(BIENS).map(t => ({ name: t, value: t }));
 
 // ── Reconstruction du contenu (même logique que recapLBC.js) ─────────────────
 function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, type3, adresse3, etage3, description, fraisDossier, doubleCles }) {
@@ -116,9 +113,9 @@ module.exports = {
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('type')
-      .setDescription('Nouveau type du bien')
+      .setDescription('Nouveau type du bien — tapez pour rechercher')
       .setRequired(false)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse')
       .setDescription('Nouvelle adresse du bien')
@@ -141,9 +138,9 @@ module.exports = {
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('type_2')
-      .setDescription('Nouveau type du 2ème bien')
+      .setDescription('Nouveau type du 2ème bien — tapez pour rechercher')
       .setRequired(false)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse_2')
       .setDescription('Nouvelle adresse du 2ème bien')
@@ -154,9 +151,9 @@ module.exports = {
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('type_3')
-      .setDescription('Nouveau type du 3ème bien')
+      .setDescription('Nouveau type du 3ème bien — tapez pour rechercher')
       .setRequired(false)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse_3')
       .setDescription('Nouvelle adresse du 3ème bien')

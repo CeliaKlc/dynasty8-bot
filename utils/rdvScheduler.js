@@ -23,8 +23,9 @@ async function sendRdvReminder(client, rdv, isPreReminder = false) {
     }
 
     const datetime = new Date(rdv.datetime);
-    const heureFormatted = datetime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const dateFormatted = datetime.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const TZ = { timeZone: 'Europe/Paris' };
+    const heureFormatted = datetime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', ...TZ });
+    const dateFormatted  = datetime.toLocaleDateString('fr-FR',  { weekday: 'long', day: 'numeric', month: 'long', ...TZ });
 
     const embed = new EmbedBuilder()
       .setColor(isPreReminder ? 0xE67E22 : 0x2ECC71)

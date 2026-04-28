@@ -1,8 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
-const { getDB }       = require('../utils/db');
-const { BIENS }       = require('../utils/annonceBuilder');
-const { logAction }   = require('../utils/actionLogger');
+const { getDB }     = require('../utils/db');
+const { logAction } = require('../utils/actionLogger');
 
 // Convertit "210'000", "210000", "210.000$", "210 000$" en number, null si N/A ou invalide
 const parsePrice = str => {
@@ -10,8 +9,6 @@ const parsePrice = str => {
   const n = parseInt(String(str).replace(/[$'\s,.]/g, ''), 10);
   return isNaN(n) ? null : n;
 };
-
-const TYPES_CHOICES = Object.keys(BIENS).map(t => ({ name: t, value: t }));
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -37,9 +34,9 @@ module.exports = {
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('type')
-      .setDescription('Type du bien')
+      .setDescription('Type du bien — tapez pour rechercher')
       .setRequired(true)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse')
       .setDescription('Adresse du bien (ex: Rockford Hills - Olympic Freeway 3)')
@@ -68,9 +65,9 @@ module.exports = {
     // ── Optionnels ────────────────────────────────────────────────────────────
     .addStringOption(opt => opt
       .setName('type_2')
-      .setDescription('Type du 2ème bien')
+      .setDescription('Type du 2ème bien — tapez pour rechercher')
       .setRequired(false)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse_2')
       .setDescription('Adresse du 2ème bien (ex: Rockford Hills - Olympic Freeway 1)')
@@ -81,9 +78,9 @@ module.exports = {
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('type_3')
-      .setDescription('Type du 3ème bien')
+      .setDescription('Type du 3ème bien — tapez pour rechercher')
       .setRequired(false)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse_3')
       .setDescription('Adresse du 2ème bien (ex: Rockford Hills - Olympic Freeway 1)')
