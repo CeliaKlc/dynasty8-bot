@@ -261,6 +261,12 @@ module.exports = {
           return interaction.reply({ content: '❌ Seuls les agents peuvent supprimer un ticket.', ephemeral: true });
         }
         try {
+          // Annuler les ventes en cours avant suppression pour ne pas polluer les stats
+          await getDB().collection('ventes_lbc').updateMany(
+            { ticketChannelId: interaction.channel.id, statut: 'en_cours' },
+            { $set: { statut: 'annule', dateVente: new Date() } },
+          ).catch(e => console.error('[TICKET] Erreur cleanup ventes :', e.message));
+
           await interaction.reply({ content: '🗑️ Suppression du ticket...' });
           setTimeout(() => interaction.channel.delete().catch(console.error), 3000);
         } catch (err) {

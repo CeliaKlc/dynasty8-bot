@@ -60,6 +60,23 @@ module.exports = {
       { $set: { prixFinal, statut: 'vendu', dateVente: new Date() } },
     );
 
+    // ── Renommer le salon d'annonce publique en ❌ ────────────────────────────
+    try {
+      const link = await db.collection('annonce_links').findOne({ numero: annonce });
+      if (link?.announcementChannelId) {
+        const salonAnnonce = await interaction.client.channels.fetch(link.announcementChannelId).catch(() => null);
+        if (salonAnnonce) {
+          const nomActuel = salonAnnonce.name;
+          const nomVendu  = nomActuel.startsWith('✅')
+            ? nomActuel.replace('✅', '❌')
+            : `❌${nomActuel.replace(/^❌/, '')}`;
+          salonAnnonce.setName(nomVendu).catch(err =>
+            console.error('[VENDU] Impossible de renommer le salon d\'annonce :', err.message),
+          );
+        }
+      }
+    } catch (e) { console.error('[VENDU] Erreur lookup salon annonce :', e.message); }
+
     // ── Log ───────────────────────────────────────────────────────────────────
     await logAction({
       type:      'vente_cloture',

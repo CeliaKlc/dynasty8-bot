@@ -119,6 +119,16 @@ module.exports = {
           },
         });
       }
+
+      // Avertir si le même prix a été appliqué à plusieurs annonces distinctes
+      if (ventes.length > 1 && prixStr) {
+        const numeros = ventes.map(v => v.annonce).filter(Boolean).join(', ');
+        await interaction.channel.send({
+          content:
+            `⚠️ **${ventes.length} annonces** ont été clôturées avec le même prix dans ce ticket (n°${numeros}).\n` +
+            `Si ce ticket contenait des **biens distincts à prix séparés**, utilise \`/vendu\` pour chaque annonce avec son prix individuel, puis \`/bye\` sans spécifier de prix.`,
+        }).catch(() => {});
+      }
     } catch (e) { console.error('[BYE] Erreur maj vente_lbc :', e.message); }
 
     // Planifier la fermeture automatique dans 24h si le client ne laisse pas d'avis

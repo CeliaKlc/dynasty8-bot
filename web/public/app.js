@@ -753,9 +753,12 @@ function renderAnnonces() {
   let list = annoncesData;
 
   // Filtre client-side sur les données déjà chargées
+  // Par défaut : masquer les annulées sauf si filtre explicite
   if (annoncesFilter === 'en_cours') list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
-  if (annoncesFilter === 'retard')   list = list.filter(a => a.retard);
-  if (annoncesFilter === 'vendu')    list = list.filter(a => a.statutDossier === 'vendu');
+  else if (annoncesFilter === 'retard')  list = list.filter(a => a.retard);
+  else if (annoncesFilter === 'vendu')   list = list.filter(a => a.statutDossier === 'vendu');
+  else if (annoncesFilter === 'annule')  list = list.filter(a => a.statutDossier === 'annule');
+  else list = list.filter(a => a.statutDossier !== 'annule'); // vue "Tous" = sans les annulés
 
   // Tri par numéro d'annonce croissant (1396 avant 1401)
   list = [...list].sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
@@ -771,7 +774,8 @@ function renderAnnonces() {
 
   list.forEach(a => {
     const card = document.createElement('div');
-    card.className = `annonce-card${a.retard ? ' annonce-retard' : a.statutDossier === 'vendu' ? ' annonce-vendu' : ''}`;
+    const isAnnule = a.statutDossier === 'annule';
+    card.className = `annonce-card${a.retard ? ' annonce-retard' : a.statutDossier === 'vendu' ? ' annonce-vendu' : isAnnule ? ' annonce-annule' : ''}`;
 
     // Badge statut + délai
     let badgeHtml = '';
@@ -781,6 +785,8 @@ function renderAnnonces() {
       badgeHtml = `<span class="annonce-badge annonce-badge-encours">En cours${a.joursOuverts != null ? ` · ${a.joursOuverts}j` : ''}</span>`;
     } else if (a.statutDossier === 'vendu') {
       badgeHtml = `<span class="annonce-badge annonce-badge-vendu">✅ Vendu</span>`;
+    } else if (isAnnule) {
+      badgeHtml = `<span class="annonce-badge annonce-badge-annule">❌ Annulé</span>`;
     } else {
       badgeHtml = `<span class="annonce-badge annonce-badge-unknown">Sans dossier</span>`;
     }
