@@ -2614,22 +2614,51 @@ function renderRepriseTypesTable(types) {
     const btn = e.target.closest('.reprise-estimate-btn');
     if (!btn) return;
     const type = btn.dataset.type;
-    document.getElementById('reprise-type-select').value = type;
-    doCalculerReprise(type);
-    document.getElementById('reprise-result-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('reprise-type-select').value  = type;
+    document.getElementById('reprise-zone-select').value  = '';
+    doCalculerReprise(type, '');
+    document.getElementById('reprise-zones-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, { once: true }); // once:true évite l'accumulation de listeners à chaque rechargement
 }
 
-async function doCalculerReprise(type) {
+// ── Icônes de zone (partagées entre toutes les fonctions reprise) ─────────────
+const REPRISE_ZONE_ICONS = {
+  'Nord':           '🔵',
+  'Sud':            '🟡',
+  'Quartier Prisé': '🟣',
+  'Roxwood':        '🔴',
+  'Las Venturas':   '🟠',
+};
+
+// ── Calcul reprise individuelle ───────────────────────────────────────────────
+// zone = '' ou null → vue toutes zones
+// zone = 'Roxwood' etc. → vue zone spécifique
+async function doCalculerReprise(type, zone) {
   if (!type) { toast('Sélectionnez un type de bien', 'error'); return; }
 
-  const stats = await api(`/reprise?type=${encodeURIComponent(type)}`);
+  const resultCard = document.getElementById('reprise-result-card');
+  const zonesCard  = document.getElementById('reprise-zones-card');
+
+  if (!zone) {
+    // ── Vue toutes zones ──────────────────────────────────────────────────────
+    resultCard.style.display = 'none';
+    const data = await api(`/reprise/zones?type=${encodeURIComponent(type)}`);
+    if (!data) return;
+    zonesCard.style.display = '';
+    document.getElementById('reprise-zones-title').textContent = `🗺️ Reprise par zone — ${type}`;
+    renderRepriseZones(data);
+    return;
+  }
+
+  // ── Vue zone spécifique ────────────────────────────────────────────────────
+  zonesCard.style.display = 'none';
+  const stats = await api(`/reprise?type=${encodeURIComponent(type)}&zone=${encodeURIComponent(zone)}`);
   if (!stats) return;
 
-  const card = document.getElementById('reprise-result-card');
-  card.style.display = '';
+  resultCard.style.display = '';
 
-  document.getElementById('reprise-result-title').textContent = `🏠 Reprise — ${type}`;
+  const zoneIcon = REPRISE_ZONE_ICONS[zone] ?? '📍';
+  document.getElementById('reprise-result-title').textContent = `🏠 ${type} — ${zoneIcon} ${zone}`;
 
   // Badge de fiabilité
   const badge = document.getElementById('reprise-fiabilite-badge');
@@ -2676,20 +2705,92 @@ async function doCalculerReprise(type) {
   document.getElementById('reprise-optimiste').textContent = r ? `≤ ${fmtReprisePrix(r.optimiste)}` : '—';
 }
 
+// ── Rendu du tableau toutes zones ─────────────────────────────────────────────
+function renderRepriseZones({ zones, data }) {
+  const body   = document.getElementById('reprise-zones-body');
+  const global = data['_global'];
+  let html = '';
+
+  // Bandeau résumé global
+  if (global && global.count > 0) {
+    const fiabClass = global.fiable ? 'reprise-badge-ok' : 'reprise-badge-warn';
+    html += `
+      <div class="reprise-zone-global">
+        <div class="reprise-zone-global-row">
+          <span class="reprise-zone-global-label">📦 Toutes zones confondues</span>
+          <span class="reprise-badge ${fiabClass}">${global.count} vente${global.count > 1 ? 's' : ''} · médian ${fmtReprisePrix(global.mediane)}</span>
+        </div>
+        <div class="reprise-zone-global-tiers">
+          <span>🛡️ Prudent ≤ <strong>${fmtReprisePrix(global.reprises.prudent)}</strong></span>
+          <span>⚖️ Standard ≤ <strong>${fmtReprisePrix(global.reprises.standard)}</strong></span>
+          <span>🚀 Optimiste ≤ <strong>${fmtReprisePrix(global.reprises.optimiste)}</strong></span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Grille par zone
+  html += '<div class="reprise-zones-grid">';
+  for (const zone of zones) {
+    const s       = data[zone];
+    const icon    = REPRISE_ZONE_ICONS[zone] ?? '📍';
+    const hasData = s && s.count > 0;
+    const zoneEsc = zone.replace(/'/g, "\\'");
+
+    if (!hasData) {
+      html += `
+        <div class="reprise-zone-card reprise-zone-empty">
+          <div class="reprise-zone-name">${icon} ${zone}</div>
+          <div class="reprise-zone-nodata">Aucune vente enregistrée</div>
+        </div>`;
+    } else {
+      const fiabClass = s.fiable ? 'reprise-badge-ok' : 'reprise-badge-warn';
+      html += `
+        <div class="reprise-zone-card" onclick="selectZoneFromCard('${zoneEsc}')">
+          <div class="reprise-zone-header">
+            <span class="reprise-zone-name">${icon} ${zone}</span>
+            <span class="reprise-badge ${fiabClass}" style="font-size:.7rem">${s.count} vente${s.count > 1 ? 's' : ''}${!s.fiable ? ' ⚠️' : ''}</span>
+          </div>
+          <div class="reprise-zone-median">Médian : <strong>${fmtReprisePrix(s.mediane)}</strong></div>
+          <div class="reprise-zone-tiers">
+            <div class="reprise-zone-tier-row"><span class="zone-tier-label">🛡️ Prudent</span><span>≤ <strong>${fmtReprisePrix(s.reprises.prudent)}</strong></span></div>
+            <div class="reprise-zone-tier-row"><span class="zone-tier-label">⚖️ Standard</span><span>≤ <strong>${fmtReprisePrix(s.reprises.standard)}</strong></span></div>
+            <div class="reprise-zone-tier-row"><span class="zone-tier-label">🚀 Optimiste</span><span>≤ <strong>${fmtReprisePrix(s.reprises.optimiste)}</strong></span></div>
+          </div>
+          <div class="reprise-zone-cta">Voir le détail →</div>
+        </div>`;
+    }
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// Clic sur une carte de zone → sélectionner + afficher le détail
+function selectZoneFromCard(zone) {
+  document.getElementById('reprise-zone-select').value = zone;
+  doCalculerReprise(document.getElementById('reprise-type-select').value, zone);
+  document.getElementById('reprise-result-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 document.getElementById('btn-reprise-calculer').addEventListener('click', () => {
-  doCalculerReprise(document.getElementById('reprise-type-select').value);
+  doCalculerReprise(
+    document.getElementById('reprise-type-select').value,
+    document.getElementById('reprise-zone-select').value,
+  );
 });
 
 async function doCalculerRepriseLot() {
-  const t1 = document.getElementById('lot-type1-select').value;
-  const t2 = document.getElementById('lot-type2-select').value;
-  const t3 = document.getElementById('lot-type3-select').value;
+  const t1   = document.getElementById('lot-type1-select').value;
+  const t2   = document.getElementById('lot-type2-select').value;
+  const t3   = document.getElementById('lot-type3-select').value;
+  const zone = document.getElementById('lot-zone-select').value;
 
   if (!t1 || !t2) { toast('Sélectionnez au moins 2 biens pour le lot', 'error'); return; }
   if (t1 === t2 && !t3) { toast('Les deux biens doivent être différents (ou ajoutez un 3ème)', 'error'); return; }
 
   const params = new URLSearchParams({ type1: t1, type2: t2 });
-  if (t3) params.append('type3', t3);
+  if (t3)   params.append('type3', t3);
+  if (zone) params.append('zone', zone);
 
   const stats = await api(`/reprise/lot?${params}`);
   if (!stats) return;
@@ -2698,8 +2799,9 @@ async function doCalculerRepriseLot() {
   resultDiv.style.display = '';
 
   // Titre
-  const label = [t1, t2, t3].filter(Boolean).join(' + ');
-  document.getElementById('lot-result-title').textContent = `📦 Lot — ${label}`;
+  const label     = [t1, t2, t3].filter(Boolean).join(' + ');
+  const zoneLabel = zone ? ` — ${REPRISE_ZONE_ICONS[zone] ?? ''}  ${zone}` : '';
+  document.getElementById('lot-result-title').textContent = `📦 Lot — ${label}${zoneLabel}`;
 
   // Badge fiabilité
   const badge = document.getElementById('lot-fiabilite-badge');

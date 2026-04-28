@@ -1851,6 +1851,105 @@ body.login-page {
   .reprise-stats-row  { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Reprise de bien — Vue par zone ──────────────────────────────────────────*/
+.reprise-zone-global {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .7rem 1rem;
+  margin-bottom: .75rem;
+}
+.reprise-zone-global-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-bottom: .4rem;
+}
+.reprise-zone-global-label {
+  font-weight: 600;
+  font-size: .9rem;
+}
+.reprise-zone-global-tiers {
+  display: flex;
+  gap: 1.5rem;
+  font-size: .84rem;
+  flex-wrap: wrap;
+}
+
+.reprise-zones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: .65rem;
+}
+
+.reprise-zone-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .85rem;
+  cursor: pointer;
+  transition: border-color .15s, transform .12s, box-shadow .12s;
+}
+.reprise-zone-card:not(.reprise-zone-empty):hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.reprise-zone-card.reprise-zone-empty {
+  opacity: .45;
+  cursor: default;
+}
+
+.reprise-zone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .4rem;
+  margin-bottom: .45rem;
+}
+.reprise-zone-name {
+  font-weight: 700;
+  font-size: .9rem;
+}
+.reprise-zone-nodata {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: .2rem;
+}
+.reprise-zone-median {
+  font-size: .82rem;
+  color: var(--text-muted);
+  margin-bottom: .45rem;
+}
+.reprise-zone-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: .22rem;
+}
+.reprise-zone-tier-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .8rem;
+  padding: 2px 0;
+}
+.zone-tier-label {
+  color: var(--text-muted);
+}
+.reprise-zone-cta {
+  font-size: .73rem;
+  color: var(--accent);
+  margin-top: .5rem;
+  text-align: right;
+  opacity: .8;
+}
+
+@media (max-width: 700px) {
+  .reprise-zones-grid        { grid-template-columns: repeat(2, 1fr); }
+  .reprise-zone-global-tiers { gap: .75rem; }
+}
+
 /* ── Toast ───────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed; bottom: 24px; right: 24px;

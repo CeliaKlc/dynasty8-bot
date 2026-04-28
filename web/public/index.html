@@ -349,11 +349,30 @@
                   <option value="">— Choisir un type —</option>
                 </select>
               </div>
+              <div class="form-group" style="min-width:165px;margin:0">
+                <label>Zone</label>
+                <select id="reprise-zone-select">
+                  <option value="">Toutes les zones</option>
+                  <option value="Nord">🔵 Nord</option>
+                  <option value="Sud">🟡 Sud</option>
+                  <option value="Quartier Prisé">🟣 Quartier Prisé</option>
+                  <option value="Roxwood">🔴 Roxwood</option>
+                  <option value="Las Venturas">🟠 Las Venturas</option>
+                </select>
+              </div>
               <button class="btn btn-primary" id="btn-reprise-calculer">Calculer</button>
             </div>
           </div>
 
-          <!-- Résultats (masqués au départ) -->
+          <!-- Résultats vue toutes zones (masqués au départ) -->
+          <div id="reprise-zones-card" class="recap-card" style="display:none;margin-top:.75rem">
+            <div class="reprise-result-header" style="margin-bottom:.75rem">
+              <div class="recap-card-title" id="reprise-zones-title" style="margin:0">🗺️ Reprise par zone</div>
+            </div>
+            <div id="reprise-zones-body"></div>
+          </div>
+
+          <!-- Résultats zone spécifique (masqués au départ) -->
           <div id="reprise-result-card" class="recap-card" style="display:none">
             <div class="reprise-result-header">
               <div class="recap-card-title" id="reprise-result-title" style="margin:0">🏠 —</div>
@@ -416,6 +435,17 @@
                 <label>Bien 3 <span style="color:var(--text-muted);font-size:.8em">(optionnel)</span></label>
                 <select id="lot-type3-select">
                   <option value="">— Aucun —</option>
+                </select>
+              </div>
+              <div class="form-group" style="min-width:155px;margin:0">
+                <label>Zone <span style="color:var(--text-muted);font-size:.8em">(optionnel)</span></label>
+                <select id="lot-zone-select">
+                  <option value="">Toutes les zones</option>
+                  <option value="Nord">🔵 Nord</option>
+                  <option value="Sud">🟡 Sud</option>
+                  <option value="Quartier Prisé">🟣 Quartier Prisé</option>
+                  <option value="Roxwood">🔴 Roxwood</option>
+                  <option value="Las Venturas">🟠 Las Venturas</option>
                 </select>
               </div>
               <button class="btn btn-primary" id="btn-lot-calculer">Calculer</button>
