@@ -221,6 +221,14 @@ module.exports = {
       },
     });
 
-    await interaction.editReply({ content: '✅ Récap LBC publié !' });
+    // ── Avertissement si prix de négociation > prix de départ ────────────────
+    const prixDepartNum = parsePrice(prixDepart);
+    const prixNegoNum   = parsePrice(negociation);
+    let replyContent = '✅ Récap LBC publié !';
+    if (prixDepartNum && prixNegoNum && prixNegoNum > prixDepartNum) {
+      replyContent += `\n\n⚠️ **Attention** : le prix de négociation (**${formatPrix(negociation)}$**) est supérieur au prix de départ (**${formatPrix(prixDepart)}$**). Vérifie les montants.`;
+    }
+
+    await interaction.editReply({ content: replyContent });
   },
 };
