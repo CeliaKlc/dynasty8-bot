@@ -98,7 +98,7 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
-    const annonce      = interaction.options.getString('annonce');
+    const annonce      = interaction.options.getString('annonce').trim();
     const prixDepart   = interaction.options.getString('prix_depart');
     const negociation  = interaction.options.getString('negociation');
     const commission   = interaction.options.getString('commission');
@@ -182,6 +182,7 @@ module.exports = {
 
     // Enregistrer la vente en attente de confirmation du prix final (/bye)
     let doublonWarning = false;
+    let dbEchec        = false;
     try {
       const existant = await getDB().collection('ventes_lbc').findOne({ annonce, statut: 'en_cours' });
       if (existant) doublonWarning = true;
@@ -209,7 +210,10 @@ module.exports = {
         dateRecap:  new Date(),
         dateVente:  null,
       });
-    } catch (e) { console.error('[RECLBC] Erreur sauvegarde vente_lbc :', e.message); }
+    } catch (e) {
+      console.error('[RECLBC] Erreur sauvegarde vente_lbc :', e.message);
+      dbEchec = true;
+    }
 
     // Log action
     await logAction({
@@ -229,10 +233,15 @@ module.exports = {
     const prixNegoNum   = parsePrice(negociation);
     let replyContent = '✅ Récap LBC publié !';
 
-    if (doublonWarning) {
+    if (dbEchec) {
+      replyContent =
+        `✅ Récap LBC publié dans le ticket.\n\n` +
+        `🚨 **Erreur critique** : la sauvegarde en base de données a échoué — ce récap **n'apparaîtra pas sur le panel** et ne sera **pas comptabilisé dans les stats**.\n` +
+        `Pour réparer : fais \`/editrecaplbc\` sur ce message (sans rien changer) — ça recréera l'entrée automatiquement.`;
+    } else if (doublonWarning) {
       replyContent += `\n\n⚠️ **Doublon détecté** : un récap en cours existe déjà pour l'annonce **n°${annonce}**. Si c'est voulu (lot multi-biens), ignore ce message. Sinon, utilise \`/vendu ${annonce}\` pour clôturer l'ancien récap avant de faire \`/bye\`.`;
     }
-    if (prixDepartNum && prixNegoNum && prixNegoNum > prixDepartNum) {
+    if (!dbEchec && prixDepartNum && prixNegoNum && prixNegoNum > prixDepartNum) {
       replyContent += `\n\n⚠️ **Attention** : le prix de négociation (**${formatPrix(negociation)}$**) est supérieur au prix de départ (**${formatPrix(prixDepart)}$**). Vérifie les montants.`;
     }
 
