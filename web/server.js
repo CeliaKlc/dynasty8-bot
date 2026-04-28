@@ -48,6 +48,27 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/auth', authRoutes);
 app.use('/api',  apiRoutes);
 
+// ── Change stream SSE avec reconnexion automatique ───────────────────────────
+// Si MongoDB fait un clignotement réseau, le stream se réouvre sans perdre le
+// temps réel côté panel.
+function watchSSE(collection, sections, retryMs = 5000) {
+  const open = () => {
+    try {
+      getDB().collection(collection)
+        .watch([], { fullDocument: 'updateLookup' })
+        .on('change', () => broadcast('refresh', { sections }))
+        .on('error', err => {
+          console.error(`[SSE] Erreur watch ${collection} : ${err.message} — reconnexion dans ${retryMs / 1000}s`);
+          setTimeout(open, retryMs);
+        });
+    } catch (err) {
+      console.error(`[SSE] Impossible de surveiller ${collection} : ${err.message} — retry dans ${retryMs / 1000}s`);
+      setTimeout(open, retryMs);
+    }
+  };
+  open();
+}
+
 // ── Démarrage ─────────────────────────────────────────────────────────────────
 (async () => {
   await connectDB();
@@ -69,14 +90,7 @@ app.use('/api',  apiRoutes);
   ];
 
   for (const { collection, sections } of streams) {
-    try {
-      getDB().collection(collection)
-        .watch([], { fullDocument: 'updateLookup' })
-        .on('change', () => broadcast('refresh', { sections }))
-        .on('error',  err => console.error(`[SSE] Erreur watch ${collection} :`, err.message));
-    } catch (err) {
-      console.error(`[SSE] Impossible de surveiller ${collection} :`, err.message);
-    }
+    watchSSE(collection, sections);
   }
   console.log('[SSE] Change streams actifs — diffusion temps réel activée');
 
@@ -84,4 +98,7 @@ app.use('/api',  apiRoutes);
     console.log(`\n🌐 Panel Dynasty 8 démarré sur http://localhost:${PORT}`);
     console.log(`   → Pour une URL publique : ngrok http ${PORT}\n`);
   });
-})();
+})().catch(err => {
+  console.error('[FATAL] Erreur au démarrage du panel web :', err);
+  process.exit(1);
+});
