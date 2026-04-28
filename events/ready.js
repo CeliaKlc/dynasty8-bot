@@ -87,10 +87,10 @@ module.exports = {
 
     restaurerSessions(client).catch(console.error);
     updateGuide(client).catch(console.error);
-    initScheduler(client);
-    initReducScheduler(client);
-    initSupScheduler(client);
-    initByeScheduler(client);
+    initScheduler(client).catch(err     => console.error('[RDV]   Erreur init scheduler :', err.message));
+    initReducScheduler(client).catch(err => console.error('[REDUC] Erreur init scheduler :', err.message));
+    initSupScheduler(client).catch(err   => console.error('[SUP]   Erreur init scheduler :', err.message));
+    initByeScheduler(client).catch(err   => console.error('[BYE]   Erreur init scheduler :', err.message));
 
     // ── Change stream : mise à jour auto du dashboard sacs ────────────────────
     watchWithReconnect(

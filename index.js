@@ -4,6 +4,15 @@ require('dotenv').config();
 const dns = require('dns');
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 
+// ── Garde-fous globaux ────────────────────────────────────────────────────────
+// Empêche le bot de planter silencieusement sur une erreur non interceptée.
+process.on('uncaughtException', err => {
+  console.error('[FATAL] Exception non interceptée :', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Promesse rejetée non interceptée :', reason);
+});
+
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const { loadCommands } = require('./handlers/commandHandler');
 const { loadEvents } = require('./handlers/eventHandler');
@@ -29,4 +38,7 @@ client.commands = new Collection();
   await loadCommands(client);
   await loadEvents(client);
   await client.login(process.env.TOKEN);
-})();
+})().catch(err => {
+  console.error('[FATAL] Erreur au démarrage du bot :', err);
+  process.exit(1);
+});

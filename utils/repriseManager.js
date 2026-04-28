@@ -2,6 +2,9 @@
 
 const { getDB } = require('./db');
 
+// ── Zones de vente ────────────────────────────────────────────────────────────
+const ZONES = ['Nord', 'Sud', 'Quartier Prisé', 'Roxwood', 'Las Venturas'];
+
 // Marges appliquées pour calculer le prix de reprise max à partir du prix médian
 const MARGES = {
   prudent:   0.20, // 20% — bien atypique ou marché lent
@@ -27,32 +30,35 @@ function mediane(arr) {
 
 /**
  * Retourne les statistiques de vente + fourchettes de reprise pour un type de bien.
- * @param {string} type — valeur exacte du type (ex: 'Appartement Simple')
+ * @param {string}      type — valeur exacte du type (ex: 'Appartement Simple')
+ * @param {string|null} zone — zone filtrée (ex: 'Roxwood'), null = toutes zones
  * @returns {object|null} stats ou null si aucune vente enregistrée
  */
-async function calculerReprise(type) {
+async function calculerReprise(type, zone = null) {
   const db = getDB();
 
-  // Ventes SOLO uniquement : exclure les lots (type2 ou type3 non null).
+  // Filtre de base : ventes solo uniquement
   // En MongoDB, { field: null } correspond aux documents où le champ est null OU absent.
+  const filter = { type, statut: 'vendu', prixFinal: { $gt: 0 }, type2: null, type3: null };
+  if (zone) filter.zone = zone;
+
   const ventes = await db.collection('ventes_lbc')
-    .find({ type, statut: 'vendu', prixFinal: { $gt: 0 }, type2: null, type3: null })
+    .find(filter)
     .sort({ dateVente: -1 })
     .limit(MAX_VENTES)
     .toArray();
 
-  // Compter les ventes en lot qui impliquent ce type (position 1, 2 ou 3)
-  // mais dont le prix reflète un ensemble de biens et non ce type seul.
-  const bundlesExclus = await db.collection('ventes_lbc').countDocuments({
+  // Compter les ventes en lot qui impliquent ce type
+  const bundlesFilter = {
     statut: 'vendu',
     prixFinal: { $gt: 0 },
     $and: [
-      // Ce type apparaît quelque part dans la vente
       { $or: [{ type }, { type2: type }, { type3: type }] },
-      // La vente est un lot (au moins un 2ème bien)
       { $or: [{ type2: { $ne: null } }, { type3: { $ne: null } }] },
     ],
-  });
+  };
+  if (zone) bundlesFilter.zone = zone;
+  const bundlesExclus = await db.collection('ventes_lbc').countDocuments(bundlesFilter);
 
   // Aucune donnée du tout
   if (!ventes.length && bundlesExclus === 0) return null;
@@ -78,6 +84,24 @@ async function calculerReprise(type) {
       optimiste: Math.floor(med * (1 - MARGES.optimiste)),
     },
   };
+}
+
+/**
+ * Retourne les statistiques par zone pour un type donné.
+ * Retourne aussi un résumé global (toutes zones confondues) sous la clé '_global'.
+ * @param {string} type
+ * @returns {object} { 'Nord': stats|null, 'Sud': stats|null, ..., '_global': stats|null }
+ */
+async function calculerRepriseParZone(type) {
+  const results = {};
+  // Calculer en parallèle pour les 5 zones + global
+  const [global, ...parZone] = await Promise.all([
+    calculerReprise(type, null),
+    ...ZONES.map(zone => calculerReprise(type, zone)),
+  ]);
+  results['_global'] = global;
+  ZONES.forEach((zone, i) => { results[zone] = parZone[i]; });
+  return results;
 }
 
 /**
@@ -123,13 +147,12 @@ function permutations(arr) {
 
 /**
  * Calcule les statistiques de vente pour un lot de 2 ou 3 biens vendus ensemble.
- * Cherche toutes les ventes où EXACTEMENT ces types apparaissent (dans n'importe quel ordre).
- * @param {string[]} types — tableau de 2 ou 3 types
+ * @param {string[]}    types — tableau de 2 ou 3 types
+ * @param {string|null} zone  — zone filtrée, null = toutes zones
  */
-async function calculerRepriseLot(types) {
+async function calculerRepriseLot(types, zone = null) {
   if (!Array.isArray(types) || types.length < 2 || types.length > 3) return null;
 
-  // Générer toutes les permutations pour matcher l'ordre peu importe l'ordre d'encodage
   const perms = permutations(types);
   const $or   = perms.map(perm => ({
     type:  perm[0],
@@ -137,8 +160,11 @@ async function calculerRepriseLot(types) {
     type3: perm[2] ?? null,
   }));
 
+  const filter = { statut: 'vendu', prixFinal: { $gt: 0 }, $or };
+  if (zone) filter.zone = zone;
+
   const ventes = await getDB().collection('ventes_lbc')
-    .find({ statut: 'vendu', prixFinal: { $gt: 0 }, $or })
+    .find(filter)
     .sort({ dateVente: -1 })
     .limit(MAX_VENTES)
     .toArray();
@@ -162,4 +188,12 @@ async function calculerRepriseLot(types) {
   };
 }
 
-module.exports = { calculerReprise, calculerRepriseLot, getVentesParType, getResumeTousTypes, SEUIL_FIABILITE };
+module.exports = {
+  calculerReprise,
+  calculerRepriseLot,
+  calculerRepriseParZone,
+  getVentesParType,
+  getResumeTousTypes,
+  ZONES,
+  SEUIL_FIABILITE,
+};

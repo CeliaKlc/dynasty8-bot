@@ -54,7 +54,8 @@ async function executeSupClose(client, doc) {
   } catch (err) {
     console.error(`[SUP] ❌ Erreur fermeture automatique :`, err.message);
   } finally {
-    await getDB().collection('sup_pending').deleteOne({ messageId: doc.messageId });
+    await getDB().collection('sup_pending').deleteOne({ messageId: doc.messageId })
+      .catch(e => console.error('[SUP] Erreur cleanup sup_pending :', e.message));
     timeouts.delete(doc.messageId);
   }
 }

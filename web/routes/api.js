@@ -6,7 +6,7 @@ const agentCache = require('../../utils/agentCache');
 const bienCache  = require('../../utils/bienCache');
 const { ObjectId } = require('mongodb');
 const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManager');
-const { calculerReprise, calculerRepriseLot, getResumeTousTypes, SEUIL_FIABILITE } = require('../../utils/repriseManager');
+const { calculerReprise, calculerRepriseLot, calculerRepriseParZone, getResumeTousTypes, ZONES, SEUIL_FIABILITE } = require('../../utils/repriseManager');
 const { BIENS }                              = require('../../utils/annonceBuilder');
 const { logAction }                          = require('../../utils/actionLogger');
 const { addClient, removeClient }            = require('../utils/sse');
@@ -1065,12 +1065,13 @@ router.get('/reprise/types', requireAuth, async (req, res) => {
 });
 
 // Estimation complète (médiane exacte + 3 paliers) pour un type donné
+// Query params : type (requis), zone (optionnel — filtre par zone)
 router.get('/reprise', requireAuth, async (req, res) => {
   try {
-    const { type } = req.query;
+    const { type, zone } = req.query;
     if (!type) return res.status(400).json({ error: 'Paramètre type requis' });
 
-    const stats = await calculerReprise(type);
+    const stats = await calculerReprise(type, zone || null);
     if (!stats)  return res.json({ count: 0 });
 
     res.json(stats);
@@ -1080,12 +1081,28 @@ router.get('/reprise', requireAuth, async (req, res) => {
   }
 });
 
+// Breakdown par zone pour un type donné
+// Query params : type (requis)
+router.get('/reprise/zones', requireAuth, async (req, res) => {
+  try {
+    const { type } = req.query;
+    if (!type) return res.status(400).json({ error: 'Paramètre type requis' });
+
+    const parZone = await calculerRepriseParZone(type);
+    res.json({ zones: ZONES, data: parZone });
+  } catch (err) {
+    console.error('[API] GET /reprise/zones :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // Estimation d'un lot (2 ou 3 biens vendus ensemble)
+// Query params : type1, type2, type3 (au moins 2), zone (optionnel)
 router.get('/reprise/lot', requireAuth, async (req, res) => {
   try {
     const types = [req.query.type1, req.query.type2, req.query.type3].filter(Boolean);
     if (types.length < 2) return res.status(400).json({ error: 'Au moins 2 types requis' });
-    const stats = await calculerRepriseLot(types);
+    const stats = await calculerRepriseLot(types, req.query.zone || null);
     if (!stats) return res.json({ count: 0 });
     res.json(stats);
   } catch (err) {

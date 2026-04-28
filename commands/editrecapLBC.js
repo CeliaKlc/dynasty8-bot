@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
 const { getDB }     = require('../utils/db');
 const { logAction } = require('../utils/actionLogger');
+const { ZONES }     = require('../utils/repriseManager');
 
 const parsePrice = str => {
   if (!str || /^n\/a$/i.test(str.trim())) return null;
@@ -10,7 +11,7 @@ const parsePrice = str => {
 };
 
 // ── Reconstruction du contenu (même logique que recapLBC.js) ─────────────────
-function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, type3, adresse3, etage3, description, fraisDossier, doubleCles }) {
+function buildContenu({ annonce, prixDepart, negociation, commission, zone, type, adresse, etage, type2, adresse2, etage2, type3, adresse3, etage3, description, fraisDossier, doubleCles }) {
   const lignes = [
     `======= **Annonce LBC : ${annonce}** ========`,
     ``,
@@ -20,6 +21,7 @@ function buildContenu({ annonce, prixDepart, negociation, commission, type, adre
   if (negociation) lignes.push(`**Négociation :** ${avecDollar(formatPrix(negociation))}`);
 
   lignes.push(`**Commission :** ${commission}%`);
+  if (zone) lignes.push(`**Zone :** ${zone}`);
   lignes.push(``);
 
   lignes.push(`**Type :** ${type}`);
@@ -78,6 +80,7 @@ function parseContenu(content) {
     prixDepart:   get(/\*\*Prix de départ :\*\* (.+?)\$/),
     negociation:  get(/\*\*Négociation :\*\* (.+?)\$/),
     commission:   get(/\*\*Commission :\*\* (.+?)%/),
+    zone:         get(/\*\*Zone :\*\* (.+)/),
     type:         typeAll[0]    ?? null,
     adresse:      adresseAll[0] ?? null,
     etage:        etageAll[0]   ?? null,
@@ -119,6 +122,11 @@ module.exports = {
       .setName('commission')
       .setDescription('Nouvelle commission (sans %)')
       .setRequired(false))
+    .addStringOption(opt => opt
+      .setName('zone')
+      .setDescription('Nouvelle zone du bien')
+      .setRequired(false)
+      .addChoices(...ZONES.map(z => ({ name: z, value: z }))))
     .addStringOption(opt => opt
       .setName('type')
       .setDescription('Nouveau type du bien — tapez pour rechercher')
@@ -206,6 +214,7 @@ module.exports = {
       prixDepart:   interaction.options.getString('prix_depart')  ?? current.prixDepart,
       negociation:  interaction.options.getString('negociation')  ?? current.negociation,
       commission:   interaction.options.getString('commission')   ?? current.commission,
+      zone:         interaction.options.getString('zone')         ?? current.zone,
       type:         interaction.options.getString('type')         ?? current.type,
       adresse:      interaction.options.getString('adresse')      ?? current.adresse,
       etage:        interaction.options.getString('etage')        ?? current.etage,
@@ -250,6 +259,7 @@ module.exports = {
         const docData = {
           annonce:         nouveauNumero,
           ticketChannelId: interaction.channel.id,
+          zone:            merged.zone     || null,
           type:            merged.type,
           adresse:         merged.adresse,
           etage:           merged.etage     || null,

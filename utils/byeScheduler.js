@@ -37,7 +37,8 @@ async function closeTicketAfterBye(client, doc, reason) {
   } catch (err) {
     console.error('[BYE] ❌ Erreur fermeture ticket :', err.message);
   } finally {
-    await getDB().collection('bye_pending').deleteOne({ clientId: doc.clientId });
+    await getDB().collection('bye_pending').deleteOne({ clientId: doc.clientId })
+      .catch(e => console.error('[BYE] Erreur cleanup bye_pending :', e.message));
     timeouts.delete(doc.clientId);
   }
 }
