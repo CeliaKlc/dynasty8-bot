@@ -306,6 +306,7 @@ router.get('/annonces', requireAuth, async (req, res) => {
         statutDossier,
         joursOuverts,
         retard,
+        cles: a.cles ?? false,
       };
     });
 
@@ -315,6 +316,22 @@ router.get('/annonces', requireAuth, async (req, res) => {
     res.json(enriched);
   } catch (err) {
     console.error('[API] /annonces :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Mettre à jour le statut des clés d'une annonce
+router.patch('/annonces/:id/cles', requireAuth, async (req, res) => {
+  try {
+    const { cles } = req.body;
+    const result = await getDB().collection('annonce_links').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { cles: !!cles, updatedAt: new Date() } },
+    );
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Annonce introuvable' });
+    res.json({ ok: true, cles: !!cles });
+  } catch (err) {
+    console.error('[API] PATCH /annonces/:id/cles :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

@@ -1456,6 +1456,34 @@ body.login-page {
 .annonce-badge-unknown { background: rgba(255,255,255,.06); color: var(--text-muted); }
 .annonce-annule        { opacity: .6; filter: grayscale(.4); }
 
+/* Bouton clés */
+.annonce-cles-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: .8rem;
+  line-height: 1.5;
+  transition: all .15s;
+  flex-shrink: 0;
+  user-select: none;
+}
+.annonce-cles-btn.cles-oui {
+  border-color: rgba(46,204,113,.5);
+  background: rgba(46,204,113,.12);
+}
+.annonce-cles-btn.cles-non {
+  opacity: .35;
+  filter: grayscale(1);
+}
+.annonce-cles-btn:hover:not(:disabled) {
+  opacity: 1 !important;
+  filter: none !important;
+  border-color: var(--text-muted);
+}
+.annonce-cles-btn:disabled { cursor: wait; }
+
 /* Bien */
 .annonce-bien      { display: flex; flex-direction: column; gap: 2px; }
 .annonce-type      { font-size: .875rem; font-weight: 600; }
