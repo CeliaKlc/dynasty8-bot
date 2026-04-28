@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
 const { getDB }     = require('../utils/db');
 const { logAction } = require('../utils/actionLogger');
+const { ZONES }     = require('../utils/repriseManager');
 
 // Convertit "210'000", "210000", "210.000$", "210 000$" en number, null si N/A ou invalide
 const parsePrice = str => {
@@ -32,6 +33,11 @@ module.exports = {
       .setName('commission')
       .setDescription('Commission (ex: 10)')
       .setRequired(true))
+    .addStringOption(opt => opt
+      .setName('zone')
+      .setDescription('Zone du bien')
+      .setRequired(true)
+      .addChoices(...ZONES.map(z => ({ name: z, value: z }))))
     .addStringOption(opt => opt
       .setName('type')
       .setDescription('Type du bien — tapez pour rechercher')
@@ -102,6 +108,7 @@ module.exports = {
     const prixDepart   = interaction.options.getString('prix_depart');
     const negociation  = interaction.options.getString('negociation');
     const commission   = interaction.options.getString('commission');
+    const zone         = interaction.options.getString('zone');
     const type         = interaction.options.getString('type');
     const adresse      = interaction.options.getString('adresse');
     const etage        = interaction.options.getString('etage');
@@ -128,6 +135,7 @@ module.exports = {
     if (negociation) lignes.push(`**Négociation :** ${avecDollar(formatPrix(negociation))}`);
 
     lignes.push(`**Commission :** ${commission}%`);
+    lignes.push(`**Zone :** ${zone}`);
 
     lignes.push(``);
 
@@ -189,6 +197,7 @@ module.exports = {
       await getDB().collection('ventes_lbc').insertOne({
         annonce,
         ticketChannelId: interaction.channel.id,
+        zone,
         // Bien principal
         type,    adresse,    etage:    etage    || null,
         // Bien 2 (optionnel)
