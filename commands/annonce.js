@@ -165,6 +165,20 @@ module.exports = {
       return interaction.editReply({ content: `❌ L'option **etageres** est réservée au type **Entrepôt**.` });
     }
 
+    // ── Validation de l'agent ─────────────────────────────────────────────────
+    // L'option agent doit être sélectionnée depuis l'autocomplétion (valeur = Discord ID).
+    // Si l'agent tape le nom sans sélectionner dans la liste, la valeur est du texte libre → invalide.
+    const agentId = interaction.options.getString('agent');
+    const agentValide = agentCache.getById(agentId);
+    if (!agentValide) {
+      return interaction.editReply({
+        content:
+          `❌ Agent non reconnu : \`${agentId}\`.\n\n` +
+          `Tu dois **sélectionner** l'agent dans la liste déroulante — ` +
+          `ne pas taper son nom manuellement sans choisir dans le menu.`,
+      });
+    }
+
     // ── Vérification doublon numéro ───────────────────────────────────────────
     const existant = await getDB().collection('annonce_links').findOne({ numero });
     if (existant?.announcementChannelId) {
@@ -179,8 +193,6 @@ module.exports = {
 
     // ── Construction du message (via utilitaire partagé) ──
     const contenu = buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description });
-
-    const agentId = interaction.options.getString('agent');
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`annonce_acheter_${numero}_${agentId}`)
