@@ -6,7 +6,7 @@ const agentCache = require('../../utils/agentCache');
 const bienCache  = require('../../utils/bienCache');
 const { ObjectId } = require('mongodb');
 const { DASHBOARD_CATEGORIES }              = require('../../utils/attenteManager');
-const { calculerReprise, calculerRepriseLot, getResumeTousTypes } = require('../../utils/repriseManager');
+const { calculerReprise, calculerRepriseLot, getResumeTousTypes, SEUIL_FIABILITE } = require('../../utils/repriseManager');
 const { BIENS }                              = require('../../utils/annonceBuilder');
 const { logAction }                          = require('../../utils/actionLogger');
 const { addClient, removeClient }            = require('../utils/sse');
@@ -142,10 +142,21 @@ router.post('/agents', requireAdmin, async (req, res) => {
     const { name, id, slug, emoji, feminin, titre, numero, photo, agre, bunker } = req.body;
     if (!name || !slug) return res.status(400).json({ error: 'name et slug sont requis' });
 
+    const normalizedSlug = slug.toLowerCase().replace(/\s+/g, '-');
+
+    // Vérifier l'unicité du slug et de l'ID Discord avant insertion
+    const orConditions = [{ slug: normalizedSlug }];
+    if (id) orConditions.push({ id });
+    const existing = await getDB().collection('agents').findOne({ $or: orConditions });
+    if (existing) {
+      const raison = existing.slug === normalizedSlug ? 'Ce slug est déjà utilisé' : 'Cet ID Discord est déjà utilisé par un autre agent';
+      return res.status(409).json({ error: raison });
+    }
+
     const doc = {
       name,
       id:      id     || null,
-      slug:    slug.toLowerCase().replace(/\s+/g, '-'),
+      slug:    normalizedSlug,
       emoji:   emoji  || '',
       feminin: feminin === true || feminin === 'true',
       titre:   titre  || '',
@@ -245,24 +256,24 @@ router.get('/annonces', requireAuth, async (req, res) => {
       .limit(100)
       .toArray();
 
-    // Joint les ventes_lbc par ticketChannelId (prend la plus récente si plusieurs)
-    const ticketIds = annonces.map(a => a.ticketChannelId).filter(Boolean);
-    const ventes    = await db.collection('ventes_lbc')
-      .find({ ticketChannelId: { $in: ticketIds } })
+    // Joint les ventes_lbc par numéro d'annonce (plus fiable que ticketChannelId pour les multi-récaps)
+    const numeros = annonces.map(a => a.numero).filter(Boolean);
+    const ventes  = await db.collection('ventes_lbc')
+      .find({ annonce: { $in: numeros } })
       .sort({ dateRecap: -1 })
       .toArray();
 
-    // ticketChannelId → vente la plus récente
+    // numero → vente la plus récente
     const venteMap = {};
     ventes.forEach(v => {
-      if (!venteMap[v.ticketChannelId]) venteMap[v.ticketChannelId] = v;
+      if (v.annonce && !venteMap[v.annonce]) venteMap[v.annonce] = v;
     });
 
     const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
     const now      = new Date();
 
     const enriched = annonces.map(a => {
-      const vente    = a.ticketChannelId ? (venteMap[a.ticketChannelId] ?? null) : null;
+      const vente    = a.numero ? (venteMap[a.numero] ?? null) : null;
       // Agent : depuis annonce_links d'abord, sinon depuis ventes_lbc
       const agentId  = a.agentId ?? vente?.agentId ?? null;
       const agent    = agentId ? agentMap[agentId] : null;
@@ -316,6 +327,43 @@ router.delete('/annonces/:id', requireAdmin, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] DELETE /annonces :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Marquer une annonce comme vendue depuis le panel (équivalent de /vendu Discord)
+router.post('/annonces/vendu', requireAuth, async (req, res) => {
+  try {
+    const { annonce, prix } = req.body;
+    if (!annonce) return res.status(400).json({ error: 'Numéro d\'annonce requis' });
+
+    const db    = getDB();
+    const vente = await db.collection('ventes_lbc').findOne({ annonce: String(annonce), statut: 'en_cours' });
+
+    if (!vente) {
+      const existante = await db.collection('ventes_lbc').findOne({ annonce: String(annonce) });
+      if (existante?.statut === 'vendu') return res.status(409).json({ error: 'Cette annonce est déjà marquée comme vendue' });
+      return res.status(404).json({ error: 'Aucune annonce en cours trouvée pour ce numéro' });
+    }
+
+    const prixSaisi = prix ? parseInt(String(prix).replace(/[$'\s,.]/g, ''), 10) || null : null;
+    const prixFinal = prixSaisi ?? vente.prixDepart;
+
+    await db.collection('ventes_lbc').updateOne(
+      { _id: vente._id },
+      { $set: { prixFinal, statut: 'vendu', dateVente: new Date() } },
+    );
+
+    await logAction({
+      type:      'vente_cloture',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { annonce: vente.annonce, type: vente.type, adresse: vente.adresse, prixFinal, prixDepart: vente.prixDepart, via: 'panel' },
+    });
+
+    res.json({ ok: true, prixFinal });
+  } catch (err) {
+    console.error('[API] POST /annonces/vendu :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -934,18 +982,24 @@ router.get('/alerts', requireAuth, async (req, res) => {
 
 router.get('/logs', requireAuth, async (req, res) => {
   try {
-    const limit    = Math.min(parseInt(req.query.limit) || 100, 200);
+    const limit  = Math.min(parseInt(req.query.limit)  || 50, 100);
+    const skip   = Math.max(parseInt(req.query.skip)   || 0,   0);
     const { type, actorId } = req.query;
 
     const query = {};
     if (type)    query.type    = type;
     if (actorId) query.actorId = actorId;
 
-    const logs = await getDB().collection('action_logs')
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .toArray();
+    const db = getDB();
+    const [logs, total] = await Promise.all([
+      db.collection('action_logs')
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray(),
+      db.collection('action_logs').countDocuments(query),
+    ]);
 
     const agentMap = Object.fromEntries(agentCache.getAll().map(a => [a.id, a]));
 
@@ -962,7 +1016,7 @@ router.get('/logs', requireAuth, async (req, res) => {
       createdAt:  l.createdAt,
     }));
 
-    res.json(enriched);
+    res.json({ logs: enriched, total, skip, limit });
   } catch (err) {
     console.error('[API] GET /logs :', err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -976,14 +1030,14 @@ router.get('/logs', requireAuth, async (req, res) => {
 // Résumé par type (utilise $avg comme approximation de la médiane)
 router.get('/reprise/types', requireAuth, async (req, res) => {
   try {
-    const types     = Object.keys(BIENS);
+    const types     = Object.keys({ ...BIENS, ...bienCache.getAll() });
     const summaries = await getResumeTousTypes();
     const map       = Object.fromEntries(summaries.map(s => [s._id, s]));
 
     const result = types.map(type => {
       const s = map[type];
-      if (!s) return { type, count: 0, median: null, min: null, max: null };
-      return { type, count: s.count, median: Math.round(s.median), min: s.min, max: s.max };
+      if (!s) return { type, count: 0, fiable: false, median: null, min: null, max: null };
+      return { type, count: s.count, fiable: s.count >= SEUIL_FIABILITE, median: Math.round(s.median), min: s.min, max: s.max };
     });
 
     res.json(result);

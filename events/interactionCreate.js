@@ -26,14 +26,15 @@ module.exports = {
       const { commandName } = interaction;
       const focused = interaction.options.getFocused(true);
 
-      // Autocomplete du champ "type" pour /annonce et /editannonce
-      if ((commandName === 'annonce' || commandName === 'editannonce') && focused.name === 'type') {
+      // Autocomplete du champ "type" / "type_2" / "type_3" pour toutes les commandes concernées
+      const TYPE_AUTOCOMPLETE_CMDS = ['annonce', 'editannonce', 'recaplbc', 'editrecaplbc'];
+      const TYPE_AUTOCOMPLETE_FIELDS = ['type', 'type_2', 'type_3'];
+      if (TYPE_AUTOCOMPLETE_CMDS.includes(commandName) && TYPE_AUTOCOMPLETE_FIELDS.includes(focused.name)) {
         const query = focused.value.toLowerCase();
-        // Types prédéfinis + custom (bienCache inclut les deux après seed)
         const allTypes = Object.keys({ ...BIENS, ...bienCache.getAll() });
         const filtered = allTypes
           .filter(t => t.toLowerCase().includes(query))
-          .slice(0, 25); // Discord limite à 25 suggestions
+          .slice(0, 25);
         await interaction.respond(filtered.map(t => ({ name: t, value: t }))).catch(() => {});
         return;
       }
@@ -260,6 +261,12 @@ module.exports = {
           return interaction.reply({ content: '❌ Seuls les agents peuvent supprimer un ticket.', ephemeral: true });
         }
         try {
+          // Annuler les ventes en cours avant suppression pour ne pas polluer les stats
+          await getDB().collection('ventes_lbc').updateMany(
+            { ticketChannelId: interaction.channel.id, statut: 'en_cours' },
+            { $set: { statut: 'annule', dateVente: new Date() } },
+          ).catch(e => console.error('[TICKET] Erreur cleanup ventes :', e.message));
+
           await interaction.reply({ content: '🗑️ Suppression du ticket...' });
           setTimeout(() => interaction.channel.delete().catch(console.error), 3000);
         } catch (err) {

@@ -12,6 +12,33 @@ const agentCache = require('../utils/agentCache');
 const bienCache  = require('../utils/bienCache');
 const { BIENS }  = require('../utils/annonceBuilder');
 
+/**
+ * Ouvre un change stream MongoDB avec reconnexion automatique en cas d'erreur.
+ * @param {Function} getCollection  — () => db.collection('...')
+ * @param {Array}    pipeline       — pipeline de filtrage
+ * @param {object}   options        — options watch()
+ * @param {Function} onChange       — handler appelé à chaque événement
+ * @param {string}   label          — préfixe de log
+ * @param {number}   [retryMs=5000] — délai avant reconnexion
+ */
+function watchWithReconnect(getCollection, pipeline, options, onChange, label, retryMs = 5000) {
+  const open = () => {
+    try {
+      const stream = getCollection().watch(pipeline, options);
+      stream.on('change', onChange);
+      stream.on('error', err => {
+        console.error(`[${label}] ⚠️ Erreur change stream : ${err.message} — reconnexion dans ${retryMs / 1000}s`);
+        stream.close().catch(() => {});
+        setTimeout(open, retryMs);
+      });
+    } catch (err) {
+      console.error(`[${label}] Impossible d'ouvrir le change stream : ${err.message} — retry dans ${retryMs / 1000}s`);
+      setTimeout(open, retryMs);
+    }
+  };
+  open();
+}
+
 module.exports = {
   name: 'ready',
   once: true,
@@ -43,26 +70,20 @@ module.exports = {
     );
 
     // ── Change stream : sync cache biens depuis le panel ─────────────────────
-    try {
-      const bienStream = getDB().collection('bien_types').watch([], { fullDocument: 'updateLookup' });
-      bienStream.on('change', async () => {
+    watchWithReconnect(
+      () => getDB().collection('bien_types'),
+      [], { fullDocument: 'updateLookup' },
+      async () => {
         try {
           await bienCache.refresh(getDB());
           console.log('[BienCache] 🔄 Cache rechargé suite à une modification web');
         } catch (err) {
           console.error('[BienCache] Erreur refresh :', err.message);
         }
-      });
-      bienStream.on('error', err =>
-        console.error('[BienCache] Erreur change stream :', err.message),
-      );
-      console.log('[BienCache] Change stream actif — cache synchronisé automatiquement');
-    } catch (err) {
-      console.error('[BienCache] Change stream impossible, fallback polling 60s :', err.message);
-      setInterval(() => bienCache.refresh(getDB()).catch(e =>
-        console.error('[BienCache] Erreur polling refresh :', e.message),
-      ), 60_000);
-    }
+      },
+      'BienCache',
+    );
+    console.log('[BienCache] Change stream actif — cache synchronisé automatiquement');
 
     restaurerSessions(client).catch(console.error);
     updateGuide(client).catch(console.error);
@@ -72,111 +93,84 @@ module.exports = {
     initByeScheduler(client);
 
     // ── Change stream : mise à jour auto du dashboard sacs ────────────────────
-    // Déclenché dès qu'une modification arrive sur sac_registry (y compris depuis le panel web)
-    try {
-      const changeStream = getDB().collection('sac_registry').watch([], { fullDocument: 'updateLookup' });
-      changeStream.on('change', () => {
-        updateSacDashboard(client).catch(err =>
-          console.error('[SAC] Erreur mise à jour dashboard :', err.message),
-        );
-      });
-      console.log('[SAC] Change stream actif — dashboard se met à jour automatiquement');
-    } catch (err) {
-      console.error('[SAC] Impossible d\'activer le change stream :', err.message);
-    }
+    watchWithReconnect(
+      () => getDB().collection('sac_registry'),
+      [], { fullDocument: 'updateLookup' },
+      () => updateSacDashboard(client).catch(err =>
+        console.error('[SAC] Erreur mise à jour dashboard :', err.message),
+      ),
+      'SAC',
+    );
+    console.log('[SAC] Change stream actif — dashboard se met à jour automatiquement');
 
     // ── Change stream : mise à jour auto du dashboard liste d'attente ─────────
-    // Déclenché quand le panel change un statut ou supprime un client (waiting_list)
-    try {
-      const attenteStream = getDB().collection('waiting_list').watch([], { fullDocument: 'updateLookup' });
-      attenteStream.on('change', () => {
-        updateAttenteDashboard(client).catch(err =>
-          console.error('[ATTENTE] Erreur mise à jour dashboard :', err.message),
-        );
-      });
-      console.log('[ATTENTE] Change stream actif — dashboard se met à jour automatiquement');
-    } catch (err) {
-      console.error('[ATTENTE] Impossible d\'activer le change stream :', err.message);
-    }
+    watchWithReconnect(
+      () => getDB().collection('waiting_list'),
+      [], { fullDocument: 'updateLookup' },
+      () => updateAttenteDashboard(client).catch(err =>
+        console.error('[ATTENTE] Erreur mise à jour dashboard :', err.message),
+      ),
+      'ATTENTE',
+    );
+    console.log('[ATTENTE] Change stream actif — dashboard se met à jour automatiquement');
 
     // ── Change stream : auto-planification des RDV créés depuis le panel ─────────
-    try {
-      const rdvStream = getDB().collection('rendez_vous').watch(
-        [{ $match: { operationType: 'insert' } }],
-        { fullDocument: 'updateLookup' },
-      );
-      rdvStream.on('change', change => {
+    watchWithReconnect(
+      () => getDB().collection('rendez_vous'),
+      [{ $match: { operationType: 'insert' } }],
+      { fullDocument: 'updateLookup' },
+      change => {
         const rdv = change.fullDocument;
         if (rdv && rdv.statut === 'prévu') {
           scheduleRdv(client, rdv);
           console.log(`[RDV] 🆕 Nouveau RDV planifié depuis le panel : ${rdv.id}`);
         }
-      });
-      console.log('[RDV] Change stream actif — nouveaux RDV planifiés automatiquement');
-    } catch (err) {
-      console.error('[RDV] Impossible d\'activer le change stream RDV :', err.message);
-    }
+      },
+      'RDV',
+    );
+    console.log('[RDV] Change stream actif — nouveaux RDV planifiés automatiquement');
 
     // ── Change stream : envoi des récaps hebdomadaires ────────────────────────
+    // Récaps en attente au démarrage (bot était offline lors de la publication)
     try {
-      // Récaps en attente au démarrage (bot était offline lors de la publication)
       const pendingRecaps = await getDB().collection('recap_hebdo')
         .find({ statut: 'a_publier' }).toArray();
       for (const recap of pendingRecaps) sendRecap(client, recap);
       if (pendingRecaps.length)
         console.log(`[RECAP] 🔄 ${pendingRecaps.length} récap(s) en attente traité(s) au démarrage`);
+    } catch (err) {
+      console.error('[RECAP] Erreur chargement récaps en attente :', err.message);
+    }
 
-      // Filtre uniquement sur operationType pour éviter les quirks du fullDocument dans les pipelines
-      const recapStream = getDB().collection('recap_hebdo').watch(
-        [{ $match: { operationType: 'insert' } }],
-        { fullDocument: 'updateLookup' },
-      );
-      recapStream.on('change', change => {
+    watchWithReconnect(
+      () => getDB().collection('recap_hebdo'),
+      [{ $match: { operationType: 'insert' } }],
+      { fullDocument: 'updateLookup' },
+      change => {
         const recap = change.fullDocument;
         if (recap?.statut === 'a_publier') {
           sendRecap(client, recap);
           console.log(`[RECAP] 📤 Récap reçu depuis le panel : ${recap.id}`);
         }
-      });
-      recapStream.on('error', err =>
-        console.error('[RECAP] Erreur change stream :', err.message),
-      );
-      console.log('[RECAP] Change stream actif — récaps publiés automatiquement');
-    } catch (err) {
-      console.error('[RECAP] Impossible d\'activer le change stream :', err.message);
-      // Fallback : polling toutes les 10 secondes si le change stream n'est pas disponible
-      console.warn('[RECAP] ⚠️  Fallback polling actif (10s)');
-      setInterval(async () => {
-        try {
-          const pending = await getDB().collection('recap_hebdo')
-            .find({ statut: 'a_publier' }).toArray();
-          for (const recap of pending) sendRecap(client, recap);
-        } catch (e) { /* silencieux */ }
-      }, 10_000);
-    }
+      },
+      'RECAP',
+    );
+    console.log('[RECAP] Change stream actif — récaps publiés automatiquement');
 
     // ── Change stream : sync du cache agents depuis le panel web ─────────────────
-    // Quand une modification arrive sur la collection `agents` (photo, habilitations…)
-    // on recharge le cache du bot pour que /carte reflète immédiatement les changements.
-    try {
-      const agentStream = getDB().collection('agents').watch([], { fullDocument: 'updateLookup' });
-      agentStream.on('change', async () => {
+    watchWithReconnect(
+      () => getDB().collection('agents'),
+      [], { fullDocument: 'updateLookup' },
+      async () => {
         try {
           await agentCache.refresh(getDB());
           console.log('[AgentCache] 🔄 Cache rechargé suite à une modification web');
         } catch (err) {
           console.error('[AgentCache] Erreur refresh après change stream :', err.message);
         }
-      });
-      agentStream.on('error', err =>
-        console.error('[AgentCache] Erreur change stream :', err.message),
-      );
-      console.log('[AgentCache] Change stream actif — cache synchronisé automatiquement');
-    } catch (err) {
-      console.error('[AgentCache] Change stream impossible, fallback polling 30s :', err.message);
-      setInterval(() => agentCache.refresh(getDB()).catch(e =>
-        console.error('[AgentCache] Erreur polling refresh :', e.message),
-      ), 30_000);
-    }
+      },
+      'AgentCache',
+    );
+    console.log('[AgentCache] Change stream actif — cache synchronisé automatiquement');
   },
 };

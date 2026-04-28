@@ -133,6 +133,7 @@
           <button class="annonce-filter-btn" data-filter="en_cours">En cours</button>
           <button class="annonce-filter-btn annonce-filter-retard" data-filter="retard">⚠️ En retard</button>
           <button class="annonce-filter-btn" data-filter="vendu">Vendus</button>
+          <button class="annonce-filter-btn" data-filter="annule" style="color:#e74c3c">Annulés</button>
         </div>
       </div>
       <div id="annonces-count" style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px"></div>
@@ -537,6 +538,9 @@
       <div id="logs-timeline"></div>
       <div id="logs-empty" style="display:none;color:var(--text-muted);font-size:.875rem;padding:24px 0">
         Aucune action enregistrée pour ces filtres.
+      </div>
+      <div style="text-align:center;margin-top:1rem">
+        <button id="btn-logs-more" class="btn" style="display:none;background:var(--bg3);color:var(--text)">Charger plus</button>
       </div>
     </section>
 

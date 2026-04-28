@@ -1,17 +1,14 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
-const { getDB }       = require('../utils/db');
-const { BIENS }       = require('../utils/annonceBuilder');
-const { logAction }   = require('../utils/actionLogger');
+const { getDB }     = require('../utils/db');
+const { logAction } = require('../utils/actionLogger');
 
-// Convertit "210'000" ou "210000" en number, null si N/A ou invalide
+// Convertit "210'000", "210000", "210.000$", "210 000$" en number, null si N/A ou invalide
 const parsePrice = str => {
   if (!str || /^n\/a$/i.test(str.trim())) return null;
-  const n = parseInt(String(str).replace(/['\s,.]/g, ''), 10);
+  const n = parseInt(String(str).replace(/[$'\s,.]/g, ''), 10);
   return isNaN(n) ? null : n;
 };
-
-const TYPES_CHOICES = Object.keys(BIENS).map(t => ({ name: t, value: t }));
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -37,9 +34,9 @@ module.exports = {
       .setRequired(true))
     .addStringOption(opt => opt
       .setName('type')
-      .setDescription('Type du bien')
+      .setDescription('Type du bien — tapez pour rechercher')
       .setRequired(true)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse')
       .setDescription('Adresse du bien (ex: Rockford Hills - Olympic Freeway 3)')
@@ -68,9 +65,9 @@ module.exports = {
     // ── Optionnels ────────────────────────────────────────────────────────────
     .addStringOption(opt => opt
       .setName('type_2')
-      .setDescription('Type du 2ème bien')
+      .setDescription('Type du 2ème bien — tapez pour rechercher')
       .setRequired(false)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse_2')
       .setDescription('Adresse du 2ème bien (ex: Rockford Hills - Olympic Freeway 1)')
@@ -81,9 +78,9 @@ module.exports = {
       .setRequired(false))
     .addStringOption(opt => opt
       .setName('type_3')
-      .setDescription('Type du 3ème bien')
+      .setDescription('Type du 3ème bien — tapez pour rechercher')
       .setRequired(false)
-      .addChoices(...TYPES_CHOICES))
+      .setAutocomplete(true))
     .addStringOption(opt => opt
       .setName('adresse_3')
       .setDescription('Adresse du 2ème bien (ex: Rockford Hills - Olympic Freeway 1)')
@@ -184,7 +181,10 @@ module.exports = {
     } catch (e) { console.error('[RECLBC] Erreur sauvegarde lien :', e.message); }
 
     // Enregistrer la vente en attente de confirmation du prix final (/bye)
+    let doublonWarning = false;
     try {
+      const existant = await getDB().collection('ventes_lbc').findOne({ annonce, statut: 'en_cours' });
+      if (existant) doublonWarning = true;
       await getDB().collection('ventes_lbc').insertOne({
         annonce,
         ticketChannelId: interaction.channel.id,
@@ -224,6 +224,18 @@ module.exports = {
       },
     });
 
-    await interaction.editReply({ content: '✅ Récap LBC publié !' });
+    // ── Avertissements ────────────────────────────────────────────────────────
+    const prixDepartNum = parsePrice(prixDepart);
+    const prixNegoNum   = parsePrice(negociation);
+    let replyContent = '✅ Récap LBC publié !';
+
+    if (doublonWarning) {
+      replyContent += `\n\n⚠️ **Doublon détecté** : un récap en cours existe déjà pour l'annonce **n°${annonce}**. Si c'est voulu (lot multi-biens), ignore ce message. Sinon, utilise \`/vendu ${annonce}\` pour clôturer l'ancien récap avant de faire \`/bye\`.`;
+    }
+    if (prixDepartNum && prixNegoNum && prixNegoNum > prixDepartNum) {
+      replyContent += `\n\n⚠️ **Attention** : le prix de négociation (**${formatPrix(negociation)}$**) est supérieur au prix de départ (**${formatPrix(prixDepart)}$**). Vérifie les montants.`;
+    }
+
+    await interaction.editReply({ content: replyContent });
   },
 };

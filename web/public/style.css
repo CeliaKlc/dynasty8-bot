@@ -1452,7 +1452,9 @@ body.login-page {
 .annonce-badge-retard  { background: rgba(243,156,18,.15); color: #f39c12; }
 .annonce-badge-encours { background: rgba(52,152,219,.12);  color: #3498db; }
 .annonce-badge-vendu   { background: rgba(46,204,113,.12);  color: #2ecc71; }
+.annonce-badge-annule  { background: rgba(231,76,60,.12);   color: #e74c3c; }
 .annonce-badge-unknown { background: rgba(255,255,255,.06); color: var(--text-muted); }
+.annonce-annule        { opacity: .6; filter: grayscale(.4); }
 
 /* Bien */
 .annonce-bien      { display: flex; flex-direction: column; gap: 2px; }

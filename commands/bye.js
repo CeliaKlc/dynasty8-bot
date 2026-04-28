@@ -64,38 +64,45 @@ module.exports = {
       interaction.channel.setName(newName).catch(() => {});
     }
 
-    // Marquer automatiquement le salon d'annonce comme vendu (✅ → ❌)
+    // Marquer automatiquement les salons d'annonce comme vendus (✅ → ❌)
+    // Utilise find (et non findOne) pour gérer les tickets multi-annonces.
     try {
-      const link = await getDB().collection('annonce_links').findOne({ ticketChannelId: interaction.channel.id });
-      if (link?.announcementChannelId) {
+      const links = await getDB().collection('annonce_links')
+        .find({ ticketChannelId: interaction.channel.id })
+        .toArray();
+      for (const link of links) {
+        if (!link.announcementChannelId) continue;
         const salonAnnonce = await interaction.client.channels.fetch(link.announcementChannelId).catch(() => null);
-        if (salonAnnonce) {
-          const nomActuel = salonAnnonce.name;
-          const nomVendu  = nomActuel.startsWith('✅')
-            ? nomActuel.replace('✅', '❌')
-            : `❌${nomActuel.replace(/^❌/, '')}`;
-          salonAnnonce.setName(nomVendu).catch(err =>
-            console.error('[BYE] Impossible de renommer le salon d\'annonce :', err.message),
-          );
-        }
+        if (!salonAnnonce) continue;
+        const nomActuel = salonAnnonce.name;
+        const nomVendu  = nomActuel.startsWith('✅')
+          ? nomActuel.replace('✅', '❌')
+          : `❌${nomActuel.replace(/^❌/, '')}`;
+        salonAnnonce.setName(nomVendu).catch(err =>
+          console.error('[BYE] Impossible de renommer le salon d\'annonce :', err.message),
+        );
       }
     } catch (err) {
-      console.error('[BYE] Erreur lookup salon annonce :', err.message);
+      console.error('[BYE] Erreur lookup salons annonce :', err.message);
     }
 
     // ── Confirmer le prix de vente final dans ventes_lbc ─────────────────────
+    // Utilise find (et non findOne) pour gérer les tickets multi-annonces :
+    // si /vendu a déjà clôturé certaines, seules les restantes en_cours sont traitées.
     try {
-      const vente = await getDB().collection('ventes_lbc').findOne({
+      const db      = getDB();
+      const prixStr = interaction.options.getString('prix');
+      const ventes  = await db.collection('ventes_lbc').find({
         ticketChannelId: interaction.channel.id,
         statut: 'en_cours',
-      });
-      if (vente) {
-        const prixStr   = interaction.options.getString('prix');
+      }).toArray();
+
+      for (const vente of ventes) {
         const prixSaisi = prixStr
           ? parseInt(prixStr.replace(/['\s,.]/g, ''), 10) || null
           : null;
         const prixFinal = prixSaisi ?? vente.prixDepart; // fallback = prix de départ
-        await getDB().collection('ventes_lbc').updateOne(
+        await db.collection('ventes_lbc').updateOne(
           { _id: vente._id },
           { $set: { prixFinal, statut: 'vendu', dateVente: new Date() } },
         );
@@ -111,6 +118,16 @@ module.exports = {
             prixDepart: vente.prixDepart,
           },
         });
+      }
+
+      // Avertir si le même prix a été appliqué à plusieurs annonces distinctes
+      if (ventes.length > 1 && prixStr) {
+        const numeros = ventes.map(v => v.annonce).filter(Boolean).join(', ');
+        await interaction.channel.send({
+          content:
+            `⚠️ **${ventes.length} annonces** ont été clôturées avec le même prix dans ce ticket (n°${numeros}).\n` +
+            `Si ce ticket contenait des **biens distincts à prix séparés**, utilise \`/vendu\` pour chaque annonce avec son prix individuel, puis \`/bye\` sans spécifier de prix.`,
+        }).catch(() => {});
       }
     } catch (e) { console.error('[BYE] Erreur maj vente_lbc :', e.message); }
 

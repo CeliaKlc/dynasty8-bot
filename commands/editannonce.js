@@ -16,6 +16,7 @@ const {
 } = require('../utils/annonceBuilder');
 const agentCache = require('../utils/agentCache');
 const bienCache  = require('../utils/bienCache');
+const { getDB }  = require('../utils/db');
 
 // ── Parse un message annonce existant ────────────────────────────────────────
 function parseAnnonceMessage(content, components) {
@@ -278,6 +279,17 @@ module.exports = {
       editPayload.attachments = [];
     }
     await message.edit(editPayload);
+
+    // Mettre à jour agentId dans annonce_links si l'agent a changé
+    if (interaction.options.getString('agent') && current.numero) {
+      try {
+        await getDB().collection('annonce_links').updateOne(
+          { numero: current.numero },
+          { $set: { agentId: newAgentId, updatedAt: new Date() } },
+        );
+      } catch (e) { console.error('[EDITANNONCE] Erreur MAJ agentId :', e.message); }
+    }
+
     await interaction.editReply({ content: '✅ Annonce mise à jour !' });
   },
 };

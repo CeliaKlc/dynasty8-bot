@@ -165,6 +165,18 @@ module.exports = {
       return interaction.editReply({ content: `❌ L'option **etageres** est réservée au type **Entrepôt**.` });
     }
 
+    // ── Vérification doublon numéro ───────────────────────────────────────────
+    const existant = await getDB().collection('annonce_links').findOne({ numero });
+    if (existant?.announcementChannelId) {
+      return interaction.editReply({
+        content:
+          `❌ Une annonce avec le numéro **${numero}** existe déjà.\n\n` +
+          `• Pour **modifier** l'annonce existante → \`/editannonce\`\n` +
+          `• Pour **corriger un numéro** mal saisi → \`/editnumero ancien_numero:${numero} nouveau_numero:XXXXX\`\n\n` +
+          `Si le bien a été revendu et que c'est une **nouvelle annonce avec le même numéro**, supprime d'abord l'ancienne via le panel.`,
+      });
+    }
+
     // ── Construction du message (via utilitaire partagé) ──
     const contenu = buildAnnonceContent({ type, transaction, quartier, garage1, garage2, garageLuxe, salleASac, jardin, piscine, terrasse, balcon, etageres, description });
 
@@ -184,13 +196,13 @@ module.exports = {
         .setStyle(ButtonStyle.Secondary),
     );
 
-    await interaction.channel.send({ content: contenu, files: [{ attachment: image.url, name: image.name }], components: [row], allowedMentions: { parse: ['roles'] } });
+    const sent = await interaction.channel.send({ content: contenu, files: [{ attachment: image.url, name: image.name }], components: [row], allowedMentions: { parse: ['roles'] } });
 
-    // Sauvegarder le lien numero → salon d'annonce
+    // Sauvegarder le lien numero → salon d'annonce (messageId pour pouvoir corriger les boutons plus tard)
     try {
       await getDB().collection('annonce_links').updateOne(
         { numero },
-        { $set: { numero, announcementChannelId: interaction.channel.id, agentId, type, updatedAt: new Date() } },
+        { $set: { numero, announcementChannelId: interaction.channel.id, messageId: sent.id, agentId, type, updatedAt: new Date() } },
         { upsert: true },
       );
     } catch (e) { console.error('[ANNONCE] Erreur sauvegarde lien :', e.message); }

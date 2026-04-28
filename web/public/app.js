@@ -245,21 +245,22 @@ function renderSearchResults(data) {
       const el = document.createElement('div');
       el.className = 'search-result-item';
 
-      // Icône ou photo
+      // Icône ou photo (src= n'exécute pas de JS, mais on échappe quand même les guillemets)
+      const safePhoto = item.photo ? item.photo.replace(/"/g, '%22') : '';
       const iconHtml = item.photo
-        ? `<img class="search-result-photo" src="${item.photo}" alt="" onerror="this.style.display='none'">`
-        : `<span class="search-result-icon">${item.emoji || '🔹'}</span>`;
+        ? `<img class="search-result-photo" src="${safePhoto}" alt="" onerror="this.style.display='none'">`
+        : `<span class="search-result-icon">${escHtml(item.emoji || '🔹')}</span>`;
 
       // Meta à droite (agent name pour annonces/rdv, statut pour attente)
       let metaHtml = '';
-      if (item.agentName) metaHtml = `<span class="search-result-meta">${item.agentEmoji || ''} ${item.agentName}</span>`;
-      if (item.status)    metaHtml = `<span class="search-status search-status-${item.status}">${item.status}</span>`;
+      if (item.agentName) metaHtml = `<span class="search-result-meta">${escHtml(item.agentEmoji || '')} ${escHtml(item.agentName)}</span>`;
+      if (item.status)    metaHtml = `<span class="search-status search-status-${escHtml(item.status)}">${escHtml(item.status)}</span>`;
 
       el.innerHTML = `
         ${iconHtml}
         <div class="search-result-body">
-          <div class="search-result-title">${item.title}</div>
-          ${item.subtitle ? `<div class="search-result-sub">${item.subtitle}</div>` : ''}
+          <div class="search-result-title">${escHtml(item.title)}</div>
+          ${item.subtitle ? `<div class="search-result-sub">${escHtml(item.subtitle)}</div>` : ''}
         </div>
         ${metaHtml}
       `;
@@ -752,9 +753,12 @@ function renderAnnonces() {
   let list = annoncesData;
 
   // Filtre client-side sur les données déjà chargées
+  // Par défaut : masquer les annulées sauf si filtre explicite
   if (annoncesFilter === 'en_cours') list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
-  if (annoncesFilter === 'retard')   list = list.filter(a => a.retard);
-  if (annoncesFilter === 'vendu')    list = list.filter(a => a.statutDossier === 'vendu');
+  else if (annoncesFilter === 'retard')  list = list.filter(a => a.retard);
+  else if (annoncesFilter === 'vendu')   list = list.filter(a => a.statutDossier === 'vendu');
+  else if (annoncesFilter === 'annule')  list = list.filter(a => a.statutDossier === 'annule');
+  else list = list.filter(a => a.statutDossier !== 'annule'); // vue "Tous" = sans les annulés
 
   // Tri par numéro d'annonce croissant (1396 avant 1401)
   list = [...list].sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
@@ -770,7 +774,8 @@ function renderAnnonces() {
 
   list.forEach(a => {
     const card = document.createElement('div');
-    card.className = `annonce-card${a.retard ? ' annonce-retard' : a.statutDossier === 'vendu' ? ' annonce-vendu' : ''}`;
+    const isAnnule = a.statutDossier === 'annule';
+    card.className = `annonce-card${a.retard ? ' annonce-retard' : a.statutDossier === 'vendu' ? ' annonce-vendu' : isAnnule ? ' annonce-annule' : ''}`;
 
     // Badge statut + délai
     let badgeHtml = '';
@@ -780,6 +785,8 @@ function renderAnnonces() {
       badgeHtml = `<span class="annonce-badge annonce-badge-encours">En cours${a.joursOuverts != null ? ` · ${a.joursOuverts}j` : ''}</span>`;
     } else if (a.statutDossier === 'vendu') {
       badgeHtml = `<span class="annonce-badge annonce-badge-vendu">✅ Vendu</span>`;
+    } else if (isAnnule) {
+      badgeHtml = `<span class="annonce-badge annonce-badge-annule">❌ Annulé</span>`;
     } else {
       badgeHtml = `<span class="annonce-badge annonce-badge-unknown">Sans dossier</span>`;
     }
@@ -832,6 +839,11 @@ function renderAnnonces() {
       ? `<button class="annonce-delete-btn" onclick="deleteAnnonce('${a.id}','${a.numero || ''}')" title="Supprimer">🗑️</button>`
       : '';
 
+    // Bouton "Marquer vendu" uniquement si la vente est en cours
+    const venduBtn = a.vente?.statut === 'en_cours'
+      ? `<button class="btn annonce-vendu-btn" onclick="ouvrirModalVendu('${escHtml(a.vente.annonce || a.numero || '')}','${a.vente.prixDepart ?? ''}')" style="font-size:.75rem;padding:4px 10px;background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">💰 Marquer vendu</button>`
+      : '';
+
     card.innerHTML = `
       <div class="annonce-card-header">
         <div class="annonce-numero">#${a.numero || '—'}</div>
@@ -846,7 +858,8 @@ function renderAnnonces() {
       </div>
       <div class="annonce-card-footer">
         <div class="annonce-links">${ticketLink}${annonceLink}</div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${venduBtn}
           ${dateHtml}
           ${deleteBtn}
         </div>
@@ -864,6 +877,31 @@ async function deleteAnnonce(id, numero) {
     toast('🗑️ Annonce supprimée');
     annoncesData = annoncesData.filter(a => a.id !== id);
     renderAnnonces();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+}
+
+function ouvrirModalVendu(annonce, prixDepart) {
+  // Réutilise la modale générique si elle existe, sinon crée une légère inline
+  const prixSuggere = prixDepart ? String(prixDepart).replace(/\B(?=(\d{3})+(?!\d))/g, "'") : '';
+  const prixSaisi = prompt(
+    `Annonce n°${annonce} — Prix de vente final ($)\nLaisser vide pour utiliser le prix de départ${prixSuggere ? ` (${prixSuggere}$)` : ''} :`,
+    prixSuggere,
+  );
+  if (prixSaisi === null) return; // annulé
+  marquerVenduPanel(annonce, prixSaisi.trim() || null);
+}
+
+async function marquerVenduPanel(annonce, prix) {
+  const res = await api('/annonces/vendu', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ annonce, prix }),
+  });
+  if (res?.ok) {
+    toast(`✅ Annonce n°${annonce} marquée comme vendue`);
+    loadAnnonces(); // rafraîchir la liste
   } else {
     toast(res?.error || 'Erreur', 'error');
   }
@@ -2039,6 +2077,9 @@ document.getElementById('btn-recap-publier').addEventListener('click', async () 
 // ── Historique des actions ────────────────────────────────────────────────────
 
 let logsAllActors = []; // pour le filtre agents (rempli au premier chargement)
+let logsSkip      = 0;  // offset de pagination
+let logsTotal     = 0;  // total d'entrées côté serveur
+const LOGS_LIMIT  = 50;
 
 // Détails lisibles selon le type d'action
 function buildLogDetails(log) {
@@ -2359,18 +2400,23 @@ async function submitBienCreate() {
   }
 }
 
-async function loadLogs() {
+async function loadLogs(append = false) {
   const typeFilter  = document.getElementById('logs-filter-type').value;
   const actorFilter = document.getElementById('logs-filter-actor').value;
 
-  let url = '/logs?limit=100';
+  if (!append) logsSkip = 0; // reset si nouveau filtre ou rafraîchissement
+
+  let url = `/logs?limit=${LOGS_LIMIT}&skip=${logsSkip}`;
   if (typeFilter)  url += `&type=${encodeURIComponent(typeFilter)}`;
   if (actorFilter) url += `&actorId=${encodeURIComponent(actorFilter)}`;
 
-  const logs = await api(url);
-  if (!logs) return;
+  const res = await api(url);
+  if (!res) return;
 
-  // Remplir le filtre agents (une seule fois)
+  const { logs, total } = res;
+  logsTotal = total;
+
+  // Remplir le filtre agents (une seule fois, au premier chargement sans filtre)
   if (!logsAllActors.length && !typeFilter && !actorFilter) {
     const seenIds = new Set();
     logs.forEach(l => {
@@ -2388,15 +2434,28 @@ async function loadLogs() {
     });
   }
 
-  renderLogsTimeline(logs);
+  renderLogsTimeline(logs, append);
+  updateLogsLoadMore();
 }
 
-function renderLogsTimeline(logs) {
+function updateLogsLoadMore() {
+  const loaded = logsSkip + LOGS_LIMIT;
+  const btn    = document.getElementById('btn-logs-more');
+  if (!btn) return;
+  if (loaded < logsTotal) {
+    btn.style.display = '';
+    btn.textContent   = `Charger plus (${Math.min(loaded, logsTotal)} / ${logsTotal})`;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function renderLogsTimeline(logs, append = false) {
   const timeline = document.getElementById('logs-timeline');
   const empty    = document.getElementById('logs-empty');
-  timeline.innerHTML = '';
+  if (!append) timeline.innerHTML = '';
 
-  if (!logs.length) {
+  if (!logs.length && !append) {
     empty.style.display = '';
     return;
   }
@@ -2453,9 +2512,13 @@ function renderLogsTimeline(logs) {
 }
 
 // Filtres et rafraîchissement
-document.getElementById('logs-filter-type').addEventListener('change',  loadLogs);
-document.getElementById('logs-filter-actor').addEventListener('change', loadLogs);
-document.getElementById('btn-logs-refresh').addEventListener('click',   loadLogs);
+document.getElementById('logs-filter-type').addEventListener('change',  () => loadLogs(false));
+document.getElementById('logs-filter-actor').addEventListener('change', () => loadLogs(false));
+document.getElementById('btn-logs-refresh').addEventListener('click',   () => loadLogs(false));
+document.getElementById('btn-logs-more')?.addEventListener('click', () => {
+  logsSkip += LOGS_LIMIT;
+  loadLogs(true);
+});
 
 // ── Reprise de bien ───────────────────────────────────────────────────────────
 
@@ -2503,14 +2566,17 @@ function renderRepriseTypesTable(types) {
   types.forEach(t => {
     const tr = document.createElement('tr');
     const hasData = t.count > 0;
+    const fiabiliteHtml = hasData && !t.fiable
+      ? `<span title="Moins de 5 ventes — résultat indicatif" style="margin-left:5px;cursor:default;opacity:.7">⚠️</span>`
+      : '';
     tr.innerHTML = `
-      <td><strong>${t.type}</strong></td>
-      <td>${hasData ? t.count : '<span style="color:var(--text-muted)">0</span>'}</td>
+      <td><strong>${escHtml(t.type)}</strong></td>
+      <td>${hasData ? `${t.count}${fiabiliteHtml}` : '<span style="color:var(--text-muted)">0</span>'}</td>
       <td>${hasData && t.median ? fmtReprisePrix(t.median) : '<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="color:var(--text-muted);font-size:.8rem">${hasData ? `${fmtReprisePrix(t.min)} / ${fmtReprisePrix(t.max)}` : '—'}</td>
       <td>
         ${hasData
-          ? `<button class="btn reprise-estimate-btn" data-type="${t.type.replace(/"/g, '&quot;')}" style="font-size:.75rem;padding:4px 10px;background:var(--bg3);color:var(--text)">Estimer</button>`
+          ? `<button class="btn reprise-estimate-btn" data-type="${escHtml(t.type)}" style="font-size:.75rem;padding:4px 10px;background:var(--bg3);color:var(--text)">Estimer</button>`
           : ''}
       </td>
     `;
