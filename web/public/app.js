@@ -757,7 +757,8 @@ function renderAnnonces() {
   if (annoncesFilter === 'en_cours') list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
   else if (annoncesFilter === 'retard')  list = list.filter(a => a.retard);
   else if (annoncesFilter === 'vendu')   list = list.filter(a => a.statutDossier === 'vendu');
-  else if (annoncesFilter === 'annule')  list = list.filter(a => a.statutDossier === 'annule');
+  else if (annoncesFilter === 'annule')    list = list.filter(a => a.statutDossier === 'annule');
+  else if (annoncesFilter === 'sans_cles') list = list.filter(a => !a.cles && a.statutDossier === 'en_cours');
   else list = list.filter(a => a.statutDossier !== 'annule'); // vue "Tous" = sans les annulés
 
   // Tri par numéro d'annonce croissant (1396 avant 1401)
@@ -839,6 +840,9 @@ function renderAnnonces() {
       ? `<button class="annonce-delete-btn" onclick="deleteAnnonce('${a.id}','${a.numero || ''}')" title="Supprimer">🗑️</button>`
       : '';
 
+    // Bouton clés — toggle en possession / non récupérées
+    const clesBtnHtml = `<button class="annonce-cles-btn ${a.cles ? 'cles-oui' : 'cles-non'}" data-id="${a.id}" data-cles="${a.cles ? '1' : '0'}" onclick="toggleCles(this)" title="${a.cles ? 'Clés en possession — cliquer pour retirer' : 'Clés non récupérées — cliquer pour marquer en possession'}">🔑</button>`;
+
     // Bouton "Marquer vendu" uniquement si la vente est en cours
     const venduBtn = a.vente?.statut === 'en_cours'
       ? `<button class="btn annonce-vendu-btn" onclick="ouvrirModalVendu('${escHtml(a.vente.annonce || a.numero || '')}','${a.vente.prixDepart ?? ''}')" style="font-size:.75rem;padding:4px 10px;background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">💰 Marquer vendu</button>`
@@ -847,7 +851,10 @@ function renderAnnonces() {
     card.innerHTML = `
       <div class="annonce-card-header">
         <div class="annonce-numero">#${a.numero || '—'}</div>
-        ${badgeHtml}
+        <div style="display:flex;align-items:center;gap:6px">
+          ${clesBtnHtml}
+          ${badgeHtml}
+        </div>
       </div>
       <div class="annonce-bien">
         ${typeHtml}${adresseHtml}
@@ -867,6 +874,25 @@ function renderAnnonces() {
     `;
     grid.appendChild(card);
   });
+}
+
+async function toggleCles(btn) {
+  const id       = btn.dataset.id;
+  const newVal   = btn.dataset.cles !== '1'; // toggle
+  btn.disabled   = true;
+  const res = await api(`/annonces/${id}/cles`, { method: 'PATCH', body: { cles: newVal } });
+  if (res?.ok) {
+    btn.dataset.cles = newVal ? '1' : '0';
+    btn.className    = `annonce-cles-btn ${newVal ? 'cles-oui' : 'cles-non'}`;
+    btn.title        = newVal ? 'Clés en possession — cliquer pour retirer' : 'Clés non récupérées — cliquer pour marquer en possession';
+    toast(newVal ? '🔑 Clés marquées en possession' : '🔑 Clés retirées', 'success');
+    // Mettre à jour la donnée locale pour que le filtre reste cohérent
+    const entry = annoncesData.find(a => a.id === id);
+    if (entry) entry.cles = newVal;
+  } else {
+    toast('Erreur lors de la mise à jour des clés', 'error');
+  }
+  btn.disabled = false;
 }
 
 async function deleteAnnonce(id, numero) {

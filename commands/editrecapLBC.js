@@ -1,5 +1,13 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { avecDollar, formatPrix } = require('../utils/formatters');
+const { getDB }     = require('../utils/db');
+const { logAction } = require('../utils/actionLogger');
+
+const parsePrice = str => {
+  if (!str || /^n\/a$/i.test(str.trim())) return null;
+  const n = parseInt(String(str).replace(/[$'\s,.]/g, ''), 10);
+  return isNaN(n) ? null : n;
+};
 
 // ── Reconstruction du contenu (même logique que recapLBC.js) ─────────────────
 function buildContenu({ annonce, prixDepart, negociation, commission, type, adresse, etage, type2, adresse2, etage2, type3, adresse3, etage3, description, fraisDossier, doubleCles }) {
@@ -228,6 +236,89 @@ module.exports = {
     }
 
     await message.edit(editPayload);
-    await interaction.editReply({ content: '✅ Récap LBC modifié avec succès !' });
+
+    // ── Sync DB : upsert ventes_lbc + annonce_links ───────────────────────────
+    // Si l'entrée ventes_lbc est manquante (échec silencieux du /recaplbc),
+    // ce bloc la recrée automatiquement — mode réparation transparent.
+    let dbRepare = false;
+    try {
+      const db            = getDB();
+      const ancienNumero  = current.annonce?.trim();
+      const nouveauNumero = merged.annonce?.trim();
+
+      if (nouveauNumero) {
+        const docData = {
+          annonce:         nouveauNumero,
+          ticketChannelId: interaction.channel.id,
+          type:            merged.type,
+          adresse:         merged.adresse,
+          etage:           merged.etage     || null,
+          type2:           merged.type2     || null,
+          adresse2:        merged.adresse2  || null,
+          etage2:          merged.etage2    || null,
+          type3:           merged.type3     || null,
+          adresse3:        merged.adresse3  || null,
+          etage3:          merged.etage3    || null,
+          prixDepart:      parsePrice(merged.prixDepart),
+          prixNegociation: parsePrice(merged.negociation),
+          commission:      parsePrice(merged.commission),
+        };
+
+        // Chercher l'entrée active par l'ancien numéro (avant correction éventuelle)
+        // On cible uniquement 'en_cours' : ne pas toucher aux entrées 'vendu' ou 'annule'
+        const existant = ancienNumero
+          ? await db.collection('ventes_lbc').findOne({ annonce: ancienNumero, statut: 'en_cours' })
+          : null;
+
+        if (existant) {
+          // Entrée trouvée : mise à jour (numéro inclus si corrigé)
+          await db.collection('ventes_lbc').updateOne(
+            { _id: existant._id },
+            { $set: docData },
+          );
+        } else {
+          // Entrée absente → réparation : on la recrée depuis le contenu du message
+          await db.collection('ventes_lbc').insertOne({
+            ...docData,
+            agentId:   interaction.user.id,
+            statut:    'en_cours',
+            prixFinal: null,
+            dateRecap: new Date(),
+            dateVente: null,
+          });
+          dbRepare = true;
+        }
+
+        // Sync annonce_links : lie le ticket au numéro d'annonce
+        if (ancienNumero && ancienNumero !== nouveauNumero) {
+          // Numéro corrigé → renommer l'entrée existante
+          await db.collection('annonce_links').updateOne(
+            { numero: ancienNumero },
+            { $set: { numero: nouveauNumero, ticketChannelId: interaction.channel.id, updatedAt: new Date() } },
+          );
+        } else {
+          // Même numéro → s'assurer que le ticketChannelId est bien à jour
+          await db.collection('annonce_links').updateOne(
+            { numero: nouveauNumero },
+            { $set: { ticketChannelId: interaction.channel.id, updatedAt: new Date() } },
+            { upsert: true },
+          );
+        }
+
+        await logAction({
+          type:      'edit_recap_lbc',
+          actorId:   interaction.user.id,
+          actorName: interaction.member?.displayName ?? interaction.user.username,
+          details:   { annonce: nouveauNumero, ancienNumero, repare: dbRepare },
+        });
+      }
+    } catch (e) {
+      console.error('[EDITRECLBC] Erreur sync DB :', e.message);
+    }
+
+    const suffix = dbRepare
+      ? '\n\n🔧 **Réparation effectuée** : l\'entrée en base était manquante et a été recréée. Le panel et les stats sont maintenant à jour.'
+      : '';
+    await interaction.editReply({ content: `✅ Récap LBC modifié avec succès !${suffix}` });
   },
 };
