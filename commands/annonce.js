@@ -184,13 +184,13 @@ module.exports = {
         .setStyle(ButtonStyle.Secondary),
     );
 
-    await interaction.channel.send({ content: contenu, files: [{ attachment: image.url, name: image.name }], components: [row], allowedMentions: { parse: ['roles'] } });
+    const sent = await interaction.channel.send({ content: contenu, files: [{ attachment: image.url, name: image.name }], components: [row], allowedMentions: { parse: ['roles'] } });
 
-    // Sauvegarder le lien numero → salon d'annonce
+    // Sauvegarder le lien numero → salon d'annonce (messageId pour pouvoir corriger les boutons plus tard)
     try {
       await getDB().collection('annonce_links').updateOne(
         { numero },
-        { $set: { numero, announcementChannelId: interaction.channel.id, agentId, type, updatedAt: new Date() } },
+        { $set: { numero, announcementChannelId: interaction.channel.id, messageId: sent.id, agentId, type, updatedAt: new Date() } },
         { upsert: true },
       );
     } catch (e) { console.error('[ANNONCE] Erreur sauvegarde lien :', e.message); }
