@@ -31,6 +31,10 @@ function watchWithReconnect(getCollection, pipeline, options, onChange, label, r
         stream.close().catch(() => {});
         setTimeout(open, retryMs);
       });
+      stream.on('close', () => {
+        console.warn(`[${label}] ⚠️ Change stream fermé (invalidation MongoDB) — reconnexion dans ${retryMs / 1000}s`);
+        setTimeout(open, retryMs);
+      });
     } catch (err) {
       console.error(`[${label}] Impossible d'ouvrir le change stream : ${err.message} — retry dans ${retryMs / 1000}s`);
       setTimeout(open, retryMs);

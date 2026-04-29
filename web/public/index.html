@@ -135,6 +135,19 @@
           <button class="annonce-filter-btn" data-filter="vendu">Vendus</button>
           <button class="annonce-filter-btn" data-filter="annule" style="color:#e74c3c">Annulés</button>
           <button class="annonce-filter-btn" data-filter="sans_cles">🔑 Sans clés</button>
+          <span class="annonces-filter-sep"></span>
+          <select id="annonces-agent-select" class="annonces-filter-select">
+            <option value="">👤 Tous les agents</option>
+          </select>
+          <select id="annonces-zone-select" class="annonces-filter-select">
+            <option value="">🗺️ Toutes les zones</option>
+            <option value="Nord">🔵 Nord</option>
+            <option value="Sud">🟡 Sud</option>
+            <option value="Quartier Prisé">🟣 Quartier Prisé</option>
+            <option value="Roxwood">🔴 Roxwood</option>
+            <option value="Las Venturas">🟠 Las Venturas</option>
+          </select>
+          <button class="annonce-filter-btn" id="annonces-reset-btn" title="Réinitialiser tous les filtres">↺ Reset</button>
         </div>
       </div>
       <div id="annonces-count" style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px"></div>

@@ -54,13 +54,17 @@ app.use('/api',  apiRoutes);
 function watchSSE(collection, sections, retryMs = 5000) {
   const open = () => {
     try {
-      getDB().collection(collection)
-        .watch([], { fullDocument: 'updateLookup' })
-        .on('change', () => broadcast('refresh', { sections }))
-        .on('error', err => {
-          console.error(`[SSE] Erreur watch ${collection} : ${err.message} — reconnexion dans ${retryMs / 1000}s`);
-          setTimeout(open, retryMs);
-        });
+      const stream = getDB().collection(collection)
+        .watch([], { fullDocument: 'updateLookup' });
+      stream.on('change', () => broadcast('refresh', { sections }));
+      stream.on('error', err => {
+        console.error(`[SSE] Erreur watch ${collection} : ${err.message} — reconnexion dans ${retryMs / 1000}s`);
+        setTimeout(open, retryMs);
+      });
+      stream.on('close', () => {
+        console.warn(`[SSE] ⚠️ Stream ${collection} fermé (invalidation MongoDB) — reconnexion dans ${retryMs / 1000}s`);
+        setTimeout(open, retryMs);
+      });
     } catch (err) {
       console.error(`[SSE] Impossible de surveiller ${collection} : ${err.message} — retry dans ${retryMs / 1000}s`);
       setTimeout(open, retryMs);

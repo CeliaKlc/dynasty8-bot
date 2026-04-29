@@ -725,22 +725,75 @@ document.getElementById('btn-delete-agent').addEventListener('click', async () =
 
 // ── Annonces / Dossiers ───────────────────────────────────────────────────────
 
-let annoncesData   = [];
-let annoncesFilter = '';
+let annoncesData        = [];
+let annoncesFilter      = '';
+let annoncesAgentFilter = '';
+let annoncesZoneFilter  = '';
 
 async function loadAnnonces() {
   annoncesData = await api('/annonces');
   if (!annoncesData) return;
+  populateAnnoncesAgentSelect();
   renderAnnonces();
 }
 
+// Remplit dynamiquement le dropdown d'agent depuis les données chargées
+function populateAnnoncesAgentSelect() {
+  const select = document.getElementById('annonces-agent-select');
+  if (!select) return;
+
+  const agents = new Map();
+  annoncesData.forEach(a => {
+    if (a.agent?.id && !agents.has(a.agent.id)) {
+      agents.set(a.agent.id, `${a.agent.emoji || '👤'} ${a.agent.name}`);
+    }
+  });
+
+  const current = select.value; // conserver la sélection en cours si refresh
+  select.innerHTML = '<option value="">👤 Tous les agents</option>';
+  agents.forEach((label, id) => {
+    const opt = document.createElement('option');
+    opt.value       = id;
+    opt.textContent = label;
+    opt.selected    = id === current;
+    select.appendChild(opt);
+  });
+}
+
 function initAnnoncesFilters() {
+  // Boutons statut
   document.getElementById('annonces-filters').addEventListener('click', e => {
     const btn = e.target.closest('.annonce-filter-btn');
-    if (!btn) return;
+    if (!btn || btn.id === 'annonces-reset-btn') return;
     document.querySelectorAll('.annonce-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    annoncesFilter = btn.dataset.filter;
+    annoncesFilter = btn.dataset.filter ?? '';
+    renderAnnonces();
+  });
+
+  // Filtre par agent
+  document.getElementById('annonces-agent-select')?.addEventListener('change', e => {
+    annoncesAgentFilter = e.target.value;
+    renderAnnonces();
+  });
+
+  // Filtre par zone
+  document.getElementById('annonces-zone-select')?.addEventListener('change', e => {
+    annoncesZoneFilter = e.target.value;
+    renderAnnonces();
+  });
+
+  // Bouton reset — remet tout à zéro
+  document.getElementById('annonces-reset-btn')?.addEventListener('click', () => {
+    annoncesFilter      = '';
+    annoncesAgentFilter = '';
+    annoncesZoneFilter  = '';
+    document.querySelectorAll('.annonce-filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.annonce-filter-btn[data-filter=""]')?.classList.add('active');
+    const agentSel = document.getElementById('annonces-agent-select');
+    const zoneSel  = document.getElementById('annonces-zone-select');
+    if (agentSel) agentSel.value = '';
+    if (zoneSel)  zoneSel.value  = '';
     renderAnnonces();
   });
 }
@@ -752,19 +805,29 @@ function renderAnnonces() {
 
   let list = annoncesData;
 
-  // Filtre client-side sur les données déjà chargées
-  // Par défaut : masquer les annulées sauf si filtre explicite
-  if (annoncesFilter === 'en_cours') list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
-  else if (annoncesFilter === 'retard')  list = list.filter(a => a.retard);
-  else if (annoncesFilter === 'vendu')   list = list.filter(a => a.statutDossier === 'vendu');
+  // ── Filtre statut ─────────────────────────────────────────────────────────
+  if (annoncesFilter === 'en_cours')    list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
+  else if (annoncesFilter === 'retard')    list = list.filter(a => a.retard);
+  else if (annoncesFilter === 'vendu')     list = list.filter(a => a.statutDossier === 'vendu');
   else if (annoncesFilter === 'annule')    list = list.filter(a => a.statutDossier === 'annule');
   else if (annoncesFilter === 'sans_cles') list = list.filter(a => !a.cles && a.statutDossier === 'en_cours');
-  else list = list.filter(a => a.statutDossier !== 'annule'); // vue "Tous" = sans les annulés
+  else list = list.filter(a => a.statutDossier !== 'annule'); // "Tous" = sans annulés
 
-  // Tri par numéro d'annonce croissant (1396 avant 1401)
+  // ── Filtre agent ──────────────────────────────────────────────────────────
+  if (annoncesAgentFilter) list = list.filter(a => a.agent?.id === annoncesAgentFilter);
+
+  // ── Filtre zone ───────────────────────────────────────────────────────────
+  if (annoncesZoneFilter) list = list.filter(a => a.vente?.zone === annoncesZoneFilter);
+
+  // ── Tri par numéro croissant ──────────────────────────────────────────────
   list = [...list].sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
 
-  countEl.textContent = `${list.length} dossier${list.length > 1 ? 's' : ''}`;
+  // ── Indicateur visuel sur les selects ────────────────────────────────────
+  document.getElementById('annonces-agent-select')?.classList.toggle('active', !!annoncesAgentFilter);
+  document.getElementById('annonces-zone-select')?.classList.toggle('active', !!annoncesZoneFilter);
+
+  const filtersActifs = [annoncesAgentFilter, annoncesZoneFilter].filter(Boolean).length;
+  countEl.textContent = `${list.length} dossier${list.length > 1 ? 's' : ''}${filtersActifs ? ` · ${filtersActifs} filtre${filtersActifs > 1 ? 's' : ''} actif${filtersActifs > 1 ? 's' : ''}` : ''}`;
 
   if (!list.length) {
     grid.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem;padding:8px 0">Aucun dossier pour ce filtre.</p>';
@@ -801,7 +864,11 @@ function renderAnnonces() {
       : `<span style="color:var(--text-muted)">Agent inconnu</span>`;
 
     // Bien
+    const ZONE_ICONS = { Nord: '🔵', Sud: '🟡', 'Quartier Prisé': '🟣', Roxwood: '🔴', 'Las Venturas': '🟠' };
     const typeHtml    = a.vente?.type    ? `<span class="annonce-type">${a.vente.type}</span>` : '';
+    const zoneHtml    = a.vente?.zone
+      ? `<span class="annonce-zone-badge">${ZONE_ICONS[a.vente.zone] ?? '📍'} ${a.vente.zone}</span>`
+      : '';
     const adresseHtml = a.vente?.adresse
       ? `<span class="annonce-adresse">📍 ${a.vente.adresse}${a.vente.etage ? ` · Étage ${a.vente.etage}` : ''}</span>`
       : '';
@@ -857,7 +924,7 @@ function renderAnnonces() {
         </div>
       </div>
       <div class="annonce-bien">
-        ${typeHtml}${adresseHtml}
+        ${typeHtml}${zoneHtml}${adresseHtml}
       </div>
       <div class="annonce-card-body">
         <div class="annonce-agent">${agentHtml}</div>

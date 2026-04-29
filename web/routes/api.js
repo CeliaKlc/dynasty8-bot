@@ -33,31 +33,59 @@ router.get('/stats', requireAuth, async (req, res) => {
   try {
     const db = getDB();
     const [
-      totalAnnonces, annoncesActives, totalSacs, totalAgents, parAgent,
+      totalAnnonces, totalSacs, totalAgents,
+      parAgent,
       // LBC
       lbcVentesTotal, lbcEnCours, lbcCA, lbcParType, lbcParAgent,
     ] = await Promise.all([
       db.collection('annonce_links').countDocuments(),
-      db.collection('annonce_links').countDocuments({ vendu: { $ne: true } }),
       db.collection('sac_registry').aggregate([
         { $project: { count: { $size: { $ifNull: ['$sacs', []] } } } },
         { $group: { _id: null, total: { $sum: '$count' } } },
       ]).toArray().then(r => r[0]?.total ?? 0),
       db.collection('agents').countDocuments(),
-      // Annonces par agent : total et actives
+      // Stats par agent — $lookup annonce_links → ventes_lbc
+      // • Groupe par annonce_links.agentId (qui a publié l'annonce, cohérent avec la page Dossiers)
+      // • Prend uniquement le recap le plus récent par annonce (gère les doublons historiques ventes_lbc)
+      // • Un agent avec 3 annonces ne peut donc jamais afficher plus de 3 "en cours"
       db.collection('annonce_links').aggregate([
+        {
+          $lookup: {
+            from: 'ventes_lbc',
+            let:  { num: '$numero' },
+            pipeline: [
+              { $match: { $expr: { $eq: ['$annonce', '$$num'] } } },
+              { $sort: { dateRecap: -1 } },   // recap le plus récent en premier
+              { $limit: 1 },                   // un seul statut par annonce
+              { $project: { statut: 1 } },
+            ],
+            as: 'vente',
+          },
+        },
         {
           $group: {
             _id:     '$agentId',
             total:   { $sum: 1 },
-            actives: { $sum: { $cond: [{ $ne: ['$vendu', true] }, 1, 0] } },
+            actives: {
+              $sum: {
+                $cond: [
+                  { $eq: [{ $arrayElemAt: ['$vente.statut', 0] }, 'en_cours'] },
+                  1, 0,
+                ],
+              },
+            },
           },
         },
       ]).toArray(),
       // LBC — ventes confirmées
       db.collection('ventes_lbc').countDocuments({ statut: 'vendu' }),
-      // LBC — en cours
-      db.collection('ventes_lbc').countDocuments({ statut: 'en_cours' }),
+      // LBC — en cours dédupliqué par numéro d'annonce
+      // (évite de compter plusieurs fois une même annonce si doublons historiques ventes_lbc)
+      db.collection('ventes_lbc').aggregate([
+        { $match: { statut: 'en_cours' } },
+        { $group: { _id: '$annonce' } },
+        { $count: 'total' },
+      ]).toArray().then(r => r[0]?.total ?? 0),
       // LBC — CA total + prix moyen
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu', prixFinal: { $gt: 0 } } },
@@ -106,7 +134,9 @@ router.get('/stats', requireAuth, async (req, res) => {
       }));
 
     res.json({
-      totalAnnonces, annoncesActives, totalSacs, totalAgents, statsParAgent,
+      totalAnnonces,
+      annoncesActives: lbcEnCours, // dossiers réellement en cours (ventes_lbc.statut)
+      totalSacs, totalAgents, statsParAgent,
       lbc: {
         ventesTotal:  lbcVentesTotal,
         ventesEnCours: lbcEnCours,
@@ -295,6 +325,7 @@ router.get('/annonces', requireAuth, async (req, res) => {
         agent: agent ? { id: agent.id, name: agent.name, emoji: agent.emoji, photo: agent.photo } : null,
         vente: vente ? {
           type:       vente.type      ?? null,
+          zone:       vente.zone      ?? null,
           adresse:    vente.adresse   ?? null,
           etage:      vente.etage     ?? null,
           prixDepart: vente.prixDepart ?? null,
