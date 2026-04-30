@@ -8,7 +8,7 @@ const { restaurerSessions } = require('../commands/carte');
 const { updateGuide } = require('../utils/guideManager');
 const { updateSacDashboard } = require('../utils/sacManager');
 const { updateDashboard: updateAttenteDashboard } = require('../utils/attenteManager');
-const { publishCatalogue, updateFiche, updateCategorie } = require('../utils/catalogueManager');
+const { publishCatalogue, updateFiche, updateCategorie, repostCategory } = require('../utils/catalogueManager');
 const { getDB } = require('../utils/db');
 const agentCache = require('../utils/agentCache');
 const bienCache  = require('../utils/bienCache');
@@ -225,5 +225,31 @@ module.exports = {
       'CATALOGUE_CATEGORIES',
     );
     console.log('[CATALOGUE] Change streams actifs — catalogue synchronisé automatiquement');
+
+    // ── Change stream : commandes bot depuis le panel (republier catégorie / tout) ─
+    watchWithReconnect(
+      () => getDB().collection('bot_commands'),
+      [{ $match: { operationType: 'insert' } }],
+      { fullDocument: 'updateLookup' },
+      async change => {
+        const cmd = change.fullDocument;
+        if (!cmd) return;
+        // Supprimer la commande immédiatement pour éviter les doublons au redémarrage
+        await getDB().collection('bot_commands').deleteOne({ _id: cmd._id }).catch(() => {});
+
+        if (cmd.type === 'republier_categorie' && cmd.categorieId) {
+          console.log(`[CATALOGUE] 🔄 Republication de la catégorie ${cmd.categorieId}`);
+          await repostCategory(client, cmd.categorieId).catch(console.error);
+        } else if (cmd.type === 'republier_tout') {
+          console.log('[CATALOGUE] 🔄 Republication de tout le catalogue');
+          const categories = await getDB().collection('catalogue_categories').find({}).sort({ ordre: 1 }).toArray();
+          for (const cat of categories) {
+            await repostCategory(client, cat._id).catch(console.error);
+          }
+        }
+      },
+      'BOT_COMMANDS',
+    );
+    console.log('[BOT_COMMANDS] Change stream actif — commandes panel traitées automatiquement');
   },
 };

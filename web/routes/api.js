@@ -1535,5 +1535,34 @@ router.delete('/catalogue/fiche/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Republier une catégorie (envoie une commande au bot via bot_commands)
+router.post('/catalogue/categorie/:id/republier', requireAdmin, async (req, res) => {
+  try {
+    await getDB().collection('bot_commands').insertOne({
+      type:        'republier_categorie',
+      categorieId: req.params.id,
+      createdAt:   new Date(),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] POST /catalogue/categorie/:id/republier :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Republier tout le catalogue
+router.post('/catalogue/republier', requireAdmin, async (req, res) => {
+  try {
+    await getDB().collection('bot_commands').insertOne({
+      type:      'republier_tout',
+      createdAt: new Date(),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] POST /catalogue/republier :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 
 module.exports = router;

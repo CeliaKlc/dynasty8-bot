@@ -554,4 +554,40 @@ async function handleCatalogueAttenteModal(interaction) {
   await interaction.editReply({ content: `✅ Votre inscription a bien été enregistrée ! Retrouvez votre ticket ici : ${ticketChannel}` });
 }
 
-module.exports = { publishCatalogue, updateFiche, updateCategorie, handleCatalogueButton, handleCatalogueModal, handleCatalogueAttenteModal };
+// ─── Repost complet d'une catégorie (supprime + reposte dans l'ordre) ─────────
+
+async function repostCategory(client, categorieId) {
+  const db = getDB();
+  const catObjId = categorieId instanceof ObjectId
+    ? categorieId
+    : new ObjectId(String(categorieId));
+
+  const categorie = await db.collection('catalogue_categories').findOne({ _id: catObjId });
+  if (!categorie?.channelId) return;
+
+  const channel = await client.channels.fetch(categorie.channelId).catch(() => null);
+  if (!channel) return;
+
+  const fiches = await db.collection('catalogue_fiches')
+    .find({ categorieId: catObjId }).sort({ ordre: 1 }).toArray();
+
+  // Supprimer les anciens messages Discord
+  const msgIds = [categorie.messageId, ...fiches.map(f => f.messageId)].filter(Boolean);
+  for (const msgId of msgIds) {
+    await channel.messages.fetch(msgId).then(m => m.delete()).catch(() => {});
+  }
+
+  // Réinitialiser les messageIds en base
+  await db.collection('catalogue_categories').updateOne({ _id: catObjId }, { $set: { messageId: null } });
+  await db.collection('catalogue_fiches').updateMany({ categorieId: catObjId }, { $set: { messageId: null } });
+
+  // Republier dans l'ordre
+  await updateCategorie(client, { ...categorie, messageId: null });
+  for (const fiche of fiches) {
+    await updateFiche(client, { ...fiche, messageId: null });
+  }
+
+  console.log(`[CATALOGUE] 🔄 Catégorie republiée : ${categorie.label}`);
+}
+
+module.exports = { publishCatalogue, updateFiche, updateCategorie, repostCategory, handleCatalogueButton, handleCatalogueModal, handleCatalogueAttenteModal };

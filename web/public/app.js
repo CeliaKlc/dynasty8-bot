@@ -2944,6 +2944,7 @@ function renderCatalogueContent() {
           ${cat.intro ? `<div class="catalogue-cat-intro">${escHtml(cat.intro.slice(0, 80))}${cat.intro.length > 80 ? '…' : ''}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-secondary btn-sm" data-republier-cat="${cat._id}">🔄 Republier</button>
           <button class="btn btn-secondary btn-sm" data-edit-cat="${cat._id}">✏️ Modifier</button>
           <button class="btn btn-primary btn-sm" data-add-fiche="${cat._id}">＋ Fiche</button>
         </div>
@@ -2993,6 +2994,10 @@ function renderCatalogueContent() {
     container.appendChild(section);
   });
 
+  // Events : republier catégorie
+  container.querySelectorAll('[data-republier-cat]').forEach(btn => {
+    btn.addEventListener('click', () => repostCategorie(btn.dataset.republierCat));
+  });
   // Events : modifier catégorie
   container.querySelectorAll('[data-edit-cat]').forEach(btn => {
     btn.addEventListener('click', () => openCatModal(btn.dataset.editCat));
@@ -3005,6 +3010,16 @@ function renderCatalogueContent() {
   container.querySelectorAll('[data-edit-fiche]').forEach(btn => {
     btn.addEventListener('click', () => openFicheModal(btn.dataset.editFiche, btn.dataset.catId));
   });
+}
+
+async function repostCategorie(catId) {
+  if (!confirm('Republier cette catégorie sur Discord ? Les messages existants seront supprimés et recréés.')) return;
+  const res = await api(`/catalogue/categorie/${catId}/republier`, { method: 'POST' });
+  if (res?.ok) {
+    toast('🔄 Republication en cours…', 'success');
+  } else {
+    toast('❌ Erreur lors de la republication', 'error');
+  }
 }
 
 function fmtCatPrix(n) {
@@ -3150,10 +3165,13 @@ document.querySelectorAll('.catalogue-tab').forEach(tab => {
 document.getElementById('catalogue-new-cat-btn').addEventListener('click', () => openCatModal());
 
 document.getElementById('catalogue-republier-btn').addEventListener('click', async () => {
-  if (!confirm('Republier tout le catalogue sur Discord ? Cela peut prendre quelques secondes.')) return;
-  // La republication se déclenche côté bot via le change stream au prochain changement.
-  // Ici on notifie simplement — dans un futur endpoint dédié si besoin.
-  toast('ℹ️ Le catalogue se republie automatiquement via les change streams. Redémarre le bot si le salon a été vidé.', 'info');
+  if (!confirm('Republier tout le catalogue sur Discord ? Tous les messages seront supprimés et recréés. Cela peut prendre quelques secondes.')) return;
+  const res = await api('/catalogue/republier', { method: 'POST' });
+  if (res?.ok) {
+    toast('🔄 Republication complète en cours…', 'success');
+  } else {
+    toast('❌ Erreur lors de la republication', 'error');
+  }
 });
 
 // ── SSE : rechargement auto de la page catalogue ──────────────────────────────
