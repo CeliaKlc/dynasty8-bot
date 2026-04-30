@@ -190,6 +190,11 @@ module.exports = {
       () => getDB().collection('catalogue_fiches'),
       [], { fullDocument: 'updateLookup' },
       change => {
+        if (change.operationType === 'update') {
+          const fields = Object.keys(change.updateDescription?.updatedFields ?? {});
+          // Ignorer les écritures du bot (sauvegarde messageId) → évite le "(modifié)" parasite
+          if (fields.length === 1 && fields[0] === 'messageId') return;
+        }
         const fiche = change.fullDocument;
         if (fiche) {
           updateFiche(client, fiche).catch(err =>
@@ -205,6 +210,11 @@ module.exports = {
       () => getDB().collection('catalogue_categories'),
       [], { fullDocument: 'updateLookup' },
       change => {
+        if (change.operationType === 'update') {
+          const fields = Object.keys(change.updateDescription?.updatedFields ?? {});
+          // Ignorer la sauvegarde du messageId (évite double-post lors des reposts)
+          if (fields.length === 1 && fields[0] === 'messageId') return;
+        }
         const categorie = change.fullDocument;
         if (categorie) {
           updateCategorie(client, categorie).catch(err =>

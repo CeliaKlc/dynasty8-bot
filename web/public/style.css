@@ -564,7 +564,6 @@ body.login-page {
 .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
 .btn-secondary:hover { border-color: var(--accent); }
 .btn-sm { padding: 4px 10px; font-size: .78rem; border-radius: 5px; }
-
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;

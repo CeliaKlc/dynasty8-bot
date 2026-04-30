@@ -1535,4 +1535,5 @@ router.delete('/catalogue/fiche/:id', requireAdmin, async (req, res) => {
   }
 });
 
+
 module.exports = router;
