@@ -277,36 +277,8 @@ async function handleCatalogueButton(interaction) {
             .setLabel('Grade de la personne')
             .setStyle(TextInputStyle.Short)
             .setRequired(true)
-            .setPlaceholder('Ex : PDG, Directeur, Associé...'),
+            .setPlaceholder('Ex : Directeur, Co-Patron, Haut-Gradé...'),
         ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('quartier')
-            .setLabel('Quartier souhaité')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setPlaceholder('Ex : Zone industrielle, Port...'),
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('budget')
-            .setLabel('Budget')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setPlaceholder('Ex : 1 000 000 $'),
-        ),
-        new ActionRowBuilder().addComponents(
-          new TextInputBuilder()
-            .setCustomId('disponibilites')
-            .setLabel('Vos disponibilités')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setPlaceholder('Le terme "maintenant" ne constitue pas une disponibilité'),
-        ),
-      );
-    } else {
-      // Standard : quartier, budget, disponibilités, commentaire
-      modal.addComponents(
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
             .setCustomId('quartier')
@@ -317,11 +289,47 @@ async function handleCatalogueButton(interaction) {
         ),
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
-            .setCustomId('budget')
-            .setLabel('Budget')
+            .setCustomId('identite')
+            .setLabel('Nom & Prénom du contact')
             .setStyle(TextInputStyle.Short)
             .setRequired(true)
-            .setPlaceholder('Ex : 500 000 $'),
+            .setPlaceholder('Ex : Jean Dupont'),
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('telephone')
+            .setLabel('Numéro de téléphone')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('Ex : 502562'),
+        ),
+      );
+    } else {
+      // Standard : identité, téléphone, quartier, disponibilités, commentaire
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('identite')
+            .setLabel('Nom & Prénom')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('Ex : Sacha Rollay'),
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('telephone')
+            .setLabel('Numéro de téléphone')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('Ex : 502562'),
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('quartier')
+            .setLabel('Quartier souhaité')
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder('Ex : Vinewood, Rockford Hills...'),
         ),
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
@@ -422,13 +430,14 @@ async function handleCatalogueModal(interaction) {
   }
 
   // Récupérer les réponses selon le type de fiche
-  const isPro         = isProFiche(fiche);
-  const quartier      = interaction.fields.getTextInputValue('quartier');
-  const budget        = interaction.fields.getTextInputValue('budget');
-  const disponibilites = interaction.fields.getTextInputValue('disponibilites');
-  const entreprise    = isPro ? interaction.fields.getTextInputValue('entreprise') : null;
-  const grade         = isPro ? interaction.fields.getTextInputValue('grade')      : null;
-  const commentaire   = isPro ? null : (interaction.fields.getTextInputValue('commentaire') || null);
+  const isPro          = isProFiche(fiche);
+  const identite       = interaction.fields.getTextInputValue('identite');
+  const telephone      = interaction.fields.getTextInputValue('telephone');
+  const quartier       = interaction.fields.getTextInputValue('quartier');
+  const disponibilites = isPro ? null : interaction.fields.getTextInputValue('disponibilites');
+  const commentaire    = isPro ? null : (interaction.fields.getTextInputValue('commentaire') || null);
+  const entreprise     = isPro ? interaction.fields.getTextInputValue('entreprise') : null;
+  const grade          = isPro ? interaction.fields.getTextInputValue('grade')      : null;
 
   let ticketChannel;
   try {
@@ -444,15 +453,16 @@ async function handleCatalogueModal(interaction) {
   }
 
   const embedFields = [
-    { name: '🏠 Type de propriété',  value: `**${fiche.nom}**${categorie ? ` — ${categorie.label}` : ''}` },
+    { name: '🏠 Type de propriété',   value: `**${fiche.nom}**${categorie ? ` — ${categorie.label}` : ''}` },
     ...(isPro ? [
-      { name: '🏢 Entreprise',           value: entreprise, inline: true },
-      { name: '🎖️ Grade de la personne', value: grade,      inline: true },
+      { name: '🏢 Entreprise',            value: entreprise, inline: true },
+      { name: '🎖️ Grade de la personne',  value: grade,      inline: true },
     ] : []),
-    { name: '📍 Quartier souhaité',  value: quartier },
-    { name: '💰 Budget',             value: budget, inline: true },
-    { name: '🕐 Vos disponibilités', value: disponibilites },
-    ...(commentaire ? [{ name: '💬 Commentaire', value: commentaire }] : []),
+    { name: '👤 Nom & Prénom',         value: identite,  inline: true },
+    { name: '📞 Téléphone',            value: telephone, inline: true },
+    { name: '📍 Quartier souhaité',    value: quartier },
+    ...(disponibilites ? [{ name: '🕐 Vos disponibilités', value: disponibilites }] : []),
+    ...(commentaire    ? [{ name: '💬 Commentaire',         value: commentaire }]    : []),
   ];
 
   const embed = new EmbedBuilder()
