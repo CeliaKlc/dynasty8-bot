@@ -33,31 +33,59 @@ router.get('/stats', requireAuth, async (req, res) => {
   try {
     const db = getDB();
     const [
-      totalAnnonces, annoncesActives, totalSacs, totalAgents, parAgent,
+      totalAnnonces, totalSacs, totalAgents,
+      parAgent,
       // LBC
       lbcVentesTotal, lbcEnCours, lbcCA, lbcParType, lbcParAgent,
     ] = await Promise.all([
       db.collection('annonce_links').countDocuments(),
-      db.collection('annonce_links').countDocuments({ vendu: { $ne: true } }),
       db.collection('sac_registry').aggregate([
         { $project: { count: { $size: { $ifNull: ['$sacs', []] } } } },
         { $group: { _id: null, total: { $sum: '$count' } } },
       ]).toArray().then(r => r[0]?.total ?? 0),
       db.collection('agents').countDocuments(),
-      // Annonces par agent : total et actives
+      // Stats par agent — $lookup annonce_links → ventes_lbc
+      // • Groupe par annonce_links.agentId (qui a publié l'annonce, cohérent avec la page Dossiers)
+      // • Prend uniquement le recap le plus récent par annonce (gère les doublons historiques ventes_lbc)
+      // • Un agent avec 3 annonces ne peut donc jamais afficher plus de 3 "en cours"
       db.collection('annonce_links').aggregate([
+        {
+          $lookup: {
+            from: 'ventes_lbc',
+            let:  { num: '$numero' },
+            pipeline: [
+              { $match: { $expr: { $eq: ['$annonce', '$$num'] } } },
+              { $sort: { dateRecap: -1 } },   // recap le plus récent en premier
+              { $limit: 1 },                   // un seul statut par annonce
+              { $project: { statut: 1 } },
+            ],
+            as: 'vente',
+          },
+        },
         {
           $group: {
             _id:     '$agentId',
             total:   { $sum: 1 },
-            actives: { $sum: { $cond: [{ $ne: ['$vendu', true] }, 1, 0] } },
+            actives: {
+              $sum: {
+                $cond: [
+                  { $eq: [{ $arrayElemAt: ['$vente.statut', 0] }, 'en_cours'] },
+                  1, 0,
+                ],
+              },
+            },
           },
         },
       ]).toArray(),
       // LBC — ventes confirmées
       db.collection('ventes_lbc').countDocuments({ statut: 'vendu' }),
-      // LBC — en cours
-      db.collection('ventes_lbc').countDocuments({ statut: 'en_cours' }),
+      // LBC — en cours dédupliqué par numéro d'annonce
+      // (évite de compter plusieurs fois une même annonce si doublons historiques ventes_lbc)
+      db.collection('ventes_lbc').aggregate([
+        { $match: { statut: 'en_cours' } },
+        { $group: { _id: '$annonce' } },
+        { $count: 'total' },
+      ]).toArray().then(r => r[0]?.total ?? 0),
       // LBC — CA total + prix moyen
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu', prixFinal: { $gt: 0 } } },
@@ -106,7 +134,9 @@ router.get('/stats', requireAuth, async (req, res) => {
       }));
 
     res.json({
-      totalAnnonces, annoncesActives, totalSacs, totalAgents, statsParAgent,
+      totalAnnonces,
+      annoncesActives: lbcEnCours, // dossiers réellement en cours (ventes_lbc.statut)
+      totalSacs, totalAgents, statsParAgent,
       lbc: {
         ventesTotal:  lbcVentesTotal,
         ventesEnCours: lbcEnCours,
@@ -295,6 +325,7 @@ router.get('/annonces', requireAuth, async (req, res) => {
         agent: agent ? { id: agent.id, name: agent.name, emoji: agent.emoji, photo: agent.photo } : null,
         vente: vente ? {
           type:       vente.type      ?? null,
+          zone:       vente.zone      ?? null,
           adresse:    vente.adresse   ?? null,
           etage:      vente.etage     ?? null,
           prixDepart: vente.prixDepart ?? null,
@@ -1350,5 +1381,188 @@ router.get('/events', requireAuth, (req, res) => {
     removeClient(res);
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// CATALOGUE
+// ════════════════════════════════════════════════════════════════════════════
+
+// Récupérer toutes les catégories avec leurs fiches
+router.get('/catalogue', requireAuth, async (req, res) => {
+  try {
+    const db = getDB();
+    const categories = await db.collection('catalogue_categories')
+      .find({}).sort({ ordre: 1 }).toArray();
+
+    const result = await Promise.all(categories.map(async cat => {
+      const fiches = await db.collection('catalogue_fiches')
+        .find({ categorieId: cat._id }).sort({ ordre: 1 }).toArray();
+      return { ...cat, fiches };
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('[API] GET /catalogue :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Créer une catégorie
+router.post('/catalogue/categorie', requireAdmin, async (req, res) => {
+  try {
+    const { label, type, channelId, intro, ordre } = req.body;
+    if (!label || !type || !channelId) return res.status(400).json({ error: 'Champs manquants' });
+
+    const db = getDB();
+    const maxOrdre = await db.collection('catalogue_categories')
+      .find({ type }).sort({ ordre: -1 }).limit(1).toArray();
+    const nextOrdre = ordre ?? ((maxOrdre[0]?.ordre ?? 0) + 1);
+
+    const result = await db.collection('catalogue_categories').insertOne({
+      label, type, channelId,
+      intro: intro || '',
+      ordre: nextOrdre,
+      messageId: null,
+    });
+    res.json({ ok: true, id: result.insertedId });
+  } catch (err) {
+    console.error('[API] POST /catalogue/categorie :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Modifier une catégorie
+router.put('/catalogue/categorie/:id', requireAdmin, async (req, res) => {
+  try {
+    const { label, channelId, intro, ordre } = req.body;
+    const db = getDB();
+    const update = {};
+    if (label     !== undefined) update.label     = label;
+    if (channelId !== undefined) update.channelId = channelId;
+    if (intro     !== undefined) update.intro     = intro;
+    if (ordre     !== undefined) update.ordre     = Number(ordre);
+
+    await db.collection('catalogue_categories').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update },
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PUT /catalogue/categorie :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer une catégorie et ses fiches
+router.delete('/catalogue/categorie/:id', requireAdmin, async (req, res) => {
+  try {
+    const db = getDB();
+    const catId = new ObjectId(req.params.id);
+    await db.collection('catalogue_fiches').deleteMany({ categorieId: catId });
+    await db.collection('catalogue_categories').deleteOne({ _id: catId });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] DELETE /catalogue/categorie :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Créer une fiche
+router.post('/catalogue/fiche', requireAdmin, async (req, res) => {
+  try {
+    const { categorieId, nom, imageUrl, prixMin, prixMax, prixLocation, statut } = req.body;
+    if (!categorieId || !nom || !imageUrl) return res.status(400).json({ error: 'Champs manquants' });
+
+    const db = getDB();
+    const catObjId = new ObjectId(categorieId);
+    const maxOrdre = await db.collection('catalogue_fiches')
+      .find({ categorieId: catObjId }).sort({ ordre: -1 }).limit(1).toArray();
+    const nextOrdre = (maxOrdre[0]?.ordre ?? 0) + 1;
+
+    const result = await db.collection('catalogue_fiches').insertOne({
+      categorieId: catObjId,
+      nom,
+      imageUrl,
+      prixMin:      prixMin      ? Number(prixMin)      : null,
+      prixMax:      prixMax      ? Number(prixMax)      : null,
+      prixLocation: prixLocation ? Number(prixLocation) : null,
+      statut:       statut ?? 'disponible',
+      ordre:        nextOrdre,
+      messageId:    null,
+      updatedAt:    new Date(),
+    });
+    res.json({ ok: true, id: result.insertedId });
+  } catch (err) {
+    console.error('[API] POST /catalogue/fiche :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Modifier une fiche (statut, prix, etc.)
+router.put('/catalogue/fiche/:id', requireAdmin, async (req, res) => {
+  try {
+    const { nom, imageUrl, prixMin, prixMax, prixLocation, statut, ordre } = req.body;
+    const db     = getDB();
+    const update = { updatedAt: new Date() };
+
+    if (nom          !== undefined) update.nom          = nom;
+    if (imageUrl     !== undefined) update.imageUrl     = imageUrl;
+    if (statut       !== undefined) update.statut       = statut;
+    if (ordre        !== undefined) update.ordre        = Number(ordre);
+    if (prixMin      !== undefined) update.prixMin      = prixMin      ? Number(prixMin)      : null;
+    if (prixMax      !== undefined) update.prixMax      = prixMax      ? Number(prixMax)      : null;
+    if (prixLocation !== undefined) update.prixLocation = prixLocation ? Number(prixLocation) : null;
+
+    await db.collection('catalogue_fiches').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update },
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PUT /catalogue/fiche :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer une fiche
+router.delete('/catalogue/fiche/:id', requireAdmin, async (req, res) => {
+  try {
+    const db = getDB();
+    await db.collection('catalogue_fiches').deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] DELETE /catalogue/fiche :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Republier une catégorie (envoie une commande au bot via bot_commands)
+router.post('/catalogue/categorie/:id/republier', requireAdmin, async (req, res) => {
+  try {
+    await getDB().collection('bot_commands').insertOne({
+      type:        'republier_categorie',
+      categorieId: req.params.id,
+      createdAt:   new Date(),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] POST /catalogue/categorie/:id/republier :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Republier tout le catalogue
+router.post('/catalogue/republier', requireAdmin, async (req, res) => {
+  try {
+    await getDB().collection('bot_commands').insertOne({
+      type:      'republier_tout',
+      createdAt: new Date(),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] POST /catalogue/republier :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 
 module.exports = router;

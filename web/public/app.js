@@ -48,8 +48,9 @@ function loadPage(page) {
   if (page === 'attente')   loadAttente();
   if (page === 'recap')     loadRecap();
   if (page === 'reprise')   loadReprise();
-  if (page === 'biens')     loadBiens();
-  if (page === 'logs')      loadLogs();
+  if (page === 'biens')      loadBiens();
+  if (page === 'catalogue')  loadCatalogue();
+  if (page === 'logs')       loadLogs();
   if (page === 'config')    loadConfig();
 }
 
@@ -725,22 +726,75 @@ document.getElementById('btn-delete-agent').addEventListener('click', async () =
 
 // ── Annonces / Dossiers ───────────────────────────────────────────────────────
 
-let annoncesData   = [];
-let annoncesFilter = '';
+let annoncesData        = [];
+let annoncesFilter      = '';
+let annoncesAgentFilter = '';
+let annoncesZoneFilter  = '';
 
 async function loadAnnonces() {
   annoncesData = await api('/annonces');
   if (!annoncesData) return;
+  populateAnnoncesAgentSelect();
   renderAnnonces();
 }
 
+// Remplit dynamiquement le dropdown d'agent depuis les données chargées
+function populateAnnoncesAgentSelect() {
+  const select = document.getElementById('annonces-agent-select');
+  if (!select) return;
+
+  const agents = new Map();
+  annoncesData.forEach(a => {
+    if (a.agent?.id && !agents.has(a.agent.id)) {
+      agents.set(a.agent.id, `${a.agent.emoji || '👤'} ${a.agent.name}`);
+    }
+  });
+
+  const current = select.value; // conserver la sélection en cours si refresh
+  select.innerHTML = '<option value="">👤 Tous les agents</option>';
+  agents.forEach((label, id) => {
+    const opt = document.createElement('option');
+    opt.value       = id;
+    opt.textContent = label;
+    opt.selected    = id === current;
+    select.appendChild(opt);
+  });
+}
+
 function initAnnoncesFilters() {
+  // Boutons statut
   document.getElementById('annonces-filters').addEventListener('click', e => {
     const btn = e.target.closest('.annonce-filter-btn');
-    if (!btn) return;
+    if (!btn || btn.id === 'annonces-reset-btn') return;
     document.querySelectorAll('.annonce-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    annoncesFilter = btn.dataset.filter;
+    annoncesFilter = btn.dataset.filter ?? '';
+    renderAnnonces();
+  });
+
+  // Filtre par agent
+  document.getElementById('annonces-agent-select')?.addEventListener('change', e => {
+    annoncesAgentFilter = e.target.value;
+    renderAnnonces();
+  });
+
+  // Filtre par zone
+  document.getElementById('annonces-zone-select')?.addEventListener('change', e => {
+    annoncesZoneFilter = e.target.value;
+    renderAnnonces();
+  });
+
+  // Bouton reset — remet tout à zéro
+  document.getElementById('annonces-reset-btn')?.addEventListener('click', () => {
+    annoncesFilter      = '';
+    annoncesAgentFilter = '';
+    annoncesZoneFilter  = '';
+    document.querySelectorAll('.annonce-filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.annonce-filter-btn[data-filter=""]')?.classList.add('active');
+    const agentSel = document.getElementById('annonces-agent-select');
+    const zoneSel  = document.getElementById('annonces-zone-select');
+    if (agentSel) agentSel.value = '';
+    if (zoneSel)  zoneSel.value  = '';
     renderAnnonces();
   });
 }
@@ -752,19 +806,29 @@ function renderAnnonces() {
 
   let list = annoncesData;
 
-  // Filtre client-side sur les données déjà chargées
-  // Par défaut : masquer les annulées sauf si filtre explicite
-  if (annoncesFilter === 'en_cours') list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
-  else if (annoncesFilter === 'retard')  list = list.filter(a => a.retard);
-  else if (annoncesFilter === 'vendu')   list = list.filter(a => a.statutDossier === 'vendu');
+  // ── Filtre statut ─────────────────────────────────────────────────────────
+  if (annoncesFilter === 'en_cours')    list = list.filter(a => a.statutDossier === 'en_cours' && !a.retard);
+  else if (annoncesFilter === 'retard')    list = list.filter(a => a.retard);
+  else if (annoncesFilter === 'vendu')     list = list.filter(a => a.statutDossier === 'vendu');
   else if (annoncesFilter === 'annule')    list = list.filter(a => a.statutDossier === 'annule');
   else if (annoncesFilter === 'sans_cles') list = list.filter(a => !a.cles && a.statutDossier === 'en_cours');
-  else list = list.filter(a => a.statutDossier !== 'annule'); // vue "Tous" = sans les annulés
+  else list = list.filter(a => a.statutDossier !== 'annule'); // "Tous" = sans annulés
 
-  // Tri par numéro d'annonce croissant (1396 avant 1401)
+  // ── Filtre agent ──────────────────────────────────────────────────────────
+  if (annoncesAgentFilter) list = list.filter(a => a.agent?.id === annoncesAgentFilter);
+
+  // ── Filtre zone ───────────────────────────────────────────────────────────
+  if (annoncesZoneFilter) list = list.filter(a => a.vente?.zone === annoncesZoneFilter);
+
+  // ── Tri par numéro croissant ──────────────────────────────────────────────
   list = [...list].sort((a, b) => (parseInt(a.numero) || 0) - (parseInt(b.numero) || 0));
 
-  countEl.textContent = `${list.length} dossier${list.length > 1 ? 's' : ''}`;
+  // ── Indicateur visuel sur les selects ────────────────────────────────────
+  document.getElementById('annonces-agent-select')?.classList.toggle('active', !!annoncesAgentFilter);
+  document.getElementById('annonces-zone-select')?.classList.toggle('active', !!annoncesZoneFilter);
+
+  const filtersActifs = [annoncesAgentFilter, annoncesZoneFilter].filter(Boolean).length;
+  countEl.textContent = `${list.length} dossier${list.length > 1 ? 's' : ''}${filtersActifs ? ` · ${filtersActifs} filtre${filtersActifs > 1 ? 's' : ''} actif${filtersActifs > 1 ? 's' : ''}` : ''}`;
 
   if (!list.length) {
     grid.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem;padding:8px 0">Aucun dossier pour ce filtre.</p>';
@@ -801,7 +865,11 @@ function renderAnnonces() {
       : `<span style="color:var(--text-muted)">Agent inconnu</span>`;
 
     // Bien
+    const ZONE_ICONS = { Nord: '🔵', Sud: '🟡', 'Quartier Prisé': '🟣', Roxwood: '🔴', 'Las Venturas': '🟠' };
     const typeHtml    = a.vente?.type    ? `<span class="annonce-type">${a.vente.type}</span>` : '';
+    const zoneHtml    = a.vente?.zone
+      ? `<span class="annonce-zone-badge">${ZONE_ICONS[a.vente.zone] ?? '📍'} ${a.vente.zone}</span>`
+      : '';
     const adresseHtml = a.vente?.adresse
       ? `<span class="annonce-adresse">📍 ${a.vente.adresse}${a.vente.etage ? ` · Étage ${a.vente.etage}` : ''}</span>`
       : '';
@@ -857,7 +925,7 @@ function renderAnnonces() {
         </div>
       </div>
       <div class="annonce-bien">
-        ${typeHtml}${adresseHtml}
+        ${typeHtml}${zoneHtml}${adresseHtml}
       </div>
       <div class="annonce-card-body">
         <div class="annonce-agent">${agentHtml}</div>
@@ -2614,22 +2682,51 @@ function renderRepriseTypesTable(types) {
     const btn = e.target.closest('.reprise-estimate-btn');
     if (!btn) return;
     const type = btn.dataset.type;
-    document.getElementById('reprise-type-select').value = type;
-    doCalculerReprise(type);
-    document.getElementById('reprise-result-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('reprise-type-select').value  = type;
+    document.getElementById('reprise-zone-select').value  = '';
+    doCalculerReprise(type, '');
+    document.getElementById('reprise-zones-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, { once: true }); // once:true évite l'accumulation de listeners à chaque rechargement
 }
 
-async function doCalculerReprise(type) {
+// ── Icônes de zone (partagées entre toutes les fonctions reprise) ─────────────
+const REPRISE_ZONE_ICONS = {
+  'Nord':           '🔵',
+  'Sud':            '🟡',
+  'Quartier Prisé': '🟣',
+  'Roxwood':        '🔴',
+  'Las Venturas':   '🟠',
+};
+
+// ── Calcul reprise individuelle ───────────────────────────────────────────────
+// zone = '' ou null → vue toutes zones
+// zone = 'Roxwood' etc. → vue zone spécifique
+async function doCalculerReprise(type, zone) {
   if (!type) { toast('Sélectionnez un type de bien', 'error'); return; }
 
-  const stats = await api(`/reprise?type=${encodeURIComponent(type)}`);
+  const resultCard = document.getElementById('reprise-result-card');
+  const zonesCard  = document.getElementById('reprise-zones-card');
+
+  if (!zone) {
+    // ── Vue toutes zones ──────────────────────────────────────────────────────
+    resultCard.style.display = 'none';
+    const data = await api(`/reprise/zones?type=${encodeURIComponent(type)}`);
+    if (!data) return;
+    zonesCard.style.display = '';
+    document.getElementById('reprise-zones-title').textContent = `🗺️ Reprise par zone — ${type}`;
+    renderRepriseZones(data);
+    return;
+  }
+
+  // ── Vue zone spécifique ────────────────────────────────────────────────────
+  zonesCard.style.display = 'none';
+  const stats = await api(`/reprise?type=${encodeURIComponent(type)}&zone=${encodeURIComponent(zone)}`);
   if (!stats) return;
 
-  const card = document.getElementById('reprise-result-card');
-  card.style.display = '';
+  resultCard.style.display = '';
 
-  document.getElementById('reprise-result-title').textContent = `🏠 Reprise — ${type}`;
+  const zoneIcon = REPRISE_ZONE_ICONS[zone] ?? '📍';
+  document.getElementById('reprise-result-title').textContent = `🏠 ${type} — ${zoneIcon} ${zone}`;
 
   // Badge de fiabilité
   const badge = document.getElementById('reprise-fiabilite-badge');
@@ -2676,20 +2773,92 @@ async function doCalculerReprise(type) {
   document.getElementById('reprise-optimiste').textContent = r ? `≤ ${fmtReprisePrix(r.optimiste)}` : '—';
 }
 
+// ── Rendu du tableau toutes zones ─────────────────────────────────────────────
+function renderRepriseZones({ zones, data }) {
+  const body   = document.getElementById('reprise-zones-body');
+  const global = data['_global'];
+  let html = '';
+
+  // Bandeau résumé global
+  if (global && global.count > 0) {
+    const fiabClass = global.fiable ? 'reprise-badge-ok' : 'reprise-badge-warn';
+    html += `
+      <div class="reprise-zone-global">
+        <div class="reprise-zone-global-row">
+          <span class="reprise-zone-global-label">📦 Toutes zones confondues</span>
+          <span class="reprise-badge ${fiabClass}">${global.count} vente${global.count > 1 ? 's' : ''} · médian ${fmtReprisePrix(global.mediane)}</span>
+        </div>
+        <div class="reprise-zone-global-tiers">
+          <span>🛡️ Prudent ≤ <strong>${fmtReprisePrix(global.reprises.prudent)}</strong></span>
+          <span>⚖️ Standard ≤ <strong>${fmtReprisePrix(global.reprises.standard)}</strong></span>
+          <span>🚀 Optimiste ≤ <strong>${fmtReprisePrix(global.reprises.optimiste)}</strong></span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Grille par zone
+  html += '<div class="reprise-zones-grid">';
+  for (const zone of zones) {
+    const s       = data[zone];
+    const icon    = REPRISE_ZONE_ICONS[zone] ?? '📍';
+    const hasData = s && s.count > 0;
+    const zoneEsc = zone.replace(/'/g, "\\'");
+
+    if (!hasData) {
+      html += `
+        <div class="reprise-zone-card reprise-zone-empty">
+          <div class="reprise-zone-name">${icon} ${zone}</div>
+          <div class="reprise-zone-nodata">Aucune vente enregistrée</div>
+        </div>`;
+    } else {
+      const fiabClass = s.fiable ? 'reprise-badge-ok' : 'reprise-badge-warn';
+      html += `
+        <div class="reprise-zone-card" onclick="selectZoneFromCard('${zoneEsc}')">
+          <div class="reprise-zone-header">
+            <span class="reprise-zone-name">${icon} ${zone}</span>
+            <span class="reprise-badge ${fiabClass}" style="font-size:.7rem">${s.count} vente${s.count > 1 ? 's' : ''}${!s.fiable ? ' ⚠️' : ''}</span>
+          </div>
+          <div class="reprise-zone-median">Médian : <strong>${fmtReprisePrix(s.mediane)}</strong></div>
+          <div class="reprise-zone-tiers">
+            <div class="reprise-zone-tier-row"><span class="zone-tier-label">🛡️ Prudent</span><span>≤ <strong>${fmtReprisePrix(s.reprises.prudent)}</strong></span></div>
+            <div class="reprise-zone-tier-row"><span class="zone-tier-label">⚖️ Standard</span><span>≤ <strong>${fmtReprisePrix(s.reprises.standard)}</strong></span></div>
+            <div class="reprise-zone-tier-row"><span class="zone-tier-label">🚀 Optimiste</span><span>≤ <strong>${fmtReprisePrix(s.reprises.optimiste)}</strong></span></div>
+          </div>
+          <div class="reprise-zone-cta">Voir le détail →</div>
+        </div>`;
+    }
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// Clic sur une carte de zone → sélectionner + afficher le détail
+function selectZoneFromCard(zone) {
+  document.getElementById('reprise-zone-select').value = zone;
+  doCalculerReprise(document.getElementById('reprise-type-select').value, zone);
+  document.getElementById('reprise-result-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 document.getElementById('btn-reprise-calculer').addEventListener('click', () => {
-  doCalculerReprise(document.getElementById('reprise-type-select').value);
+  doCalculerReprise(
+    document.getElementById('reprise-type-select').value,
+    document.getElementById('reprise-zone-select').value,
+  );
 });
 
 async function doCalculerRepriseLot() {
-  const t1 = document.getElementById('lot-type1-select').value;
-  const t2 = document.getElementById('lot-type2-select').value;
-  const t3 = document.getElementById('lot-type3-select').value;
+  const t1   = document.getElementById('lot-type1-select').value;
+  const t2   = document.getElementById('lot-type2-select').value;
+  const t3   = document.getElementById('lot-type3-select').value;
+  const zone = document.getElementById('lot-zone-select').value;
 
   if (!t1 || !t2) { toast('Sélectionnez au moins 2 biens pour le lot', 'error'); return; }
   if (t1 === t2 && !t3) { toast('Les deux biens doivent être différents (ou ajoutez un 3ème)', 'error'); return; }
 
   const params = new URLSearchParams({ type1: t1, type2: t2 });
-  if (t3) params.append('type3', t3);
+  if (t3)   params.append('type3', t3);
+  if (zone) params.append('zone', zone);
 
   const stats = await api(`/reprise/lot?${params}`);
   if (!stats) return;
@@ -2698,8 +2867,9 @@ async function doCalculerRepriseLot() {
   resultDiv.style.display = '';
 
   // Titre
-  const label = [t1, t2, t3].filter(Boolean).join(' + ');
-  document.getElementById('lot-result-title').textContent = `📦 Lot — ${label}`;
+  const label     = [t1, t2, t3].filter(Boolean).join(' + ');
+  const zoneLabel = zone ? ` — ${REPRISE_ZONE_ICONS[zone] ?? ''}  ${zone}` : '';
+  document.getElementById('lot-result-title').textContent = `📦 Lot — ${label}${zoneLabel}`;
 
   // Badge fiabilité
   const badge = document.getElementById('lot-fiabilite-badge');
@@ -2730,6 +2900,285 @@ async function doCalculerRepriseLot() {
 document.getElementById('btn-lot-calculer').addEventListener('click', () => {
   doCalculerRepriseLot();
 });
+
+// ── Catalogue ─────────────────────────────────────────────────────────────────
+
+let catalogueData     = [];   // toutes les catégories + fiches
+let catalogueTypeTab  = 'proprietes'; // onglet actif
+let catalogueCatEdit  = null; // catégorie en cours d'édition (_id string)
+let catalogueFicheEdit = null; // fiche en cours d'édition (_id string)
+let catalogueFicheCatId = null; // catégorie parente pour la création
+
+async function loadCatalogue() {
+  catalogueData = await api('/catalogue') ?? [];
+  renderCatalogueTabs();
+  renderCatalogueContent();
+}
+
+function renderCatalogueTabs() {
+  document.querySelectorAll('.catalogue-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.type === catalogueTypeTab);
+  });
+}
+
+function renderCatalogueContent() {
+  const container = document.getElementById('catalogue-content');
+  container.innerHTML = '';
+
+  const categories = catalogueData.filter(c => c.type === catalogueTypeTab);
+
+  if (!categories.length) {
+    container.innerHTML = '<div class="catalogue-empty">Aucune catégorie pour cet onglet. Créez-en une ci-dessous.</div>';
+    return;
+  }
+
+  categories.forEach(cat => {
+    const section = document.createElement('div');
+    section.className = 'catalogue-section';
+
+    // En-tête catégorie
+    section.innerHTML = `
+      <div class="catalogue-cat-header">
+        <div>
+          <div class="catalogue-cat-title">${escHtml(cat.label)}</div>
+          ${cat.intro ? `<div class="catalogue-cat-intro">${escHtml(cat.intro.slice(0, 80))}${cat.intro.length > 80 ? '…' : ''}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-secondary btn-sm" data-republier-cat="${cat._id}">🔄 Republier</button>
+          <button class="btn btn-secondary btn-sm" data-edit-cat="${cat._id}">✏️ Modifier</button>
+          <button class="btn btn-primary btn-sm" data-add-fiche="${cat._id}">＋ Fiche</button>
+        </div>
+      </div>
+    `;
+
+    // Grille de fiches
+    const grid = document.createElement('div');
+    grid.className = 'catalogue-fiches-grid';
+
+    if (!cat.fiches?.length) {
+      grid.innerHTML = '<div class="catalogue-fiche-empty">Aucune fiche dans cette catégorie.</div>';
+    } else {
+      cat.fiches.forEach(fiche => {
+        const card = document.createElement('div');
+        card.className = 'catalogue-fiche-card';
+
+        const STATUT_INFO = {
+          disponible:    { label: '✅ Disponible',       cls: 'catalogue-badge-ok'      },
+          liste_attente: { label: '⏳ Liste d\'attente', cls: 'catalogue-badge-attente'  },
+          indisponible:  { label: '❌ Indisponible',     cls: 'catalogue-badge-off'      },
+        };
+        const si = STATUT_INFO[fiche.statut] ?? { label: fiche.statut, cls: '' };
+
+        const prixLabel = fiche.prixMin && fiche.prixMax
+          ? `Entre ${fmtCatPrix(fiche.prixMin)} et ${fmtCatPrix(fiche.prixMax)}`
+          : fiche.prixMin ? `À partir de ${fmtCatPrix(fiche.prixMin)}`
+          : null;
+
+        card.innerHTML = `
+          ${fiche.imageUrl ? `<img class="catalogue-fiche-img" src="${escHtml(fiche.imageUrl)}" alt="">` : '<div class="catalogue-fiche-img catalogue-fiche-no-img">📷</div>'}
+          <div class="catalogue-fiche-body">
+            <div class="catalogue-fiche-nom">${escHtml(fiche.nom)}</div>
+            ${prixLabel ? `<div class="catalogue-fiche-prix">${escHtml(prixLabel)}</div>` : ''}
+            ${fiche.prixLocation ? `<div class="catalogue-fiche-loc">🔑 ${fmtCatPrix(fiche.prixLocation)}/jour</div>` : ''}
+            <span class="catalogue-statut-badge ${si.cls}">${si.label}</span>
+          </div>
+          <div class="catalogue-fiche-actions">
+            <button class="btn btn-secondary btn-sm" data-edit-fiche="${fiche._id}" data-cat-id="${cat._id}">✏️ Modifier</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+
+  // Events : republier catégorie
+  container.querySelectorAll('[data-republier-cat]').forEach(btn => {
+    btn.addEventListener('click', () => repostCategorie(btn.dataset.republierCat));
+  });
+  // Events : modifier catégorie
+  container.querySelectorAll('[data-edit-cat]').forEach(btn => {
+    btn.addEventListener('click', () => openCatModal(btn.dataset.editCat));
+  });
+  // Events : ajouter fiche
+  container.querySelectorAll('[data-add-fiche]').forEach(btn => {
+    btn.addEventListener('click', () => openFicheModal(null, btn.dataset.addFiche));
+  });
+  // Events : modifier fiche
+  container.querySelectorAll('[data-edit-fiche]').forEach(btn => {
+    btn.addEventListener('click', () => openFicheModal(btn.dataset.editFiche, btn.dataset.catId));
+  });
+}
+
+async function repostCategorie(catId) {
+  if (!confirm('Republier cette catégorie sur Discord ? Les messages existants seront supprimés et recréés.')) return;
+  const res = await api(`/catalogue/categorie/${catId}/republier`, { method: 'POST' });
+  if (res?.ok) {
+    toast('🔄 Republication en cours…', 'success');
+  } else {
+    toast('❌ Erreur lors de la republication', 'error');
+  }
+}
+
+function fmtCatPrix(n) {
+  if (!n && n !== 0) return '—';
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "'") + '$';
+}
+
+// ── Modal catégorie ───────────────────────────────────────────────────────────
+
+function openCatModal(catId = null) {
+  catalogueCatEdit = catId;
+  const cat = catId ? catalogueData.find(c => c._id === catId) : null;
+  document.getElementById('catalogue-cat-modal-title').textContent = cat ? 'Modifier la catégorie' : 'Nouvelle catégorie';
+  document.getElementById('cat-label').value   = cat?.label     ?? '';
+  document.getElementById('cat-type').value    = cat?.type      ?? catalogueTypeTab;
+  document.getElementById('cat-channel').value = cat?.channelId ?? '';
+  document.getElementById('cat-intro').value   = cat?.intro     ?? '';
+  document.getElementById('catalogue-cat-delete-btn').style.display = cat ? 'inline-flex' : 'none';
+  document.getElementById('catalogue-cat-modal').style.display = 'flex';
+}
+
+function closeCatModal() {
+  document.getElementById('catalogue-cat-modal').style.display = 'none';
+  catalogueCatEdit = null;
+}
+
+document.getElementById('catalogue-cat-save-btn').addEventListener('click', async () => {
+  const label     = document.getElementById('cat-label').value.trim();
+  const type      = document.getElementById('cat-type').value;
+  const channelId = document.getElementById('cat-channel').value.trim();
+  const intro     = document.getElementById('cat-intro').value.trim();
+
+  if (!label || !channelId) return toast('Nom et ID du salon requis', 'error');
+
+  const method = catalogueCatEdit ? 'PUT' : 'POST';
+  const path   = catalogueCatEdit ? `/catalogue/categorie/${catalogueCatEdit}` : '/catalogue/categorie';
+
+  const res = await api(path, { method, body: { label, type, channelId, intro } });
+  if (res?.ok) {
+    toast('✅ Catégorie enregistrée');
+    closeCatModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+document.getElementById('catalogue-cat-delete-btn').addEventListener('click', async () => {
+  if (!catalogueCatEdit) return;
+  if (!confirm('Supprimer cette catégorie et toutes ses fiches ?')) return;
+  const res = await api(`/catalogue/categorie/${catalogueCatEdit}`, { method: 'DELETE' });
+  if (res?.ok) {
+    toast('✅ Catégorie supprimée');
+    closeCatModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+// ── Modal fiche ───────────────────────────────────────────────────────────────
+
+function openFicheModal(ficheId = null, catId = null) {
+  catalogueFicheEdit = ficheId;
+  catalogueFicheCatId = catId;
+
+  let fiche = null;
+  if (ficheId) {
+    for (const cat of catalogueData) {
+      fiche = cat.fiches?.find(f => f._id === ficheId);
+      if (fiche) break;
+    }
+  }
+
+  document.getElementById('catalogue-fiche-modal-title').textContent = fiche ? 'Modifier la fiche' : 'Nouvelle fiche';
+  document.getElementById('fiche-nom').value      = fiche?.nom          ?? '';
+  document.getElementById('fiche-image').value    = fiche?.imageUrl     ?? '';
+  document.getElementById('fiche-prix-min').value = fiche?.prixMin      ?? '';
+  document.getElementById('fiche-prix-max').value = fiche?.prixMax      ?? '';
+  document.getElementById('fiche-prix-loc').value = fiche?.prixLocation ?? '';
+  document.getElementById('fiche-statut').value   = fiche?.statut       ?? 'disponible';
+  document.getElementById('catalogue-fiche-delete-btn').style.display = fiche ? 'inline-flex' : 'none';
+  document.getElementById('catalogue-fiche-modal').style.display = 'flex';
+}
+
+function closeFicheModal() {
+  document.getElementById('catalogue-fiche-modal').style.display = 'none';
+  catalogueFicheEdit  = null;
+  catalogueFicheCatId = null;
+}
+
+document.getElementById('catalogue-fiche-save-btn').addEventListener('click', async () => {
+  const nom         = document.getElementById('fiche-nom').value.trim();
+  const imageUrl    = document.getElementById('fiche-image').value.trim();
+  const prixMin     = document.getElementById('fiche-prix-min').value;
+  const prixMax     = document.getElementById('fiche-prix-max').value;
+  const prixLocation = document.getElementById('fiche-prix-loc').value;
+  const statut      = document.getElementById('fiche-statut').value;
+
+  if (!nom || !imageUrl) return toast('Nom et URL image requis', 'error');
+
+  const body = { nom, imageUrl, prixMin, prixMax, prixLocation, statut };
+
+  let res;
+  if (catalogueFicheEdit) {
+    res = await api(`/catalogue/fiche/${catalogueFicheEdit}`, { method: 'PUT', body });
+  } else {
+    res = await api('/catalogue/fiche', { method: 'POST', body: { ...body, categorieId: catalogueFicheCatId } });
+  }
+
+  if (res?.ok) {
+    toast('✅ Fiche enregistrée');
+    closeFicheModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+document.getElementById('catalogue-fiche-delete-btn').addEventListener('click', async () => {
+  if (!catalogueFicheEdit) return;
+  if (!confirm('Supprimer cette fiche ?')) return;
+  const res = await api(`/catalogue/fiche/${catalogueFicheEdit}`, { method: 'DELETE' });
+  if (res?.ok) {
+    toast('✅ Fiche supprimée');
+    closeFicheModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+// ── Tabs & boutons statiques ──────────────────────────────────────────────────
+
+document.querySelectorAll('.catalogue-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    catalogueTypeTab = tab.dataset.type;
+    renderCatalogueTabs();
+    renderCatalogueContent();
+  });
+});
+
+document.getElementById('catalogue-new-cat-btn').addEventListener('click', () => openCatModal());
+
+document.getElementById('catalogue-republier-btn').addEventListener('click', async () => {
+  if (!confirm('Republier tout le catalogue sur Discord ? Tous les messages seront supprimés et recréés. Cela peut prendre quelques secondes.')) return;
+  const res = await api('/catalogue/republier', { method: 'POST' });
+  if (res?.ok) {
+    toast('🔄 Republication complète en cours…', 'success');
+  } else {
+    toast('❌ Erreur lors de la republication', 'error');
+  }
+});
+
+// ── SSE : rechargement auto de la page catalogue ──────────────────────────────
+
+function onCatalogueSSE() {
+  if (currentPage === 'catalogue') loadCatalogue();
+}
 
 // ── Sidebar utilisateur ───────────────────────────────────────────────────────
 

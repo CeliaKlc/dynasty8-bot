@@ -10,6 +10,7 @@ const { handleCarteCheck } = require('../commands/carte');
 const { handleEmbedModal } = require('../commands/embed');
 const { handleRecapSemaineModal } = require('../commands/recapSemaine');
 const { handleSacHistorique, handleSacDonnerSelect, handleSacRetirerSelect } = require('../commands/sac');
+const { handleCatalogueButton, handleCatalogueModal, handleCatalogueAttenteModal } = require('../utils/catalogueManager');
 const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
@@ -76,6 +77,19 @@ module.exports = {
           await handleAnnonceButton(interaction);
         } catch (err) {
           console.error('❌ Erreur bouton annonce :', err);
+          const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+        return;
+      }
+
+      // Boutons catalogue — accessibles à tous
+      if (interaction.customId.startsWith('catalogue_interesse_') || interaction.customId.startsWith('catalogue_attente_')) {
+        try {
+          await handleCatalogueButton(interaction);
+        } catch (err) {
+          console.error('❌ Erreur bouton catalogue :', err);
           const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});
@@ -267,6 +281,11 @@ module.exports = {
             { $set: { statut: 'annule', dateVente: new Date() } },
           ).catch(e => console.error('[TICKET] Erreur cleanup ventes :', e.message));
 
+          // Nettoyer l'entrée anti-doublon catalogue si ce ticket en avait une
+          await getDB().collection('catalogue_tickets')
+            .deleteOne({ channelId: interaction.channel.id })
+            .catch(() => {});
+
           await interaction.reply({ content: '🗑️ Suppression du ticket...' });
           setTimeout(() => interaction.channel.delete().catch(console.error), 3000);
         } catch (err) {
@@ -306,6 +325,24 @@ module.exports = {
 
     // === MODALS ===
     if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith('catalogue_interesse_modal_')) {
+        try { await handleCatalogueModal(interaction); } catch (err) {
+          console.error('❌ Erreur modal catalogue intéressé :', err);
+          const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+        return;
+      }
+      if (interaction.customId.startsWith('catalogue_attente_modal_')) {
+        try { await handleCatalogueAttenteModal(interaction); } catch (err) {
+          console.error('❌ Erreur modal catalogue attente :', err);
+          const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+        return;
+      }
       if (interaction.customId === 'attente_modal_zones') {
         try { await handleAttenteZonesModal(interaction); } catch (err) {
           console.error('❌ Erreur attente_modal_zones :', err);

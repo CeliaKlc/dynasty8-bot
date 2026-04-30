@@ -1,12 +1,14 @@
 const { initScheduler, scheduleRdv } = require('../utils/rdvScheduler');
 const { sendRecap }                  = require('../utils/recapManager');
-const { initReducScheduler } = require('../utils/reducScheduler');
-const { initSupScheduler } = require('../utils/supScheduler');
-const { initByeScheduler } = require('../utils/byeScheduler');
+const { initReducScheduler }   = require('../utils/reducScheduler');
+const { initSupScheduler }     = require('../utils/supScheduler');
+const { initByeScheduler }     = require('../utils/byeScheduler');
+const { initQuestionScheduler } = require('../utils/questionScheduler');
 const { restaurerSessions } = require('../commands/carte');
 const { updateGuide } = require('../utils/guideManager');
 const { updateSacDashboard } = require('../utils/sacManager');
 const { updateDashboard: updateAttenteDashboard } = require('../utils/attenteManager');
+const { publishCatalogue, updateFiche, updateCategorie, repostCategory } = require('../utils/catalogueManager');
 const { getDB } = require('../utils/db');
 const agentCache = require('../utils/agentCache');
 const bienCache  = require('../utils/bienCache');
@@ -29,6 +31,10 @@ function watchWithReconnect(getCollection, pipeline, options, onChange, label, r
       stream.on('error', err => {
         console.error(`[${label}] ⚠️ Erreur change stream : ${err.message} — reconnexion dans ${retryMs / 1000}s`);
         stream.close().catch(() => {});
+        setTimeout(open, retryMs);
+      });
+      stream.on('close', () => {
+        console.warn(`[${label}] ⚠️ Change stream fermé (invalidation MongoDB) — reconnexion dans ${retryMs / 1000}s`);
         setTimeout(open, retryMs);
       });
     } catch (err) {
@@ -87,10 +93,11 @@ module.exports = {
 
     restaurerSessions(client).catch(console.error);
     updateGuide(client).catch(console.error);
-    initScheduler(client).catch(err     => console.error('[RDV]   Erreur init scheduler :', err.message));
-    initReducScheduler(client).catch(err => console.error('[REDUC] Erreur init scheduler :', err.message));
-    initSupScheduler(client).catch(err   => console.error('[SUP]   Erreur init scheduler :', err.message));
-    initByeScheduler(client).catch(err   => console.error('[BYE]   Erreur init scheduler :', err.message));
+    initScheduler(client).catch(err          => console.error('[RDV]      Erreur init scheduler :', err.message));
+    initReducScheduler(client).catch(err      => console.error('[REDUC]    Erreur init scheduler :', err.message));
+    initSupScheduler(client).catch(err        => console.error('[SUP]      Erreur init scheduler :', err.message));
+    initByeScheduler(client).catch(err        => console.error('[BYE]      Erreur init scheduler :', err.message));
+    initQuestionScheduler(client).catch(err   => console.error('[QUESTION] Erreur init scheduler :', err.message));
 
     // ── Change stream : mise à jour auto du dashboard sacs ────────────────────
     watchWithReconnect(
@@ -172,5 +179,77 @@ module.exports = {
       'AgentCache',
     );
     console.log('[AgentCache] Change stream actif — cache synchronisé automatiquement');
+
+    // ── Catalogue : publication initiale ─────────────────────────────────────
+    publishCatalogue(client).catch(err =>
+      console.error('[CATALOGUE] Erreur publication initiale :', err.message),
+    );
+
+    // ── Change stream : mise à jour auto des fiches catalogue ─────────────────
+    watchWithReconnect(
+      () => getDB().collection('catalogue_fiches'),
+      [], { fullDocument: 'updateLookup' },
+      change => {
+        if (change.operationType === 'update') {
+          const fields = Object.keys(change.updateDescription?.updatedFields ?? {});
+          // Ignorer les écritures du bot (sauvegarde messageId) → évite le "(modifié)" parasite
+          if (fields.length === 1 && fields[0] === 'messageId') return;
+        }
+        const fiche = change.fullDocument;
+        if (fiche) {
+          updateFiche(client, fiche).catch(err =>
+            console.error('[CATALOGUE] Erreur mise à jour fiche :', err.message),
+          );
+        }
+      },
+      'CATALOGUE_FICHES',
+    );
+
+    // ── Change stream : mise à jour auto des intros de catégorie ─────────────
+    watchWithReconnect(
+      () => getDB().collection('catalogue_categories'),
+      [], { fullDocument: 'updateLookup' },
+      change => {
+        if (change.operationType === 'update') {
+          const fields = Object.keys(change.updateDescription?.updatedFields ?? {});
+          // Ignorer la sauvegarde du messageId (évite double-post lors des reposts)
+          if (fields.length === 1 && fields[0] === 'messageId') return;
+        }
+        const categorie = change.fullDocument;
+        if (categorie) {
+          updateCategorie(client, categorie).catch(err =>
+            console.error('[CATALOGUE] Erreur mise à jour catégorie :', err.message),
+          );
+        }
+      },
+      'CATALOGUE_CATEGORIES',
+    );
+    console.log('[CATALOGUE] Change streams actifs — catalogue synchronisé automatiquement');
+
+    // ── Change stream : commandes bot depuis le panel (republier catégorie / tout) ─
+    watchWithReconnect(
+      () => getDB().collection('bot_commands'),
+      [{ $match: { operationType: 'insert' } }],
+      { fullDocument: 'updateLookup' },
+      async change => {
+        const cmd = change.fullDocument;
+        if (!cmd) return;
+        // Supprimer la commande immédiatement pour éviter les doublons au redémarrage
+        await getDB().collection('bot_commands').deleteOne({ _id: cmd._id }).catch(() => {});
+
+        if (cmd.type === 'republier_categorie' && cmd.categorieId) {
+          console.log(`[CATALOGUE] 🔄 Republication de la catégorie ${cmd.categorieId}`);
+          await repostCategory(client, cmd.categorieId).catch(console.error);
+        } else if (cmd.type === 'republier_tout') {
+          console.log('[CATALOGUE] 🔄 Republication de tout le catalogue');
+          const categories = await getDB().collection('catalogue_categories').find({}).sort({ ordre: 1 }).toArray();
+          for (const cat of categories) {
+            await repostCategory(client, cat._id).catch(console.error);
+          }
+        }
+      },
+      'BOT_COMMANDS',
+    );
+    console.log('[BOT_COMMANDS] Change stream actif — commandes panel traitées automatiquement');
   },
 };

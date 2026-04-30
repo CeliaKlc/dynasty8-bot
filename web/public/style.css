@@ -559,9 +559,11 @@ body.login-page {
   border: none; transition: opacity .15s;
 }
 .btn:hover { opacity: .85; }
-.btn-primary { background: var(--accent); color: #111; }
-.btn-danger  { background: var(--danger); color: #fff; }
-
+.btn-primary   { background: var(--accent); color: #111; }
+.btn-danger    { background: var(--danger); color: #fff; }
+.btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); }
+.btn-sm { padding: 4px 10px; font-size: .78rem; border-radius: 5px; }
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;
@@ -1396,7 +1398,32 @@ body.login-page {
 
 /* ── Dossiers / Annonces ─────────────────────────────────────────────────── */
 
-.annonces-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.annonces-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* Séparateur vertical entre les boutons de statut et les selects */
+.annonces-filter-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* Selects de filtre (agent / zone) — style pill cohérent avec les boutons */
+.annonces-filter-select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: .8rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.annonces-filter-select:hover  { color: var(--text); border-color: var(--text-muted); }
+.annonces-filter-select:focus  { border-color: var(--accent); color: var(--text); }
+.annonces-filter-select.active { border-color: var(--accent); color: var(--accent); }
 
 .annonce-filter-btn {
   background: var(--bg3);
@@ -1487,6 +1514,16 @@ body.login-page {
 /* Bien */
 .annonce-bien      { display: flex; flex-direction: column; gap: 2px; }
 .annonce-type      { font-size: .875rem; font-weight: 600; }
+.annonce-zone-badge {
+  display: inline-block;
+  font-size: .72rem;
+  color: var(--text-muted);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 8px;
+  width: fit-content;
+}
 .annonce-adresse   { font-size: .78rem; color: var(--text-muted); }
 
 /* Corps */
@@ -1851,6 +1888,105 @@ body.login-page {
   .reprise-stats-row  { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Reprise de bien — Vue par zone ──────────────────────────────────────────*/
+.reprise-zone-global {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .7rem 1rem;
+  margin-bottom: .75rem;
+}
+.reprise-zone-global-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-bottom: .4rem;
+}
+.reprise-zone-global-label {
+  font-weight: 600;
+  font-size: .9rem;
+}
+.reprise-zone-global-tiers {
+  display: flex;
+  gap: 1.5rem;
+  font-size: .84rem;
+  flex-wrap: wrap;
+}
+
+.reprise-zones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: .65rem;
+}
+
+.reprise-zone-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .85rem;
+  cursor: pointer;
+  transition: border-color .15s, transform .12s, box-shadow .12s;
+}
+.reprise-zone-card:not(.reprise-zone-empty):hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.reprise-zone-card.reprise-zone-empty {
+  opacity: .45;
+  cursor: default;
+}
+
+.reprise-zone-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .4rem;
+  margin-bottom: .45rem;
+}
+.reprise-zone-name {
+  font-weight: 700;
+  font-size: .9rem;
+}
+.reprise-zone-nodata {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: .2rem;
+}
+.reprise-zone-median {
+  font-size: .82rem;
+  color: var(--text-muted);
+  margin-bottom: .45rem;
+}
+.reprise-zone-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: .22rem;
+}
+.reprise-zone-tier-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .8rem;
+  padding: 2px 0;
+}
+.zone-tier-label {
+  color: var(--text-muted);
+}
+.reprise-zone-cta {
+  font-size: .73rem;
+  color: var(--accent);
+  margin-top: .5rem;
+  text-align: right;
+  opacity: .8;
+}
+
+@media (max-width: 700px) {
+  .reprise-zones-grid        { grid-template-columns: repeat(2, 1fr); }
+  .reprise-zone-global-tiers { gap: .75rem; }
+}
+
 /* ── Toast ───────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -2112,4 +2248,166 @@ body.login-page {
 @media (max-width: 900px) {
   .biens-layout { grid-template-columns: 1fr; }
   .biens-list-col { max-height: 220px; overflow-y: auto; }
+}
+
+/* ── Catalogue ───────────────────────────────────────────────────────────── */
+
+.catalogue-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.catalogue-tab {
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: .88rem;
+  font-weight: 600;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.catalogue-tab:hover { border-color: var(--accent); color: var(--text); }
+.catalogue-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.catalogue-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 24px 0;
+}
+
+/* Sections (une par catégorie) */
+.catalogue-section {
+  margin-bottom: 32px;
+}
+
+.catalogue-cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  margin-bottom: 1px;
+}
+
+.catalogue-cat-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.catalogue-cat-intro {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Grille de fiches */
+.catalogue-fiches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.catalogue-fiche-empty {
+  color: var(--text-muted);
+  font-size: .85rem;
+  font-style: italic;
+  grid-column: 1 / -1;
+  padding: 8px 0;
+}
+
+/* Carte fiche */
+.catalogue-fiche-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color .15s, box-shadow .15s;
+}
+.catalogue-fiche-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(0,0,0,.2);
+}
+
+.catalogue-fiche-img {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  display: block;
+  background: var(--bg3);
+}
+
+.catalogue-fiche-no-img {
+  width: 100%;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  background: var(--bg3);
+  color: var(--text-muted);
+}
+
+.catalogue-fiche-body {
+  padding: 10px 12px 6px;
+  flex: 1;
+}
+
+.catalogue-fiche-nom {
+  font-weight: 700;
+  font-size: .92rem;
+  margin-bottom: 4px;
+}
+
+.catalogue-fiche-prix {
+  font-size: .8rem;
+  color: var(--accent2);
+  margin-bottom: 2px;
+}
+
+.catalogue-fiche-loc {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* Badges statut */
+.catalogue-statut-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: .72rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.catalogue-badge-ok      { background: rgba(46,204,113,.15); color: #2ecc71; border: 1px solid rgba(46,204,113,.3); }
+.catalogue-badge-attente { background: rgba(230,126,34,.15);  color: #e67e22; border: 1px solid rgba(230,126,34,.3); }
+.catalogue-badge-off     { background: rgba(149,165,166,.1);  color: #95a5a6; border: 1px solid rgba(149,165,166,.25); }
+
+/* Actions fiche */
+.catalogue-fiche-actions {
+  padding: 8px 12px 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .catalogue-fiches-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
 }

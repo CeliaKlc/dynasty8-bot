@@ -188,37 +188,45 @@ module.exports = {
       );
     } catch (e) { console.error('[RECLBC] Erreur sauvegarde lien :', e.message); }
 
-    // Enregistrer la vente en attente de confirmation du prix final (/bye)
-    let doublonWarning = false;
-    let dbEchec        = false;
+    // Enregistrer la vente (upsert — idempotent)
+    // Si un recap en cours existe déjà pour ce numéro, on le met à jour au lieu
+    // de créer un doublon. Cela couvre le cas : message supprimé + /recaplbc refait.
+    let recapMisAJour = false;
+    let dbEchec       = false;
     try {
-      const existant = await getDB().collection('ventes_lbc').findOne({ annonce, statut: 'en_cours' });
-      if (existant) doublonWarning = true;
-      await getDB().collection('ventes_lbc').insertOne({
-        annonce,
-        ticketChannelId: interaction.channel.id,
-        zone,
-        // Bien principal
-        type,    adresse,    etage:    etage    || null,
-        // Bien 2 (optionnel)
-        type2:   type2    || null,
-        adresse2: adresse2 || null,
-        etage2:  etage2   || null,
-        // Bien 3 (optionnel)
-        type3:   type3    || null,
-        adresse3: adresse3 || null,
-        etage3:  etage3   || null,
-        // Prix
-        prixDepart:      parsePrice(prixDepart),
-        prixNegociation: parsePrice(negociation), // seuil de négo, pas le prix final
-        commission:      parsePrice(commission),
-        // Méta
-        agentId:    interaction.user.id,
-        statut:     'en_cours',   // → 'vendu' ou 'annule' au /bye
-        prixFinal:  null,         // renseigné par /bye
-        dateRecap:  new Date(),
-        dateVente:  null,
-      });
+      const result = await getDB().collection('ventes_lbc').updateOne(
+        { annonce, statut: 'en_cours' },
+        {
+          $set: {
+            ticketChannelId: interaction.channel.id,
+            zone,
+            // Bien principal
+            type,    adresse,    etage:    etage    || null,
+            // Bien 2 (optionnel)
+            type2:    type2    || null,
+            adresse2: adresse2 || null,
+            etage2:   etage2   || null,
+            // Bien 3 (optionnel)
+            type3:    type3    || null,
+            adresse3: adresse3 || null,
+            etage3:   etage3   || null,
+            // Prix
+            prixDepart:      parsePrice(prixDepart),
+            prixNegociation: parsePrice(negociation), // seuil de négo, pas le prix final
+            commission:      parsePrice(commission),
+            // Méta
+            agentId:   interaction.user.id,
+            dateRecap: new Date(),
+          },
+          $setOnInsert: {
+            // 'statut: en_cours' est déjà inclus via le filtre
+            prixFinal: null, // renseigné par /bye
+            dateVente: null,
+          },
+        },
+        { upsert: true },
+      );
+      recapMisAJour = result.upsertedCount === 0; // 0 = entrée existante mise à jour
     } catch (e) {
       console.error('[RECLBC] Erreur sauvegarde vente_lbc :', e.message);
       dbEchec = true;
@@ -247,8 +255,8 @@ module.exports = {
         `✅ Récap LBC publié dans le ticket.\n\n` +
         `🚨 **Erreur critique** : la sauvegarde en base de données a échoué — ce récap **n'apparaîtra pas sur le panel** et ne sera **pas comptabilisé dans les stats**.\n` +
         `Pour réparer : fais \`/editrecaplbc\` sur ce message (sans rien changer) — ça recréera l'entrée automatiquement.`;
-    } else if (doublonWarning) {
-      replyContent += `\n\n⚠️ **Doublon détecté** : un récap en cours existe déjà pour l'annonce **n°${annonce}**. Si c'est voulu (lot multi-biens), ignore ce message. Sinon, utilise \`/vendu ${annonce}\` pour clôturer l'ancien récap avant de faire \`/bye\`.`;
+    } else if (recapMisAJour) {
+      replyContent += `\n\n🔄 **Note** : un récap existait déjà pour l'annonce **n°${annonce}** — l'entrée a été **mise à jour** (aucun doublon créé). Si c'était une erreur, les anciennes données ont été remplacées par celles-ci.`;
     }
     if (!dbEchec && prixDepartNum && prixNegoNum && prixNegoNum > prixDepartNum) {
       replyContent += `\n\n⚠️ **Attention** : le prix de négociation (**${formatPrix(negociation)}$**) est supérieur au prix de départ (**${formatPrix(prixDepart)}$**). Vérifie les montants.`;
