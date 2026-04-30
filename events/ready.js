@@ -1,8 +1,9 @@
 const { initScheduler, scheduleRdv } = require('../utils/rdvScheduler');
 const { sendRecap }                  = require('../utils/recapManager');
-const { initReducScheduler } = require('../utils/reducScheduler');
-const { initSupScheduler } = require('../utils/supScheduler');
-const { initByeScheduler } = require('../utils/byeScheduler');
+const { initReducScheduler }   = require('../utils/reducScheduler');
+const { initSupScheduler }     = require('../utils/supScheduler');
+const { initByeScheduler }     = require('../utils/byeScheduler');
+const { initQuestionScheduler } = require('../utils/questionScheduler');
 const { restaurerSessions } = require('../commands/carte');
 const { updateGuide } = require('../utils/guideManager');
 const { updateSacDashboard } = require('../utils/sacManager');
@@ -91,10 +92,11 @@ module.exports = {
 
     restaurerSessions(client).catch(console.error);
     updateGuide(client).catch(console.error);
-    initScheduler(client).catch(err     => console.error('[RDV]   Erreur init scheduler :', err.message));
-    initReducScheduler(client).catch(err => console.error('[REDUC] Erreur init scheduler :', err.message));
-    initSupScheduler(client).catch(err   => console.error('[SUP]   Erreur init scheduler :', err.message));
-    initByeScheduler(client).catch(err   => console.error('[BYE]   Erreur init scheduler :', err.message));
+    initScheduler(client).catch(err          => console.error('[RDV]      Erreur init scheduler :', err.message));
+    initReducScheduler(client).catch(err      => console.error('[REDUC]    Erreur init scheduler :', err.message));
+    initSupScheduler(client).catch(err        => console.error('[SUP]      Erreur init scheduler :', err.message));
+    initByeScheduler(client).catch(err        => console.error('[BYE]      Erreur init scheduler :', err.message));
+    initQuestionScheduler(client).catch(err   => console.error('[QUESTION] Erreur init scheduler :', err.message));
 
     // ── Change stream : mise à jour auto du dashboard sacs ────────────────────
     watchWithReconnect(
