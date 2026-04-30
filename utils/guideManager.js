@@ -23,6 +23,20 @@ function buildGuideEmbeds() {
              + '> Options modifiables : agent · type · transaction · quartier · image · garages · extras…',
       },
       {
+        name:  '`/renameannonce`',
+        value: 'Renomme le salon d\'annonce actuel avec le statut, le numéro, le type et le secteur.\n'
+             + '> Statuts : ✅ À vendre · ❌ Vendu',
+      },
+      {
+        name:  '`/editnumero`',
+        value: 'Corrige le numéro d\'une annonce mal saisi (met à jour la base de données et les boutons du message d\'annonce).',
+      },
+      {
+        name:  '`/lbc @client`',
+        value: 'Envoie les conditions LBC Dynasty 8 dans le ticket (contrat d\'exclusivité, frais de dossier, commission).\n'
+             + '> Le client confirme en réagissant ✅.',
+      },
+      {
         name:  '`/recaplbc`',
         value: 'Crée le récapitulatif LBC d\'un bien (description formatée avec prix, surface, zone, etc.).\n'
              + '> Les prix sont automatiquement formatés avec séparateurs (ex : 1\'600\'000).',
@@ -30,6 +44,12 @@ function buildGuideEmbeds() {
       {
         name:  '`/editrecaplbc`',
         value: 'Modifie un récapitulatif LBC existant à partir de l\'ID du message.',
+      },
+      {
+        name:  '`/vendu`',
+        value: 'Marque une annonce spécifique comme vendue **sans fermer le ticket**.\n'
+             + '> Utile pour les tickets multi-biens : clôture chaque annonce individuellement avec son propre prix.\n'
+             + '> Options : numéro de l\'annonce · prix de vente final (optionnel, défaut = prix de départ).',
       },
       {
         name:  '`/reduc`',
@@ -55,7 +75,13 @@ function buildGuideEmbeds() {
       {
         name:  '`/bye @client`',
         value: 'Envoie le message de clôture du ticket et invite le client à laisser un avis.\n'
-             + '> Le salon est renommé automatiquement avec ✅ et le ticket se ferme après 24h sans activité.',
+             + '> Le salon est renommé automatiquement avec ✅ et le ticket se ferme après 24h sans activité dans #avis-clients.',
+      },
+      {
+        name:  '`/question @client`',
+        value: 'Envoie un message de suivi pour savoir si le client a encore des questions.\n'
+             + '> Le ticket se ferme automatiquement après **24h** si le client ne répond pas dans le salon.\n'
+             + '> Le timer est annulé dès que le client poste un nouveau message.',
       },
       {
         name:  '`/sup @client`',
@@ -111,7 +137,43 @@ function buildGuideEmbeds() {
       },
     );
 
-  return [embedAnnonces, embedTickets, embedRdv, embedClients, embedCarte];
+  // ── Embed 6 : Gestion des sacs ──────────────────────────────────────────────
+  const embedSacs = new EmbedBuilder()
+    .setColor(0xC9A84C)
+    .setTitle('🎒 Gestion des sacs')
+    .addFields(
+      {
+        name:  '`/sac donner @agent`',
+        value: 'Attribue un ou plusieurs sacs à un agent (sélection via menu).\n'
+             + '> Sacs disponibles : Sac V1 (Agent) · Sac V2 (Agent Confirmé) · Sac à dos (Agent LBC) · Sac V3 (Direction)',
+      },
+      {
+        name:  '`/sac retirer @agent`',
+        value: 'Retire un ou plusieurs sacs d\'un agent (seuls les sacs possédés sont proposés).',
+      },
+      {
+        name:  '`/sac depart`',
+        value: 'Marque un agent comme parti — masqué du tableau actif, conservé dans l\'historique.',
+      },
+      {
+        name:  '`/sac retour`',
+        value: 'Réactive un agent parti — le remet dans le tableau actif.',
+      },
+    );
+
+  // ── Embed 7 : Statistiques ──────────────────────────────────────────────────
+  const embedStats = new EmbedBuilder()
+    .setColor(0xE74C3C)
+    .setTitle('📊 Statistiques')
+    .addFields(
+      {
+        name:  '`/stats`',
+        value: 'Affiche les statistiques de vente du mois en cours et de tous les temps.\n'
+             + '> Nombre de ventes · CA total · prix moyen · meilleur agent · top 3 des types de biens vendus.',
+      },
+    );
+
+  return [embedAnnonces, embedTickets, embedRdv, embedClients, embedCarte, embedSacs, embedStats];
 }
 
 // ─── Publication / mise à jour du guide ──────────────────────────────────────
