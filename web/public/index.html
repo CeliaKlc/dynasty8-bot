@@ -49,6 +49,9 @@
       <a href="#" class="nav-item" data-page="biens">
         <span class="nav-icon">🏗️</span> Types de biens
       </a>
+      <a href="#" class="nav-item" data-page="catalogue">
+        <span class="nav-icon">🏘️</span> Catalogue
+      </a>
       <a href="#" class="nav-item" data-page="logs">
         <span class="nav-icon">📜</span> Historique
       </a>
@@ -600,6 +603,26 @@
       <div class="attente-list" id="attente-list"></div>
     </section>
 
+    <!-- Page : Catalogue -->
+    <section id="page-catalogue" class="page">
+      <div class="page-header">
+        <h2 class="page-title">🏘️ Catalogue</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="catalogue-new-cat-btn">＋ Nouvelle catégorie</button>
+          <button class="btn btn-secondary" id="catalogue-republier-btn">🔄 Republier tout</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="catalogue-tabs">
+        <button class="catalogue-tab active" data-type="proprietes">🏠 Propriétés</button>
+        <button class="catalogue-tab" data-type="garages">🚗 Garages</button>
+      </div>
+
+      <!-- Contenu généré par JS -->
+      <div id="catalogue-content"></div>
+    </section>
+
   </main>
 
   <!-- Modal sacs -->
@@ -838,6 +861,89 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" id="bc-submit">✅ Créer le type</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : Catégorie catalogue -->
+  <div class="modal-overlay" id="catalogue-cat-modal" style="display:none">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <h3 id="catalogue-cat-modal-title">Nouvelle catégorie</h3>
+        <button class="modal-close" onclick="closeCatModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nom de la catégorie</label>
+          <input type="text" id="cat-label" class="config-input" placeholder="ex : Résidentiel">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="cat-type" class="config-input">
+            <option value="proprietes">🏠 Propriétés</option>
+            <option value="garages">🚗 Garages</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ID du salon Discord</label>
+          <input type="text" id="cat-channel" class="config-input" placeholder="ex : 123456789012345678">
+        </div>
+        <div class="form-group">
+          <label>Texte d'introduction</label>
+          <textarea id="cat-intro" class="recap-textarea" rows="3" placeholder="Voici les types d'intérieurs disponibles…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="catalogue-cat-delete-btn" style="display:none;margin-right:auto;color:var(--danger)">🗑️ Supprimer</button>
+        <button class="btn btn-secondary" onclick="closeCatModal()">Annuler</button>
+        <button class="btn btn-primary" id="catalogue-cat-save-btn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal : Fiche catalogue -->
+  <div class="modal-overlay" id="catalogue-fiche-modal" style="display:none">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <h3 id="catalogue-fiche-modal-title">Nouvelle fiche</h3>
+        <button class="modal-close" onclick="closeFicheModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nom du type de bien</label>
+          <input type="text" id="fiche-nom" class="config-input" placeholder="ex : Appartement Simple">
+        </div>
+        <div class="form-group">
+          <label>URL de l'image</label>
+          <input type="text" id="fiche-image" class="config-input" placeholder="https://i.goopics.net/...">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prix min <span style="color:var(--text-muted)">(ou "à partir de")</span></label>
+            <input type="number" id="fiche-prix-min" class="config-input" placeholder="ex : 150000" min="0">
+          </div>
+          <div class="form-group">
+            <label>Prix max <span style="color:var(--text-muted)">(optionnel)</span></label>
+            <input type="number" id="fiche-prix-max" class="config-input" placeholder="ex : 250000" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Prix location / jour <span style="color:var(--text-muted)">(optionnel)</span></label>
+          <input type="number" id="fiche-prix-loc" class="config-input" placeholder="ex : 2100" min="0">
+        </div>
+        <div class="form-group">
+          <label>Disponibilité</label>
+          <select id="fiche-statut" class="config-input">
+            <option value="disponible">✅ Disponible</option>
+            <option value="liste_attente">⏳ Liste d'attente</option>
+            <option value="indisponible">❌ Indisponible</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="catalogue-fiche-delete-btn" style="display:none;margin-right:auto;color:var(--danger)">🗑️ Supprimer</button>
+        <button class="btn btn-secondary" onclick="closeFicheModal()">Annuler</button>
+        <button class="btn btn-primary" id="catalogue-fiche-save-btn">Enregistrer</button>
       </div>
     </div>
   </div>

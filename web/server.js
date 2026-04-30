@@ -90,7 +90,9 @@ function watchSSE(collection, sections, retryMs = 5000) {
     { collection: 'sac_registry',  sections: ['sacs', 'dashboard'] },
     { collection: 'action_logs',   sections: ['logs'] },
     { collection: 'recap_hebdo',   sections: ['recap', 'dashboard'] },
-    { collection: 'bien_types',    sections: ['biens'] },
+    { collection: 'bien_types',          sections: ['biens'] },
+    { collection: 'catalogue_categories', sections: ['catalogue'] },
+    { collection: 'catalogue_fiches',     sections: ['catalogue'] },
   ];
 
   for (const { collection, sections } of streams) {

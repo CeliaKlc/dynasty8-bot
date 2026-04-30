@@ -1382,4 +1382,157 @@ router.get('/events', requireAuth, (req, res) => {
   });
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// CATALOGUE
+// ════════════════════════════════════════════════════════════════════════════
+
+// Récupérer toutes les catégories avec leurs fiches
+router.get('/catalogue', requireAuth, async (req, res) => {
+  try {
+    const db = getDB();
+    const categories = await db.collection('catalogue_categories')
+      .find({}).sort({ ordre: 1 }).toArray();
+
+    const result = await Promise.all(categories.map(async cat => {
+      const fiches = await db.collection('catalogue_fiches')
+        .find({ categorieId: cat._id }).sort({ ordre: 1 }).toArray();
+      return { ...cat, fiches };
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('[API] GET /catalogue :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Créer une catégorie
+router.post('/catalogue/categorie', requireAdmin, async (req, res) => {
+  try {
+    const { label, type, channelId, intro, ordre } = req.body;
+    if (!label || !type || !channelId) return res.status(400).json({ error: 'Champs manquants' });
+
+    const db = getDB();
+    const maxOrdre = await db.collection('catalogue_categories')
+      .find({ type }).sort({ ordre: -1 }).limit(1).toArray();
+    const nextOrdre = ordre ?? ((maxOrdre[0]?.ordre ?? 0) + 1);
+
+    const result = await db.collection('catalogue_categories').insertOne({
+      label, type, channelId,
+      intro: intro || '',
+      ordre: nextOrdre,
+      messageId: null,
+    });
+    res.json({ ok: true, id: result.insertedId });
+  } catch (err) {
+    console.error('[API] POST /catalogue/categorie :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Modifier une catégorie
+router.put('/catalogue/categorie/:id', requireAdmin, async (req, res) => {
+  try {
+    const { label, channelId, intro, ordre } = req.body;
+    const db = getDB();
+    const update = {};
+    if (label     !== undefined) update.label     = label;
+    if (channelId !== undefined) update.channelId = channelId;
+    if (intro     !== undefined) update.intro     = intro;
+    if (ordre     !== undefined) update.ordre     = Number(ordre);
+
+    await db.collection('catalogue_categories').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update },
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PUT /catalogue/categorie :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer une catégorie et ses fiches
+router.delete('/catalogue/categorie/:id', requireAdmin, async (req, res) => {
+  try {
+    const db = getDB();
+    const catId = new ObjectId(req.params.id);
+    await db.collection('catalogue_fiches').deleteMany({ categorieId: catId });
+    await db.collection('catalogue_categories').deleteOne({ _id: catId });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] DELETE /catalogue/categorie :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Créer une fiche
+router.post('/catalogue/fiche', requireAdmin, async (req, res) => {
+  try {
+    const { categorieId, nom, imageUrl, prixMin, prixMax, prixLocation, statut } = req.body;
+    if (!categorieId || !nom || !imageUrl) return res.status(400).json({ error: 'Champs manquants' });
+
+    const db = getDB();
+    const catObjId = new ObjectId(categorieId);
+    const maxOrdre = await db.collection('catalogue_fiches')
+      .find({ categorieId: catObjId }).sort({ ordre: -1 }).limit(1).toArray();
+    const nextOrdre = (maxOrdre[0]?.ordre ?? 0) + 1;
+
+    const result = await db.collection('catalogue_fiches').insertOne({
+      categorieId: catObjId,
+      nom,
+      imageUrl,
+      prixMin:      prixMin      ? Number(prixMin)      : null,
+      prixMax:      prixMax      ? Number(prixMax)      : null,
+      prixLocation: prixLocation ? Number(prixLocation) : null,
+      statut:       statut ?? 'disponible',
+      ordre:        nextOrdre,
+      messageId:    null,
+      updatedAt:    new Date(),
+    });
+    res.json({ ok: true, id: result.insertedId });
+  } catch (err) {
+    console.error('[API] POST /catalogue/fiche :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Modifier une fiche (statut, prix, etc.)
+router.put('/catalogue/fiche/:id', requireAdmin, async (req, res) => {
+  try {
+    const { nom, imageUrl, prixMin, prixMax, prixLocation, statut, ordre } = req.body;
+    const db     = getDB();
+    const update = { updatedAt: new Date() };
+
+    if (nom          !== undefined) update.nom          = nom;
+    if (imageUrl     !== undefined) update.imageUrl     = imageUrl;
+    if (statut       !== undefined) update.statut       = statut;
+    if (ordre        !== undefined) update.ordre        = Number(ordre);
+    if (prixMin      !== undefined) update.prixMin      = prixMin      ? Number(prixMin)      : null;
+    if (prixMax      !== undefined) update.prixMax      = prixMax      ? Number(prixMax)      : null;
+    if (prixLocation !== undefined) update.prixLocation = prixLocation ? Number(prixLocation) : null;
+
+    await db.collection('catalogue_fiches').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: update },
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PUT /catalogue/fiche :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer une fiche
+router.delete('/catalogue/fiche/:id', requireAdmin, async (req, res) => {
+  try {
+    const db = getDB();
+    await db.collection('catalogue_fiches').deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] DELETE /catalogue/fiche :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

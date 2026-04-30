@@ -48,8 +48,9 @@ function loadPage(page) {
   if (page === 'attente')   loadAttente();
   if (page === 'recap')     loadRecap();
   if (page === 'reprise')   loadReprise();
-  if (page === 'biens')     loadBiens();
-  if (page === 'logs')      loadLogs();
+  if (page === 'biens')      loadBiens();
+  if (page === 'catalogue')  loadCatalogue();
+  if (page === 'logs')       loadLogs();
   if (page === 'config')    loadConfig();
 }
 
@@ -2899,6 +2900,267 @@ async function doCalculerRepriseLot() {
 document.getElementById('btn-lot-calculer').addEventListener('click', () => {
   doCalculerRepriseLot();
 });
+
+// ── Catalogue ─────────────────────────────────────────────────────────────────
+
+let catalogueData     = [];   // toutes les catégories + fiches
+let catalogueTypeTab  = 'proprietes'; // onglet actif
+let catalogueCatEdit  = null; // catégorie en cours d'édition (_id string)
+let catalogueFicheEdit = null; // fiche en cours d'édition (_id string)
+let catalogueFicheCatId = null; // catégorie parente pour la création
+
+async function loadCatalogue() {
+  catalogueData = await api('/catalogue') ?? [];
+  renderCatalogueTabs();
+  renderCatalogueContent();
+}
+
+function renderCatalogueTabs() {
+  document.querySelectorAll('.catalogue-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.type === catalogueTypeTab);
+  });
+}
+
+function renderCatalogueContent() {
+  const container = document.getElementById('catalogue-content');
+  container.innerHTML = '';
+
+  const categories = catalogueData.filter(c => c.type === catalogueTypeTab);
+
+  if (!categories.length) {
+    container.innerHTML = '<div class="catalogue-empty">Aucune catégorie pour cet onglet. Créez-en une ci-dessous.</div>';
+    return;
+  }
+
+  categories.forEach(cat => {
+    const section = document.createElement('div');
+    section.className = 'catalogue-section';
+
+    // En-tête catégorie
+    section.innerHTML = `
+      <div class="catalogue-cat-header">
+        <div>
+          <div class="catalogue-cat-title">${escHtml(cat.label)}</div>
+          ${cat.intro ? `<div class="catalogue-cat-intro">${escHtml(cat.intro.slice(0, 80))}${cat.intro.length > 80 ? '…' : ''}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-secondary btn-sm" data-edit-cat="${cat._id}">✏️ Modifier</button>
+          <button class="btn btn-primary btn-sm" data-add-fiche="${cat._id}">＋ Fiche</button>
+        </div>
+      </div>
+    `;
+
+    // Grille de fiches
+    const grid = document.createElement('div');
+    grid.className = 'catalogue-fiches-grid';
+
+    if (!cat.fiches?.length) {
+      grid.innerHTML = '<div class="catalogue-fiche-empty">Aucune fiche dans cette catégorie.</div>';
+    } else {
+      cat.fiches.forEach(fiche => {
+        const card = document.createElement('div');
+        card.className = 'catalogue-fiche-card';
+
+        const STATUT_INFO = {
+          disponible:    { label: '✅ Disponible',       cls: 'catalogue-badge-ok'      },
+          liste_attente: { label: '⏳ Liste d\'attente', cls: 'catalogue-badge-attente'  },
+          indisponible:  { label: '❌ Indisponible',     cls: 'catalogue-badge-off'      },
+        };
+        const si = STATUT_INFO[fiche.statut] ?? { label: fiche.statut, cls: '' };
+
+        const prixLabel = fiche.prixMin && fiche.prixMax
+          ? `Entre ${fmtCatPrix(fiche.prixMin)} et ${fmtCatPrix(fiche.prixMax)}`
+          : fiche.prixMin ? `À partir de ${fmtCatPrix(fiche.prixMin)}`
+          : null;
+
+        card.innerHTML = `
+          ${fiche.imageUrl ? `<img class="catalogue-fiche-img" src="${escHtml(fiche.imageUrl)}" alt="">` : '<div class="catalogue-fiche-img catalogue-fiche-no-img">📷</div>'}
+          <div class="catalogue-fiche-body">
+            <div class="catalogue-fiche-nom">${escHtml(fiche.nom)}</div>
+            ${prixLabel ? `<div class="catalogue-fiche-prix">${escHtml(prixLabel)}</div>` : ''}
+            ${fiche.prixLocation ? `<div class="catalogue-fiche-loc">🔑 ${fmtCatPrix(fiche.prixLocation)}/jour</div>` : ''}
+            <span class="catalogue-statut-badge ${si.cls}">${si.label}</span>
+          </div>
+          <div class="catalogue-fiche-actions">
+            <button class="btn btn-secondary btn-sm" data-edit-fiche="${fiche._id}" data-cat-id="${cat._id}">✏️ Modifier</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+
+  // Events : modifier catégorie
+  container.querySelectorAll('[data-edit-cat]').forEach(btn => {
+    btn.addEventListener('click', () => openCatModal(btn.dataset.editCat));
+  });
+  // Events : ajouter fiche
+  container.querySelectorAll('[data-add-fiche]').forEach(btn => {
+    btn.addEventListener('click', () => openFicheModal(null, btn.dataset.addFiche));
+  });
+  // Events : modifier fiche
+  container.querySelectorAll('[data-edit-fiche]').forEach(btn => {
+    btn.addEventListener('click', () => openFicheModal(btn.dataset.editFiche, btn.dataset.catId));
+  });
+}
+
+function fmtCatPrix(n) {
+  if (!n && n !== 0) return '—';
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "'") + '$';
+}
+
+// ── Modal catégorie ───────────────────────────────────────────────────────────
+
+function openCatModal(catId = null) {
+  catalogueCatEdit = catId;
+  const cat = catId ? catalogueData.find(c => c._id === catId) : null;
+  document.getElementById('catalogue-cat-modal-title').textContent = cat ? 'Modifier la catégorie' : 'Nouvelle catégorie';
+  document.getElementById('cat-label').value   = cat?.label     ?? '';
+  document.getElementById('cat-type').value    = cat?.type      ?? catalogueTypeTab;
+  document.getElementById('cat-channel').value = cat?.channelId ?? '';
+  document.getElementById('cat-intro').value   = cat?.intro     ?? '';
+  document.getElementById('catalogue-cat-delete-btn').style.display = cat ? 'inline-flex' : 'none';
+  document.getElementById('catalogue-cat-modal').style.display = 'flex';
+}
+
+function closeCatModal() {
+  document.getElementById('catalogue-cat-modal').style.display = 'none';
+  catalogueCatEdit = null;
+}
+
+document.getElementById('catalogue-cat-save-btn').addEventListener('click', async () => {
+  const label     = document.getElementById('cat-label').value.trim();
+  const type      = document.getElementById('cat-type').value;
+  const channelId = document.getElementById('cat-channel').value.trim();
+  const intro     = document.getElementById('cat-intro').value.trim();
+
+  if (!label || !channelId) return toast('Nom et ID du salon requis', 'error');
+
+  const method = catalogueCatEdit ? 'PUT' : 'POST';
+  const path   = catalogueCatEdit ? `/catalogue/categorie/${catalogueCatEdit}` : '/catalogue/categorie';
+
+  const res = await api(path, { method, body: { label, type, channelId, intro } });
+  if (res?.ok) {
+    toast('✅ Catégorie enregistrée');
+    closeCatModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+document.getElementById('catalogue-cat-delete-btn').addEventListener('click', async () => {
+  if (!catalogueCatEdit) return;
+  if (!confirm('Supprimer cette catégorie et toutes ses fiches ?')) return;
+  const res = await api(`/catalogue/categorie/${catalogueCatEdit}`, { method: 'DELETE' });
+  if (res?.ok) {
+    toast('✅ Catégorie supprimée');
+    closeCatModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+// ── Modal fiche ───────────────────────────────────────────────────────────────
+
+function openFicheModal(ficheId = null, catId = null) {
+  catalogueFicheEdit = ficheId;
+  catalogueFicheCatId = catId;
+
+  let fiche = null;
+  if (ficheId) {
+    for (const cat of catalogueData) {
+      fiche = cat.fiches?.find(f => f._id === ficheId);
+      if (fiche) break;
+    }
+  }
+
+  document.getElementById('catalogue-fiche-modal-title').textContent = fiche ? 'Modifier la fiche' : 'Nouvelle fiche';
+  document.getElementById('fiche-nom').value      = fiche?.nom          ?? '';
+  document.getElementById('fiche-image').value    = fiche?.imageUrl     ?? '';
+  document.getElementById('fiche-prix-min').value = fiche?.prixMin      ?? '';
+  document.getElementById('fiche-prix-max').value = fiche?.prixMax      ?? '';
+  document.getElementById('fiche-prix-loc').value = fiche?.prixLocation ?? '';
+  document.getElementById('fiche-statut').value   = fiche?.statut       ?? 'disponible';
+  document.getElementById('catalogue-fiche-delete-btn').style.display = fiche ? 'inline-flex' : 'none';
+  document.getElementById('catalogue-fiche-modal').style.display = 'flex';
+}
+
+function closeFicheModal() {
+  document.getElementById('catalogue-fiche-modal').style.display = 'none';
+  catalogueFicheEdit  = null;
+  catalogueFicheCatId = null;
+}
+
+document.getElementById('catalogue-fiche-save-btn').addEventListener('click', async () => {
+  const nom         = document.getElementById('fiche-nom').value.trim();
+  const imageUrl    = document.getElementById('fiche-image').value.trim();
+  const prixMin     = document.getElementById('fiche-prix-min').value;
+  const prixMax     = document.getElementById('fiche-prix-max').value;
+  const prixLocation = document.getElementById('fiche-prix-loc').value;
+  const statut      = document.getElementById('fiche-statut').value;
+
+  if (!nom || !imageUrl) return toast('Nom et URL image requis', 'error');
+
+  const body = { nom, imageUrl, prixMin, prixMax, prixLocation, statut };
+
+  let res;
+  if (catalogueFicheEdit) {
+    res = await api(`/catalogue/fiche/${catalogueFicheEdit}`, { method: 'PUT', body });
+  } else {
+    res = await api('/catalogue/fiche', { method: 'POST', body: { ...body, categorieId: catalogueFicheCatId } });
+  }
+
+  if (res?.ok) {
+    toast('✅ Fiche enregistrée');
+    closeFicheModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+document.getElementById('catalogue-fiche-delete-btn').addEventListener('click', async () => {
+  if (!catalogueFicheEdit) return;
+  if (!confirm('Supprimer cette fiche ?')) return;
+  const res = await api(`/catalogue/fiche/${catalogueFicheEdit}`, { method: 'DELETE' });
+  if (res?.ok) {
+    toast('✅ Fiche supprimée');
+    closeFicheModal();
+    await loadCatalogue();
+  } else {
+    toast(res?.error || 'Erreur', 'error');
+  }
+});
+
+// ── Tabs & boutons statiques ──────────────────────────────────────────────────
+
+document.querySelectorAll('.catalogue-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    catalogueTypeTab = tab.dataset.type;
+    renderCatalogueTabs();
+    renderCatalogueContent();
+  });
+});
+
+document.getElementById('catalogue-new-cat-btn').addEventListener('click', () => openCatModal());
+
+document.getElementById('catalogue-republier-btn').addEventListener('click', async () => {
+  if (!confirm('Republier tout le catalogue sur Discord ? Cela peut prendre quelques secondes.')) return;
+  // La republication se déclenche côté bot via le change stream au prochain changement.
+  // Ici on notifie simplement — dans un futur endpoint dédié si besoin.
+  toast('ℹ️ Le catalogue se republie automatiquement via les change streams. Redémarre le bot si le salon a été vidé.', 'info');
+});
+
+// ── SSE : rechargement auto de la page catalogue ──────────────────────────────
+
+function onCatalogueSSE() {
+  if (currentPage === 'catalogue') loadCatalogue();
+}
 
 // ── Sidebar utilisateur ───────────────────────────────────────────────────────
 

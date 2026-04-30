@@ -10,6 +10,7 @@ const { handleCarteCheck } = require('../commands/carte');
 const { handleEmbedModal } = require('../commands/embed');
 const { handleRecapSemaineModal } = require('../commands/recapSemaine');
 const { handleSacHistorique, handleSacDonnerSelect, handleSacRetirerSelect } = require('../commands/sac');
+const { handleCatalogueButton } = require('../utils/catalogueManager');
 const { getDB } = require('../utils/db');
 
 const ROLES_AUTORISES = [
@@ -76,6 +77,19 @@ module.exports = {
           await handleAnnonceButton(interaction);
         } catch (err) {
           console.error('❌ Erreur bouton annonce :', err);
+          const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
+          if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
+          else await interaction.reply(msg).catch(() => {});
+        }
+        return;
+      }
+
+      // Boutons catalogue — accessibles à tous
+      if (interaction.customId.startsWith('catalogue_interesse_') || interaction.customId.startsWith('catalogue_attente_')) {
+        try {
+          await handleCatalogueButton(interaction);
+        } catch (err) {
+          console.error('❌ Erreur bouton catalogue :', err);
           const msg = { content: '❌ Une erreur est survenue.', ephemeral: true };
           if (interaction.replied || interaction.deferred) await interaction.followUp(msg).catch(() => {});
           else await interaction.reply(msg).catch(() => {});

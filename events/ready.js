@@ -8,6 +8,7 @@ const { restaurerSessions } = require('../commands/carte');
 const { updateGuide } = require('../utils/guideManager');
 const { updateSacDashboard } = require('../utils/sacManager');
 const { updateDashboard: updateAttenteDashboard } = require('../utils/attenteManager');
+const { publishCatalogue, updateFiche, updateCategorie } = require('../utils/catalogueManager');
 const { getDB } = require('../utils/db');
 const agentCache = require('../utils/agentCache');
 const bienCache  = require('../utils/bienCache');
@@ -178,5 +179,41 @@ module.exports = {
       'AgentCache',
     );
     console.log('[AgentCache] Change stream actif — cache synchronisé automatiquement');
+
+    // ── Catalogue : publication initiale ─────────────────────────────────────
+    publishCatalogue(client).catch(err =>
+      console.error('[CATALOGUE] Erreur publication initiale :', err.message),
+    );
+
+    // ── Change stream : mise à jour auto des fiches catalogue ─────────────────
+    watchWithReconnect(
+      () => getDB().collection('catalogue_fiches'),
+      [], { fullDocument: 'updateLookup' },
+      change => {
+        const fiche = change.fullDocument;
+        if (fiche) {
+          updateFiche(client, fiche).catch(err =>
+            console.error('[CATALOGUE] Erreur mise à jour fiche :', err.message),
+          );
+        }
+      },
+      'CATALOGUE_FICHES',
+    );
+
+    // ── Change stream : mise à jour auto des intros de catégorie ─────────────
+    watchWithReconnect(
+      () => getDB().collection('catalogue_categories'),
+      [], { fullDocument: 'updateLookup' },
+      change => {
+        const categorie = change.fullDocument;
+        if (categorie) {
+          updateCategorie(client, categorie).catch(err =>
+            console.error('[CATALOGUE] Erreur mise à jour catégorie :', err.message),
+          );
+        }
+      },
+      'CATALOGUE_CATEGORIES',
+    );
+    console.log('[CATALOGUE] Change streams actifs — catalogue synchronisé automatiquement');
   },
 };
