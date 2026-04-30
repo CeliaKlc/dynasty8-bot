@@ -137,43 +137,7 @@ function buildGuideEmbeds() {
       },
     );
 
-  // ── Embed 6 : Gestion des sacs ──────────────────────────────────────────────
-  const embedSacs = new EmbedBuilder()
-    .setColor(0xC9A84C)
-    .setTitle('🎒 Gestion des sacs')
-    .addFields(
-      {
-        name:  '`/sac donner @agent`',
-        value: 'Attribue un ou plusieurs sacs à un agent (sélection via menu).\n'
-             + '> Sacs disponibles : Sac V1 (Agent) · Sac V2 (Agent Confirmé) · Sac à dos (Agent LBC) · Sac V3 (Direction)',
-      },
-      {
-        name:  '`/sac retirer @agent`',
-        value: 'Retire un ou plusieurs sacs d\'un agent (seuls les sacs possédés sont proposés).',
-      },
-      {
-        name:  '`/sac depart`',
-        value: 'Marque un agent comme parti — masqué du tableau actif, conservé dans l\'historique.',
-      },
-      {
-        name:  '`/sac retour`',
-        value: 'Réactive un agent parti — le remet dans le tableau actif.',
-      },
-    );
-
-  // ── Embed 7 : Statistiques ──────────────────────────────────────────────────
-  const embedStats = new EmbedBuilder()
-    .setColor(0xE74C3C)
-    .setTitle('📊 Statistiques')
-    .addFields(
-      {
-        name:  '`/stats`',
-        value: 'Affiche les statistiques de vente du mois en cours et de tous les temps.\n'
-             + '> Nombre de ventes · CA total · prix moyen · meilleur agent · top 3 des types de biens vendus.',
-      },
-    );
-
-  return [embedAnnonces, embedTickets, embedRdv, embedClients, embedCarte, embedSacs, embedStats];
+  return [embedAnnonces, embedTickets, embedRdv, embedClients, embedCarte];
 }
 
 // ─── Publication / mise à jour du guide ──────────────────────────────────────

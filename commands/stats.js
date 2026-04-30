@@ -7,6 +7,8 @@ const agentCache     = require('../utils/agentCache');
 
 const fmt = n => n != null ? `${formatPrix(String(Math.round(n)))}$` : '—';
 
+const ROLE_DIRECTION_ID = '1375930527873368066';
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('stats')
@@ -14,6 +16,10 @@ module.exports = {
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
+
+    if (!interaction.member.roles.cache.has(ROLE_DIRECTION_ID)) {
+      return interaction.editReply({ content: '❌ Cette commande est réservée à la Direction.' });
+    }
 
     const db = getDB();
 
