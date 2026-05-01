@@ -734,6 +734,11 @@ let annoncesZoneFilter  = '';
 async function loadAnnonces() {
   annoncesData = await api('/annonces');
   if (!annoncesData) return;
+  // S'assurer que la liste complète des agents est disponible (pour le select d'édition)
+  if (!agentsData.length) {
+    const agents = await api('/agents');
+    if (agents) agentsData = agents;
+  }
   populateAnnoncesAgentSelect();
   renderAnnonces();
 }
@@ -857,12 +862,15 @@ function renderAnnonces() {
     }
 
     // Agent
+    const editAgentBtn = currentUser?.isAdmin
+      ? `<button class="annonce-agent-edit-btn" onclick="startEditAgent('${a.id}','${a.agent?.id ?? ''}')" title="Changer l'agent">✏️</button>`
+      : '';
     const agentHtml = a.agent
       ? `${a.agent.photo
           ? `<img class="annonce-agent-avatar" src="${a.agent.photo}" alt="" onerror="this.style.display='none'">`
           : `<span class="annonce-agent-emoji">${a.agent.emoji || '👤'}</span>`}
-         <span class="annonce-agent-name">${a.agent.name}</span>`
-      : `<span style="color:var(--text-muted)">Agent inconnu</span>`;
+         <span class="annonce-agent-name">${a.agent.name}</span>${editAgentBtn}`
+      : `<span style="color:var(--text-muted)">Agent inconnu</span>${editAgentBtn}`;
 
     // Bien
     const ZONE_ICONS = { Nord: '🔵', Sud: '🟡', 'Quartier Prisé': '🟣', Roxwood: '🔴', 'Las Venturas': '🟠' };
@@ -928,7 +936,7 @@ function renderAnnonces() {
         ${typeHtml}${zoneHtml}${adresseHtml}
       </div>
       <div class="annonce-card-body">
-        <div class="annonce-agent">${agentHtml}</div>
+        <div class="annonce-agent" id="agent-cell-${a.id}">${agentHtml}</div>
         <div class="annonce-prix">${prixHtml}</div>
       </div>
       <div class="annonce-card-footer">
@@ -942,6 +950,38 @@ function renderAnnonces() {
     `;
     grid.appendChild(card);
   });
+}
+
+function startEditAgent(annonceId, currentAgentId) {
+  const cell = document.getElementById(`agent-cell-${annonceId}`);
+  if (!cell) return;
+
+  const agents = agentsData.filter(a => (agentsSacMap[a.id]?.statut ?? 'actif') !== 'parti');
+  let opts = '<option value="">— Aucun —</option>';
+  agents.forEach(a => {
+    opts += `<option value="${escHtml(a.id)}" ${a.id === currentAgentId ? 'selected' : ''}>${a.emoji || '👤'} ${escHtml(a.name)}</option>`;
+  });
+
+  cell.innerHTML = `<select class="annonce-agent-select-inline" onchange="saveAgent('${annonceId}', this)">${opts}</select>`;
+  cell.querySelector('select').focus();
+}
+
+async function saveAgent(annonceId, select) {
+  const newAgentId = select.value;
+  select.disabled  = true;
+  const res = await api(`/annonces/${annonceId}/agent`, { method: 'PATCH', body: { agentId: newAgentId } });
+  if (res?.ok) {
+    const entry = annoncesData.find(a => a.id === annonceId);
+    if (entry) {
+      const agent  = agentsData.find(a => a.id === newAgentId);
+      entry.agent  = agent ? { id: agent.id, name: agent.name, emoji: agent.emoji, photo: agent.photo } : null;
+    }
+    toast('✅ Agent mis à jour', 'success');
+    renderAnnonces();
+  } else {
+    toast(res?.error || '❌ Erreur lors du changement d\'agent', 'error');
+    renderAnnonces();
+  }
 }
 
 async function toggleCles(btn) {

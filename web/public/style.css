@@ -1534,10 +1534,14 @@ body.login-page {
   gap: 8px;
   flex-wrap: wrap;
 }
-.annonce-agent        { display: flex; align-items: center; gap: 7px; }
-.annonce-agent-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
-.annonce-agent-emoji  { font-size: 1rem; }
-.annonce-agent-name   { font-size: .85rem; font-weight: 600; }
+.annonce-agent             { display: flex; align-items: center; gap: 7px; }
+.annonce-agent-avatar      { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+.annonce-agent-emoji       { font-size: 1rem; }
+.annonce-agent-name        { font-size: .85rem; font-weight: 600; }
+.annonce-agent-edit-btn    { background: none; border: none; cursor: pointer; font-size: .8rem; opacity: 0; padding: 2px 4px; border-radius: 4px; transition: opacity .15s; line-height: 1; }
+.annonce-card:hover .annonce-agent-edit-btn  { opacity: .45; }
+.annonce-agent-edit-btn:hover                { opacity: 1 !important; background: rgba(255,255,255,.08); }
+.annonce-agent-select-inline { font-size: .82rem; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; padding: 3px 6px; cursor: pointer; max-width: 160px; }
 
 .annonce-prix        { display: flex; align-items: center; gap: 6px; }
 .annonce-prix-depart { font-size: .82rem; color: var(--text-muted); }

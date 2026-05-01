@@ -351,6 +351,43 @@ router.get('/annonces', requireAuth, async (req, res) => {
   }
 });
 
+// Changer l'agent d'une annonce (et de la vente associée)
+router.patch('/annonces/:id/agent', requireAdmin, async (req, res) => {
+  try {
+    const { agentId } = req.body;
+    if (!agentId) return res.status(400).json({ error: 'agentId requis' });
+
+    const db      = getDB();
+    const annonce = await db.collection('annonce_links').findOne({ _id: new ObjectId(req.params.id) });
+    if (!annonce) return res.status(404).json({ error: 'Annonce introuvable' });
+
+    // Mettre à jour dans annonce_links ET dans ventes_lbc
+    await db.collection('annonce_links').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { agentId, updatedAt: new Date() } },
+    );
+    if (annonce.numero) {
+      await db.collection('ventes_lbc').updateMany(
+        { annonce: annonce.numero },
+        { $set: { agentId } },
+      );
+    }
+
+    const agent = agentCache.getById(agentId);
+    await logAction({
+      type:      'agent_change',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { numero: annonce.numero, nouvelAgent: agent?.name ?? agentId },
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PATCH /annonces/:id/agent :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // Mettre à jour le statut des clés d'une annonce
 router.patch('/annonces/:id/cles', requireAuth, async (req, res) => {
   try {
