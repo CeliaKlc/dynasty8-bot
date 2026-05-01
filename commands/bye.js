@@ -55,6 +55,11 @@ module.exports = {
 
     await interaction.channel.send({ embeds: [embed], components: [row] });
 
+    // Retirer l'accès au client immédiatement
+    await interaction.channel.permissionOverwrites.edit(client, { ViewChannel: false }).catch(err =>
+      console.error('[BYE] Impossible de retirer l\'accès au client :', err.message),
+    );
+
     // Renommer le salon pour indiquer la fin de service
     const chName = interaction.channel.name;
     if (!chName.includes('✅')) {
