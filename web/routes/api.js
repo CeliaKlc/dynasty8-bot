@@ -86,11 +86,25 @@ router.get('/stats', requireAuth, async (req, res) => {
         { $group: { _id: '$annonce' } },
         { $count: 'total' },
       ]).toArray().then(r => r[0]?.total ?? 0),
-      // LBC — CA total + prix moyen
+      // LBC — CA total + bénéfice total + prix moyen
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu', prixFinal: { $gt: 0 } } },
-        { $group: { _id: null, total: { $sum: '$prixFinal' }, avg: { $avg: '$prixFinal' } } },
-      ]).toArray().then(r => r[0] ?? { total: 0, avg: 0 }),
+        {
+          $group: {
+            _id:      null,
+            total:    { $sum: '$prixFinal' },
+            avg:      { $avg: '$prixFinal' },
+            benefice: {
+              $sum: {
+                $multiply: [
+                  '$prixFinal',
+                  { $divide: [{ $ifNull: ['$commission', 10] }, 100] },
+                ],
+              },
+            },
+          },
+        },
+      ]).toArray().then(r => r[0] ?? { total: 0, avg: 0, benefice: 0 }),
       // LBC — répartition par type (top 10)
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu' } },
@@ -98,10 +112,24 @@ router.get('/stats', requireAuth, async (req, res) => {
         { $sort: { count: -1 } },
         { $limit: 10 },
       ]).toArray(),
-      // LBC — top agents (par nb de ventes)
+      // LBC — top agents (par nb de ventes + bénéfice)
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu' } },
-        { $group: { _id: '$agentId', ventes: { $sum: 1 }, ca: { $sum: '$prixFinal' } } },
+        {
+          $group: {
+            _id:      '$agentId',
+            ventes:   { $sum: 1 },
+            ca:       { $sum: '$prixFinal' },
+            benefice: {
+              $sum: {
+                $multiply: [
+                  { $ifNull: ['$prixFinal', 0] },
+                  { $divide: [{ $ifNull: ['$commission', 10] }, 100] },
+                ],
+              },
+            },
+          },
+        },
         { $sort: { ventes: -1 } },
         { $limit: 8 },
       ]).toArray(),
@@ -131,6 +159,7 @@ router.get('/stats', requireAuth, async (req, res) => {
         photo:   agentMap[s._id]?.photo ?? null,
         ventes:  s.ventes,
         ca:      s.ca,
+        benefice: Math.round(s.benefice ?? 0),
       }));
 
     res.json({
@@ -138,12 +167,13 @@ router.get('/stats', requireAuth, async (req, res) => {
       annoncesActives: lbcEnCours, // dossiers réellement en cours (ventes_lbc.statut)
       totalSacs, totalAgents, statsParAgent,
       lbc: {
-        ventesTotal:  lbcVentesTotal,
-        ventesEnCours: lbcEnCours,
-        caTotal:      lbcCA.total,
-        prixMoyen:    lbcCA.avg > 0 ? Math.round(lbcCA.avg) : 0,
-        parType:      lbcParType.map(t => ({ type: t._id, count: t.count })),
-        parAgent:     lbcAgentStats,
+        ventesTotal:    lbcVentesTotal,
+        ventesEnCours:  lbcEnCours,
+        caTotal:        lbcCA.total,
+        prixMoyen:      lbcCA.avg > 0 ? Math.round(lbcCA.avg) : 0,
+        beneficeTotal:  Math.round(lbcCA.benefice ?? 0),
+        parType:        lbcParType.map(t => ({ type: t._id, count: t.count })),
+        parAgent:       lbcAgentStats,
       },
     });
   } catch (err) {

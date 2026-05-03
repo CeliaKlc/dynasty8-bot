@@ -364,10 +364,11 @@ async function loadDashboard() {
   const lbc = data.lbc;
   if (!lbc) return;
 
-  document.getElementById('lbc-stat-ventes').textContent  = lbc.ventesTotal   ?? 0;
-  document.getElementById('lbc-stat-encours').textContent = lbc.ventesEnCours ?? 0;
-  document.getElementById('lbc-stat-ca').textContent      = fmtCA(lbc.caTotal);
-  document.getElementById('lbc-stat-moyen').textContent   = lbc.prixMoyen ? fmtCA(lbc.prixMoyen) : '—';
+  document.getElementById('lbc-stat-ventes').textContent   = lbc.ventesTotal   ?? 0;
+  document.getElementById('lbc-stat-encours').textContent  = lbc.ventesEnCours ?? 0;
+  document.getElementById('lbc-stat-ca').textContent       = fmtCA(lbc.caTotal);
+  document.getElementById('lbc-stat-moyen').textContent    = lbc.prixMoyen ? fmtCA(lbc.prixMoyen) : '—';
+  document.getElementById('lbc-stat-benefice').textContent = lbc.beneficeTotal ? fmtCA(lbc.beneficeTotal) : '—';
 
   // Top agents LBC
   const agentsList = document.getElementById('lbc-agents-list');
@@ -383,7 +384,7 @@ async function loadDashboard() {
         ${avatarHtml}
         <div class="lbc-agent-info">
           <span class="lbc-agent-name">${a.emoji ? a.emoji + ' ' : ''}${a.name}</span>
-          <span class="lbc-agent-meta">${a.ventes} vente${a.ventes > 1 ? 's' : ''} · CA : ${fmtCA(a.ca)}</span>
+          <span class="lbc-agent-meta">${a.ventes} vente${a.ventes > 1 ? 's' : ''} · CA : ${fmtCA(a.ca)} · Bénéfice : ${a.benefice ? fmtCA(a.benefice) : '—'}</span>
         </div>
         <div class="lbc-agent-rank">#${i + 1}</div>
       `;
