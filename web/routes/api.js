@@ -36,7 +36,7 @@ router.get('/stats', requireAuth, async (req, res) => {
       totalAnnonces, totalSacs, totalAgents,
       parAgent,
       // LBC
-      lbcVentesTotal, lbcEnCours, lbcCA, lbcParType, lbcParAgent,
+      lbcVentesTotal, lbcEnCours, lbcCA, lbcParType, lbcParAgent, lbcCommissionEnCours,
     ] = await Promise.all([
       db.collection('annonce_links').countDocuments(),
       db.collection('sac_registry').aggregate([
@@ -86,11 +86,25 @@ router.get('/stats', requireAuth, async (req, res) => {
         { $group: { _id: '$annonce' } },
         { $count: 'total' },
       ]).toArray().then(r => r[0]?.total ?? 0),
-      // LBC — CA total + prix moyen
+      // LBC — CA total + bénéfice total + prix moyen
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu', prixFinal: { $gt: 0 } } },
-        { $group: { _id: null, total: { $sum: '$prixFinal' }, avg: { $avg: '$prixFinal' } } },
-      ]).toArray().then(r => r[0] ?? { total: 0, avg: 0 }),
+        {
+          $group: {
+            _id:      null,
+            total:    { $sum: '$prixFinal' },
+            avg:      { $avg: '$prixFinal' },
+            benefice: {
+              $sum: {
+                $multiply: [
+                  '$prixFinal',
+                  { $divide: [{ $ifNull: ['$commission', 10] }, 100] },
+                ],
+              },
+            },
+          },
+        },
+      ]).toArray().then(r => r[0] ?? { total: 0, avg: 0, benefice: 0 }),
       // LBC — répartition par type (top 10)
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu' } },
@@ -98,12 +112,39 @@ router.get('/stats', requireAuth, async (req, res) => {
         { $sort: { count: -1 } },
         { $limit: 10 },
       ]).toArray(),
-      // LBC — top agents (par nb de ventes)
+      // LBC — top agents (par nb de ventes + bénéfice)
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'vendu' } },
-        { $group: { _id: '$agentId', ventes: { $sum: 1 }, ca: { $sum: '$prixFinal' } } },
+        {
+          $group: {
+            _id:      '$agentId',
+            ventes:   { $sum: 1 },
+            ca:       { $sum: '$prixFinal' },
+            benefice: {
+              $sum: {
+                $multiply: [
+                  { $ifNull: ['$prixFinal', 0] },
+                  { $divide: [{ $ifNull: ['$commission', 10] }, 100] },
+                ],
+              },
+            },
+          },
+        },
         { $sort: { ventes: -1 } },
         { $limit: 8 },
+      ]).toArray(),
+      // LBC — commission moyenne par agent sur les dossiers EN COURS
+      db.collection('ventes_lbc').aggregate([
+        { $match: { statut: 'en_cours', commission: { $gt: 0 } } },
+        {
+          $group: {
+            _id:           '$agentId',
+            count:         { $sum: 1 },
+            commissionMoy: { $avg: '$commission' },
+            prixMoy:       { $avg: '$prixDepart' },
+          },
+        },
+        { $sort: { commissionMoy: -1 } },
       ]).toArray(),
     ]);
 
@@ -131,6 +172,7 @@ router.get('/stats', requireAuth, async (req, res) => {
         photo:   agentMap[s._id]?.photo ?? null,
         ventes:  s.ventes,
         ca:      s.ca,
+        benefice: Math.round(s.benefice ?? 0),
       }));
 
     res.json({
@@ -138,12 +180,24 @@ router.get('/stats', requireAuth, async (req, res) => {
       annoncesActives: lbcEnCours, // dossiers réellement en cours (ventes_lbc.statut)
       totalSacs, totalAgents, statsParAgent,
       lbc: {
-        ventesTotal:  lbcVentesTotal,
-        ventesEnCours: lbcEnCours,
-        caTotal:      lbcCA.total,
-        prixMoyen:    lbcCA.avg > 0 ? Math.round(lbcCA.avg) : 0,
-        parType:      lbcParType.map(t => ({ type: t._id, count: t.count })),
-        parAgent:     lbcAgentStats,
+        ventesTotal:    lbcVentesTotal,
+        ventesEnCours:  lbcEnCours,
+        caTotal:        lbcCA.total,
+        prixMoyen:      lbcCA.avg > 0 ? Math.round(lbcCA.avg) : 0,
+        beneficeTotal:  Math.round(lbcCA.benefice ?? 0),
+        parType:        lbcParType.map(t => ({ type: t._id, count: t.count })),
+        parAgent:       lbcAgentStats,
+        commissionEnCours: lbcCommissionEnCours
+          .filter(s => s._id)
+          .map(s => ({
+            agentId:       s._id,
+            name:          agentMap[s._id]?.name   ?? 'Inconnu',
+            emoji:         agentMap[s._id]?.emoji  ?? '',
+            photo:         agentMap[s._id]?.photo  ?? null,
+            count:         s.count,
+            commissionMoy: Math.round(s.commissionMoy * 10) / 10, // 1 décimale
+            prixMoy:       s.prixMoy ? Math.round(s.prixMoy) : null,
+          })),
       },
     });
   } catch (err) {
@@ -261,6 +315,63 @@ router.delete('/agents/:slug', requireAdmin, async (req, res) => {
   }
 });
 
+// Fiche détaillée d'un agent (ventes, stats, RDV)
+router.get('/agents/:id/profil', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db     = getDB();
+
+    const agent = agentCache.getById(id);
+    if (!agent) return res.status(404).json({ error: 'Agent introuvable' });
+
+    const [ventes, rdvs] = await Promise.all([
+      db.collection('ventes_lbc').find({ agentId: id }).sort({ dateRecap: -1 }).toArray(),
+      db.collection('rendez_vous').find({ agentId: id }).sort({ datetime: -1 }).limit(20).toArray(),
+    ]);
+
+    const ventesConfirmees = ventes.filter(v => v.statut === 'vendu' && v.prixFinal > 0);
+    const caTotal       = ventesConfirmees.reduce((s, v) => s + (v.prixFinal ?? 0), 0);
+    const beneficeTotal = ventesConfirmees.reduce((s, v) => s + (v.prixFinal ?? 0) * ((v.commission ?? 10) / 100), 0);
+    const prixMoyen     = ventesConfirmees.length ? Math.round(caTotal / ventesConfirmees.length) : 0;
+
+    res.json({
+      agent,
+      stats: {
+        ventesTotal:    ventesConfirmees.length,
+        dossiersEnCours: ventes.filter(v => v.statut === 'en_cours').length,
+        caTotal,
+        beneficeTotal:  Math.round(beneficeTotal),
+        prixMoyen,
+        rdvTotal:       rdvs.length,
+      },
+      ventes: ventes.map(v => ({
+        annonce:    v.annonce,
+        type:       v.type,
+        adresse:    v.adresse,
+        zone:       v.zone,
+        prixDepart: v.prixDepart,
+        prixFinal:  v.prixFinal,
+        commission: v.commission,
+        benefice:   (v.prixFinal && v.commission) ? Math.round(v.prixFinal * v.commission / 100) : null,
+        statut:     v.statut,
+        dateRecap:  v.dateRecap,
+        dateVente:  v.dateVente,
+      })),
+      rdv: rdvs.map(r => ({
+        id:          r.id,
+        datetime:    r.datetime,
+        description: r.description,
+        clientName:  r.clientName ?? null,
+        lieu:        r.lieu       ?? null,
+        statut:      r.statut,
+      })),
+    });
+  } catch (err) {
+    console.error('[API] GET /agents/:id/profil :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // Recharger le cache manuellement
 router.post('/agents/refresh', requireAdmin, async (req, res) => {
   try {
@@ -347,6 +458,43 @@ router.get('/annonces', requireAuth, async (req, res) => {
     res.json(enriched);
   } catch (err) {
     console.error('[API] /annonces :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Changer l'agent d'une annonce (et de la vente associée)
+router.patch('/annonces/:id/agent', requireAdmin, async (req, res) => {
+  try {
+    const { agentId } = req.body;
+    if (!agentId) return res.status(400).json({ error: 'agentId requis' });
+
+    const db      = getDB();
+    const annonce = await db.collection('annonce_links').findOne({ _id: new ObjectId(req.params.id) });
+    if (!annonce) return res.status(404).json({ error: 'Annonce introuvable' });
+
+    // Mettre à jour dans annonce_links ET dans ventes_lbc
+    await db.collection('annonce_links').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: { agentId, updatedAt: new Date() } },
+    );
+    if (annonce.numero) {
+      await db.collection('ventes_lbc').updateMany(
+        { annonce: annonce.numero },
+        { $set: { agentId } },
+      );
+    }
+
+    const agent = agentCache.getById(agentId);
+    await logAction({
+      type:      'agent_change',
+      actorId:   req.session.user?.id   ?? 'web',
+      actorName: req.session.user?.name ?? req.session.user?.username ?? 'Panel web',
+      details:   { numero: annonce.numero, nouvelAgent: agent?.name ?? agentId },
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PATCH /annonces/:id/agent :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -874,6 +1022,90 @@ router.get('/recap', requireAuth, async (req, res) => {
     res.json(docs.map(({ _id, ...r }) => r));
   } catch (err) {
     console.error('[API] GET /recap :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Modifier un récap existant
+router.put('/recap/:id', requireAdmin, async (req, res) => {
+  try {
+    const {
+      canalId,
+      cdp, vendeur, loueur,
+      arrivees, roles_sup,
+      departs, felicitations,
+      info, nouveau, avert,
+      ca, primes, benef,
+      top3Rows,
+      fel_1_agent, fel_1_grade,
+      fel_2_agent, fel_2_grade,
+      fel_3_agent, fel_3_grade,
+    } = req.body;
+
+    const infoLines = [];
+    if (info?.trim())    info.trim().split('\n').forEach(l => l.trim() && infoLines.push(`INFO: ${l.trim()}`));
+    if (nouveau?.trim()) nouveau.trim().split('\n').forEach(l => l.trim() && infoLines.push(`NOUVEAU: ${l.trim()}`));
+    if (avert?.trim())   avert.trim().split('\n').forEach(l => l.trim() && infoLines.push(`AVERT: ${l.trim()}`));
+    const informations = infoLines.join('\n');
+
+    const chiffres = (ca || primes || benef)
+      ? `${ca ?? ''} | ${primes ?? ''} | ${benef ?? ''}`
+      : '';
+
+    const top3 = (Array.isArray(top3Rows) ? top3Rows : [])
+      .filter(r => r[0] || r[1])
+      .map(r => `${r[0] || ''} ${r[1] || ''}`.trim())
+      .join('\n');
+
+    const update = {
+      canalId:       canalId?.trim() ?? '',
+      cdp:           cdp     || null,
+      vendeur:       vendeur || null,
+      loueur:        loueur  || null,
+      arrivees:      Array.isArray(arrivees)  ? arrivees.filter(a => a?.agent) : [],
+      roles_sup:     Array.isArray(roles_sup) ? roles_sup.filter(id => id?.trim()) : [],
+      departs:       departs?.trim()       || '',
+      felicitations: felicitations?.trim() || '',
+      informations,
+      chiffres,
+      top3,
+      fel_1_agent: fel_1_agent || null, fel_1_grade: fel_1_grade || null,
+      fel_2_agent: fel_2_agent || null, fel_2_grade: fel_2_grade || null,
+      fel_3_agent: fel_3_agent || null, fel_3_grade: fel_3_grade || null,
+      updatedAt: new Date(),
+    };
+
+    const result = await getDB().collection('recap_hebdo').updateOne(
+      { id: req.params.id },
+      { $set: update },
+    );
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'Récap introuvable' });
+
+    // Déclencher la mise à jour du message Discord si déjà publié
+    const existing = await getDB().collection('recap_hebdo').findOne({ id: req.params.id });
+    if (existing?.messageId) {
+      await getDB().collection('bot_commands').insertOne({
+        type:      'editer_recap',
+        recapId:   req.params.id,
+        createdAt: new Date(),
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] PUT /recap :', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Supprimer un récap
+router.delete('/recap/:id', requireAdmin, async (req, res) => {
+  try {
+    const result = await getDB().collection('recap_hebdo').deleteOne({ id: req.params.id });
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'Récap introuvable' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API] DELETE /recap :', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

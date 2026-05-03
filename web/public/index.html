@@ -104,6 +104,10 @@
           <div class="stat-value" id="lbc-stat-moyen">—</div>
           <div class="stat-label">Prix moyen de vente</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-value lbc-accent" id="lbc-stat-benefice">—</div>
+          <div class="stat-label">Bénéfice total (commissions)</div>
+        </div>
       </div>
 
       <div class="lbc-detail-grid">
@@ -116,6 +120,10 @@
           <div id="lbc-types-list"></div>
         </div>
       </div>
+
+      <h3 class="section-title" style="margin-top:32px">📊 Commission moyenne — dossiers en cours</h3>
+      <p style="font-size:.8rem;color:var(--text-muted);margin:-8px 0 16px">Classement par taux de commission moyen sur les dossiers actuellement en cours de vente.</p>
+      <div id="lbc-commission-list"></div>
     </section>
 
     <!-- Page : Agents -->
@@ -964,6 +972,16 @@
       </div>
     </div>
   </div>
+
+  <!-- Drawer : Fiche agent détaillée -->
+  <div class="drawer-overlay" id="agent-profil-overlay" onclick="closeAgentProfil()"></div>
+  <aside class="agent-profil-drawer" id="agent-profil-drawer">
+    <div class="drawer-topbar">
+      <span class="drawer-label">Fiche agent</span>
+      <button class="drawer-close-btn" onclick="closeAgentProfil()">✕</button>
+    </div>
+    <div class="agent-profil-content" id="agent-profil-content"></div>
+  </aside>
 
   <script src="app.js"></script>
 </body>
