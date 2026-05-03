@@ -1080,6 +1080,17 @@ router.put('/recap/:id', requireAdmin, async (req, res) => {
       { $set: update },
     );
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Récap introuvable' });
+
+    // Déclencher la mise à jour du message Discord si déjà publié
+    const existing = await getDB().collection('recap_hebdo').findOne({ id: req.params.id });
+    if (existing?.messageId) {
+      await getDB().collection('bot_commands').insertOne({
+        type:      'editer_recap',
+        recapId:   req.params.id,
+        createdAt: new Date(),
+      });
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error('[API] PUT /recap :', err);

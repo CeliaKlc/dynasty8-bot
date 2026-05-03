@@ -1,5 +1,5 @@
 const { initScheduler, scheduleRdv } = require('../utils/rdvScheduler');
-const { sendRecap }                  = require('../utils/recapManager');
+const { sendRecap, editRecap }       = require('../utils/recapManager');
 const { initReducScheduler }   = require('../utils/reducScheduler');
 const { initSupScheduler }     = require('../utils/supScheduler');
 const { initByeScheduler }     = require('../utils/byeScheduler');
@@ -246,6 +246,10 @@ module.exports = {
           for (const cat of categories) {
             await repostCategory(client, cat._id).catch(console.error);
           }
+        } else if (cmd.type === 'editer_recap' && cmd.recapId) {
+          console.log(`[RECAP] ✏️ Édition du récap ${cmd.recapId} depuis le panel`);
+          const recap = await getDB().collection('recap_hebdo').findOne({ id: cmd.recapId });
+          if (recap) await editRecap(client, recap).catch(console.error);
         }
       },
       'BOT_COMMANDS',
