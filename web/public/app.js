@@ -354,6 +354,7 @@ async function loadDashboard() {
         </div>
       </div>
     `;
+    if (s.agentId) card.addEventListener('click', () => openAgentProfil(s.agentId));
     grid.appendChild(card);
   });
   if (!data.statsParAgent?.length) {
@@ -388,10 +389,43 @@ async function loadDashboard() {
         </div>
         <div class="lbc-agent-rank">#${i + 1}</div>
       `;
+      if (a.agentId) el.addEventListener('click', () => openAgentProfil(a.agentId));
       agentsList.appendChild(el);
     });
   } else {
     agentsList.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">Aucune vente enregistrée pour le moment.</p>';
+  }
+
+  // Commission moyenne — dossiers en cours
+  const commList = document.getElementById('lbc-commission-list');
+  commList.innerHTML = '';
+  if (lbc.commissionEnCours?.length) {
+    const maxComm = Math.max(...lbc.commissionEnCours.map(a => a.commissionMoy), 1);
+    lbc.commissionEnCours.forEach((a, i) => {
+      const el = document.createElement('div');
+      el.className = 'lbc-comm-row';
+      const pct = Math.round((a.commissionMoy / maxComm) * 100);
+      const avatarHtml = a.photo
+        ? `<img class="lbc-agent-avatar" src="${a.photo}" alt="" onerror="this.style.display='none'">`
+        : `<div class="lbc-agent-avatar-ph">${a.emoji || '👤'}</div>`;
+      el.innerHTML = `
+        ${avatarHtml}
+        <div class="lbc-comm-info">
+          <div class="lbc-comm-name">${a.emoji ? a.emoji + ' ' : ''}${a.name}</div>
+          <div class="lbc-comm-bar-wrap">
+            <div class="lbc-comm-bar" style="width:${pct}%"></div>
+          </div>
+        </div>
+        <div class="lbc-comm-right">
+          <div class="lbc-comm-pct">${a.commissionMoy}%</div>
+          <div class="lbc-comm-meta">${a.count} dossier${a.count > 1 ? 's' : ''} · moy. ${a.prixMoy ? fmtCA(a.prixMoy) : '—'}</div>
+        </div>
+      `;
+      if (a.agentId) el.addEventListener('click', () => openAgentProfil(a.agentId));
+      commList.appendChild(el);
+    });
+  } else {
+    commList.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">Aucun dossier en cours avec commission renseignée.</p>';
   }
 
   // Répartition par type de bien
@@ -504,8 +538,13 @@ function renderAgentCard(grid, agent, isParti) {
     </div>
   ` : '';
 
+  const ficheBtn = agent.id
+    ? `<button class="agent-fiche-btn" onclick="openAgentProfil('${agent.id}');event.stopPropagation()" title="Fiche détaillée">📊</button>`
+    : '';
+
   card.innerHTML = `
     <button class="agent-preview-btn" onclick="openCardPreview(${JSON.stringify(agent).replace(/"/g, '&quot;')});event.stopPropagation()" title="Aperçu carte">👁️</button>
+    ${ficheBtn}
     ${avatarHtml}
     <div class="agent-name">${agent.emoji || ''} ${agent.name}</div>
     <div class="agent-titre">${agent.titre || ''}</div>
@@ -984,6 +1023,141 @@ async function saveAgent(annonceId, select) {
     renderAnnonces();
   }
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FICHE AGENT — Drawer
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function openAgentProfil(agentId) {
+  const overlay = document.getElementById('agent-profil-overlay');
+  const drawer  = document.getElementById('agent-profil-drawer');
+  const content = document.getElementById('agent-profil-content');
+
+  content.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text-muted)">Chargement…</div>';
+  overlay.classList.add('open');
+  drawer.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  const data = await api(`/agents/${agentId}/profil`);
+  if (!data) {
+    content.innerHTML = '<p style="color:var(--text-muted);padding:20px">Erreur lors du chargement.</p>';
+    return;
+  }
+
+  const { agent, stats, ventes, rdv } = data;
+
+  // ── Header ──────────────────────────────────────────────────────────────
+  const avatarHtml = agent.photo
+    ? `<img class="profil-agent-avatar" src="${escHtml(agent.photo)}" alt="" onerror="this.style.display='none'">`
+    : `<div class="profil-agent-avatar-ph">${agent.emoji || '👤'}</div>`;
+
+  const agreHtml = agent.agre?.length
+    ? `<div class="profil-agent-agre">${agent.agre.map(a => `<span class="profil-agre-badge">${escHtml(a)}</span>`).join('')}</div>`
+    : '';
+
+  // ── Stats ────────────────────────────────────────────────────────────────
+  const statsHtml = `
+    <div class="profil-stats-grid">
+      <div class="profil-stat-card">
+        <div class="profil-stat-value lbc-accent">${stats.ventesTotal}</div>
+        <div class="profil-stat-label">Ventes</div>
+      </div>
+      <div class="profil-stat-card">
+        <div class="profil-stat-value">${stats.dossiersEnCours}</div>
+        <div class="profil-stat-label">En cours</div>
+      </div>
+      <div class="profil-stat-card">
+        <div class="profil-stat-value">${stats.rdvTotal}</div>
+        <div class="profil-stat-label">RDV</div>
+      </div>
+      <div class="profil-stat-card" style="grid-column:span 3">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+          <div>
+            <div class="profil-stat-value">${stats.caTotal ? fmtCA(stats.caTotal) : '—'}</div>
+            <div class="profil-stat-label">CA total</div>
+          </div>
+          <div style="text-align:center">
+            <div class="profil-stat-value lbc-accent">${stats.beneficeTotal ? fmtCA(stats.beneficeTotal) : '—'}</div>
+            <div class="profil-stat-label">Bénéfice (commissions)</div>
+          </div>
+          <div style="text-align:right">
+            <div class="profil-stat-value">${stats.prixMoyen ? fmtCA(stats.prixMoyen) : '—'}</div>
+            <div class="profil-stat-label">Prix moyen</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── Ventes ───────────────────────────────────────────────────────────────
+  const ventesHtml = ventes.length
+    ? ventes.slice(0, 25).map(v => {
+        const badge = v.statut === 'vendu'
+          ? `<span class="profil-vente-badge profil-badge-vendu">✅ Vendu</span>`
+          : `<span class="profil-vente-badge profil-badge-encours">En cours</span>`;
+        const date = v.dateVente
+          ? new Date(v.dateVente).toLocaleDateString('fr-FR')
+          : v.dateRecap ? new Date(v.dateRecap).toLocaleDateString('fr-FR') : '—';
+        const beneficeHtml = v.benefice
+          ? `<div class="profil-vente-benefice">+${fmtCA(v.benefice)}</div>` : '';
+        return `
+          <div class="profil-vente-row">
+            <div>
+              ${badge}
+              <div class="profil-vente-type">${escHtml(v.type || '—')}${v.annonce ? ` <span style="color:var(--text-muted);font-weight:400;font-size:.78rem">#${escHtml(v.annonce)}</span>` : ''}</div>
+              <div class="profil-vente-meta">${escHtml(v.adresse || '—')}${v.zone ? ` · ${escHtml(v.zone)}` : ''}</div>
+            </div>
+            <div class="profil-vente-right">
+              <div class="profil-vente-prix">${v.prixFinal ? fmtCA(v.prixFinal) : v.prixDepart ? fmtCA(v.prixDepart) : '—'}</div>
+              ${beneficeHtml}
+              <div class="profil-vente-date">${date}</div>
+            </div>
+          </div>`;
+      }).join('')
+    : '<p style="color:var(--text-muted);font-size:.85rem;padding:8px 0">Aucune vente enregistrée.</p>';
+
+  // ── RDV ──────────────────────────────────────────────────────────────────
+  const rdvHtml = rdv.length
+    ? rdv.slice(0, 8).map(r => {
+        const past  = new Date(r.datetime) < new Date();
+        const dt    = new Date(r.datetime).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const annuleTag = r.statut === 'annulé' ? ' · <span style="color:var(--danger)">Annulé</span>' : '';
+        return `
+          <div class="profil-rdv-row" style="${past ? 'opacity:.45' : ''}">
+            <div class="profil-rdv-date">${dt}${annuleTag}</div>
+            <div class="profil-rdv-desc">${escHtml(r.description)}${r.clientName ? ` — ${escHtml(r.clientName)}` : ''}${r.lieu ? ` · 📍 ${escHtml(r.lieu)}` : ''}</div>
+          </div>`;
+      }).join('')
+    : '<p style="color:var(--text-muted);font-size:.85rem;padding:8px 0">Aucun rendez-vous.</p>';
+
+  content.innerHTML = `
+    <div class="profil-agent-header">
+      ${avatarHtml}
+      <div>
+        <div class="profil-agent-name">${agent.emoji ? agent.emoji + ' ' : ''}${escHtml(agent.name)}</div>
+        ${agent.titre ? `<div class="profil-agent-titre">${escHtml(agent.titre)}</div>` : ''}
+        ${agreHtml}
+      </div>
+    </div>
+
+    ${statsHtml}
+
+    <p class="profil-section-title">Historique des ventes</p>
+    <div>${ventesHtml}</div>
+
+    <p class="profil-section-title" style="margin-top:24px">Rendez-vous</p>
+    <div>${rdvHtml}</div>
+  `;
+}
+
+function closeAgentProfil() {
+  document.getElementById('agent-profil-overlay').classList.remove('open');
+  document.getElementById('agent-profil-drawer').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAgentProfil();
+});
 
 async function toggleCles(btn) {
   const id       = btn.dataset.id;
@@ -2123,6 +2297,8 @@ function renderTop3() {
 
 // ── Historique ───────────────────────────────────────────────────────────────
 
+let recapEditId = null; // ID du récap en cours d'édition (null = création)
+
 async function loadRecapHistory() {
   const recaps = await api('/recap');
   if (!recaps) return;
@@ -2144,14 +2320,108 @@ async function loadRecapHistory() {
       'a_publier': ['recap-statut-attente',  '⏳ En cours…'],
     })[r.statut] ?? ['recap-statut-brouillon', '📝 Brouillon'];
 
+    const actionBtns = currentUser?.isAdmin ? `
+      <div class="recap-history-actions">
+        <button class="recap-hist-btn" onclick="loadRecapForEdit(${JSON.stringify(r).replace(/"/g, '&quot;')})" title="Modifier">✏️</button>
+        <button class="recap-hist-btn recap-hist-del" onclick="deleteRecap('${r.id}')" title="Supprimer">🗑️</button>
+      </div>` : '';
+
     const item = document.createElement('div');
     item.className = 'recap-history-item';
     item.innerHTML = `
       <div class="recap-history-period">${date}</div>
       <span class="recap-statut ${cls}">${lbl}</span>
+      ${actionBtns}
     `;
     list.appendChild(item);
   });
+}
+
+// Pré-remplir le formulaire à partir d'un récap existant
+function loadRecapForEdit(r) {
+  recapEditId = r.id;
+
+  // Mettre à jour le bouton et le titre
+  const btn = document.getElementById('btn-recap-publier');
+  btn.textContent = '💾 Mettre à jour le récap';
+  btn.style.background = 'var(--accent2)';
+  document.getElementById('recap-publish-status').textContent = '✏️ Mode édition — modifiez puis cliquez sur "Mettre à jour"';
+
+  // Champs simples
+  document.getElementById('recap-canal').value         = r.canalId       || '';
+  document.getElementById('recap-cdp').value           = r.cdp           || '';
+  document.getElementById('recap-vendeur').value       = r.vendeur       || '';
+  document.getElementById('recap-loueur').value        = r.loueur        || '';
+  document.getElementById('recap-departs').value       = r.departs       || '';
+  document.getElementById('recap-felicitations').value = r.felicitations || '';
+
+  // Informations (reverse-parse INFO:/NOUVEAU:/AVERT:)
+  const info = [], nouveau = [], avert = [];
+  (r.informations || '').split('\n').forEach(line => {
+    if      (line.startsWith('INFO: '))    info.push(line.slice(6));
+    else if (line.startsWith('NOUVEAU: ')) nouveau.push(line.slice(9));
+    else if (line.startsWith('AVERT: '))   avert.push(line.slice(7));
+  });
+  document.getElementById('recap-info').value    = info.join('\n');
+  document.getElementById('recap-nouveau').value = nouveau.join('\n');
+  document.getElementById('recap-avert').value   = avert.join('\n');
+
+  // Chiffres (reverse-parse "ca | primes | benef")
+  const [ca = '', primes = '', benef = ''] = (r.chiffres || '').split(' | ');
+  document.getElementById('recap-ca').value     = ca.trim();
+  document.getElementById('recap-primes').value = primes.trim();
+  document.getElementById('recap-benef').value  = benef.trim();
+
+  // Top 3 (reverse-parse "count service\n...")
+  const top3Lines = (r.top3 || '').split('\n').filter(Boolean);
+  TOP3_MEDALS.forEach((_, i) => {
+    const parts = (top3Lines[i] || '').split(' ');
+    const count = parts[0] || '';
+    const service = parts.slice(1).join(' ') || '';
+    const countEl   = document.getElementById(`recap-top3-count-${i}`);
+    const serviceEl = document.getElementById(`recap-top3-service-${i}`);
+    if (countEl)   countEl.value   = count;
+    if (serviceEl) serviceEl.value = service;
+  });
+
+  // Arrivées
+  recapArrivees = r.arrivees?.length ? r.arrivees.map(a => ({ agent: a.agent || '', grade: a.grade || '' })) : [{ agent: '', grade: '' }];
+  renderRecapArrivees();
+
+  // Rôles supplémentaires
+  recapRolesSup = r.roles_sup?.length ? [...r.roles_sup] : [''];
+  renderRecapRolesSup();
+
+  // Félicitations
+  [1, 2, 3].forEach(n => {
+    const agentEl = document.getElementById(`recap-fel-${n}-agent`);
+    const gradeEl = document.getElementById(`recap-fel-${n}-grade`);
+    if (agentEl) agentEl.value = r[`fel_${n}_agent`] || '';
+    if (gradeEl) gradeEl.value = r[`fel_${n}_grade`] || '';
+  });
+
+  // Scroll vers le formulaire
+  document.querySelector('.recap-layout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetRecapEditMode() {
+  recapEditId = null;
+  const btn = document.getElementById('btn-recap-publier');
+  btn.textContent  = '📤 Publier le récap';
+  btn.style.background = '';
+  document.getElementById('recap-publish-status').textContent = '';
+}
+
+async function deleteRecap(id) {
+  if (!confirm('Supprimer ce récap ? Cette action est irréversible.')) return;
+  const res = await api(`/recap/${id}`, { method: 'DELETE' });
+  if (res?.ok) {
+    toast('🗑️ Récap supprimé', 'success');
+    if (recapEditId === id) resetRecapEditMode();
+    loadRecapHistory();
+  } else {
+    toast(res?.error || 'Erreur lors de la suppression', 'error');
+  }
 }
 
 // ── Publication ──────────────────────────────────────────────────────────────
@@ -2194,14 +2464,23 @@ document.getElementById('btn-recap-publier').addEventListener('click', async () 
   btn.disabled   = true;
   statusEl.textContent = '⏳ Publication en cours…';
 
-  const res = await api('/recap', { method: 'POST', body });
+  const isEdit = !!recapEditId;
+  const res = isEdit
+    ? await api(`/recap/${recapEditId}`, { method: 'PUT', body })
+    : await api('/recap', { method: 'POST', body });
 
   btn.disabled = false;
 
   if (res?.ok) {
     localStorage.setItem('recap_canal', canalId);
-    toast('📤 Récap envoyé sur Discord !');
-    statusEl.textContent = '✅ Publié avec succès';
+    if (isEdit) {
+      toast('✅ Récap mis à jour !');
+      statusEl.textContent = '✅ Modifications enregistrées';
+      resetRecapEditMode();
+    } else {
+      toast('📤 Récap envoyé sur Discord !');
+      statusEl.textContent = '✅ Publié avec succès';
+    }
     loadRecapHistory();
   } else {
     toast(res?.error || 'Erreur', 'error');
