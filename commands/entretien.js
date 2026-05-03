@@ -1,6 +1,6 @@
 // ─── Commande /entretien — Créneaux horaires interactifs ─────────────────────
 
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getDB } = require('../utils/db');
 
 // Emojis de créneaux (index 0 → '1️⃣', ..., index 9 → '🔟')
@@ -34,17 +34,14 @@ function buildContent(entretien) {
     ? `<@&${entretien.roleId}>, je vous propose aujourd'hui **${entretien.date}** à partir de **${entretien.creneaux[0].heure}** à l'agence Dynasty 8 🏠.`
     : `Je vous propose aujourd'hui **${entretien.date}** à partir de **${entretien.creneaux[0].heure}** à l'agence Dynasty 8 🏠.`;
 
-  const embed = new EmbedBuilder()
-    .setColor(0x076633)
-    .setDescription(
-      `${intro}\n\n` +
-      `Pour plus de facilité et vous éviter un temps d'attente inutile, nous allons mettre des tranches horaires, ` +
-      `vous avez juste à mettre celle que vous préférez.\n\n` +
-      `⚠️ Session limitée à **${entretien.limite}** personne${entretien.limite > 1 ? 's' : ''}.\n\n` +
-      `**Les candidats retenus pour cet entretien sont :**\n${lignes}`,
-    );
+  const texte =
+    `${intro}\n\n` +
+    `Pour plus de facilité et vous éviter un temps d'attente inutile, nous allons mettre des tranches horaires, ` +
+    `vous avez juste à mettre celle que vous préférez.\n\n` +
+    `⚠️ Session limitée à **${entretien.limite}** personne${entretien.limite > 1 ? 's' : ''}.\n\n` +
+    `**Les candidats retenus pour cet entretien sont :**\n${lignes}`;
 
-  return { embeds: [embed] };
+  return { content: texte };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
