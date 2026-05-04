@@ -1205,8 +1205,7 @@ function ouvrirModalVendu(annonce, prixDepart) {
 async function marquerVenduPanel(annonce, prix) {
   const res = await api('/annonces/vendu', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ annonce, prix }),
+    body: { annonce, prix },
   });
   if (res?.ok) {
     toast(`✅ Annonce n°${annonce} marquée comme vendue`);
