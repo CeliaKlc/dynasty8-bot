@@ -134,11 +134,20 @@ router.get('/stats', requireAuth, async (req, res) => {
         { $limit: 8 },
       ]).toArray(),
       // LBC — commission moyenne par agent sur les dossiers EN COURS
+      // Étape 1 : dédupliquer par (annonce, agentId) pour éviter les doublons historiques
+      // Étape 2 : grouper par agent
       db.collection('ventes_lbc').aggregate([
         { $match: { statut: 'en_cours', commission: { $gt: 0 } } },
         {
           $group: {
-            _id:           '$agentId',
+            _id:        { annonce: '$annonce', agentId: '$agentId' },
+            commission: { $avg: '$commission' },
+            prixDepart: { $avg: '$prixDepart' },
+          },
+        },
+        {
+          $group: {
+            _id:           '$_id.agentId',
             count:         { $sum: 1 },
             commissionMoy: { $avg: '$commission' },
             prixMoy:       { $avg: '$prixDepart' },
