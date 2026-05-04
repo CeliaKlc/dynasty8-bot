@@ -740,6 +740,9 @@ body.login-page {
 }
 .rdv-card:hover         { border-color: #9B59B6; }
 .rdv-card.rdv-card-annule { opacity: .45; border-left-color: var(--border); }
+.rdv-card.rdv-card-groupe { border-left-color: #E67E22; }
+.rdv-card.rdv-card-groupe:hover { border-color: #E67E22; }
+.rdv-groupe-badge { font-size: .7rem; font-weight: 600; background: rgba(230,126,34,.15); color: #E67E22; border-radius: 12px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
 
 .rdv-time-block {
   flex-shrink: 0;

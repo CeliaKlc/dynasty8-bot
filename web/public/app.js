@@ -1479,12 +1479,25 @@ function renderRdvList() {
     return;
   }
 
+  // ── Regrouper les RDV liés (même groupeId) en une seule entrée ──────────────
+  const seenGroupes = new Set();
+  const groupes = []; // tableau de tableaux : [[rdv], [rdv, rdv], ...]
+  filtered.forEach(r => {
+    if (!r.groupeId) {
+      groupes.push([r]);
+    } else if (!seenGroupes.has(r.groupeId)) {
+      seenGroupes.add(r.groupeId);
+      groupes.push(filtered.filter(x => x.groupeId === r.groupeId));
+    }
+  });
+
   const todayStr = new Date().toDateString();
   let lastDateLabel = null;
 
-  filtered.forEach(r => {
-    const dt         = new Date(r.datetime);
-    const dateLabel  = dt.toDateString() === todayStr
+  groupes.forEach(groupe => {
+    const r  = groupe[0]; // référence pour la date/heure/agent
+    const dt = new Date(r.datetime);
+    const dateLabel = dt.toDateString() === todayStr
       ? "Aujourd'hui"
       : dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -1497,25 +1510,65 @@ function renderRdvList() {
       list.appendChild(sep);
     }
 
-    const heureStr = dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const clientLabel = r.clientName
-      ? r.clientName
-      : r.clientId
-        ? `Client ···${r.clientId.slice(-4)}`
-        : 'Client non renseigné';
-
+    const heureStr    = dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     const statutClass = { 'prévu': 'rdv-statut-prevu', 'passé': 'rdv-statut-passe', 'annulé': 'rdv-statut-annule' }[r.statut] ?? '';
     const statutLabel = { 'prévu': '⏳ Prévu', 'passé': '✅ Passé', 'annulé': '❌ Annulé' }[r.statut] ?? r.statut;
-
-    const channelLink = r.guildId && r.channelId
-      ? `<a class="rdv-ticket-link" href="https://discord.com/channels/${r.guildId}/${r.channelId}" target="_blank">🔗 Salon</a>`
-      : '';
 
     const agentHtml = (rdvAgentFilter === null)
       ? `<span class="rdv-meta-item">
            ${r.agentPhoto ? `<img src="${r.agentPhoto}" class="rdv-agent-mini-avatar" onerror="this.style.display='none'">` : r.agentEmoji}
            ${r.agentName}
          </span>`
+      : '';
+
+    // ── Cas groupé : plusieurs parties ──────────────────────────────────────
+    if (groupe.length > 1) {
+      const partiesHtml = groupe.map(rdv => {
+        const label = rdv.clientName
+          ? rdv.clientName
+          : rdv.clientId ? `Client ···${rdv.clientId.slice(-4)}` : 'Client';
+        const lien = rdv.guildId && rdv.channelId
+          ? `<a class="rdv-ticket-link" href="https://discord.com/channels/${rdv.guildId}/${rdv.channelId}" target="_blank">🔗 Salon</a>`
+          : '';
+        return `<span class="rdv-meta-item">🤝 ${label} ${lien}</span>`;
+      }).join('');
+
+      const cancelBtns = (currentUser?.isAdmin && r.statut === 'prévu')
+        ? groupe.map(rdv =>
+            `<button class="rdv-cancel-btn" onclick="cancelRdv('${rdv.id}')">Annuler</button>`
+          ).join(' ')
+        : '';
+
+      const card = document.createElement('div');
+      card.className = `rdv-card rdv-card-groupe ${r.statut === 'annulé' ? 'rdv-card-annule' : ''}`;
+      card.innerHTML = `
+        <div class="rdv-time-block">
+          <div class="rdv-heure">${heureStr}</div>
+        </div>
+        <div class="rdv-body">
+          <div class="rdv-description">${r.description} <span class="rdv-groupe-badge">👥 ${groupe.length} parties</span></div>
+          <div class="rdv-meta">
+            ${partiesHtml}
+            ${r.lieu ? `<span class="rdv-meta-item">📍 ${r.lieu}</span>` : ''}
+            ${agentHtml}
+          </div>
+        </div>
+        <div class="rdv-right">
+          <span class="rdv-statut ${statutClass}">${statutLabel}</span>
+          ${cancelBtns}
+        </div>
+      `;
+      list.appendChild(card);
+      return;
+    }
+
+    // ── Cas normal : une seule partie ────────────────────────────────────────
+    const clientLabel = r.clientName
+      ? r.clientName
+      : r.clientId ? `Client ···${r.clientId.slice(-4)}` : 'Client non renseigné';
+
+    const channelLink = r.guildId && r.channelId
+      ? `<a class="rdv-ticket-link" href="https://discord.com/channels/${r.guildId}/${r.channelId}" target="_blank">🔗 Salon</a>`
       : '';
 
     const cancelBtn = (currentUser?.isAdmin && r.statut === 'prévu')

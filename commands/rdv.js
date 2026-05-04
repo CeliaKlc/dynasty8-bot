@@ -72,6 +72,22 @@ module.exports = {
           { name: 'À l\'heure pile seulement', value: 0 },
         )
         .setRequired(false))
+      .addStringOption(opt => opt
+        .setName('lier_a')
+        .setDescription('ID d\'un RDV existant à lier (ex: acheteur + vendeur sans se connaître)')
+        .setRequired(false))
+    )
+    .addSubcommand(sub => sub
+      .setName('lier')
+      .setDescription('Lier deux RDV existants (apparaissent comme un seul sur le panel)')
+      .addStringOption(opt => opt
+        .setName('id1')
+        .setDescription('ID du premier RDV')
+        .setRequired(true))
+      .addStringOption(opt => opt
+        .setName('id2')
+        .setDescription('ID du second RDV')
+        .setRequired(true))
     )
     .addSubcommand(sub => sub
       .setName('liste')
@@ -102,6 +118,7 @@ module.exports = {
       const rappelMinutes = interaction.options.getInteger('rappel') ?? 30;
       const description = interaction.options.getString('description') ?? 'Rendez-vous';
       const lieu = interaction.options.getString('lieu') ?? null;
+      const lierA = interaction.options.getString('lier_a') ?? null;
 
       const datetime = parseDateTime(dateStr, heureStr);
       if (!datetime) {
@@ -118,6 +135,21 @@ module.exports = {
         });
       }
 
+      // Si lier_a est fourni, vérifier que le RDV cible existe
+      let groupeId = null;
+      if (lierA) {
+        const cible = await col.findOne({ id: lierA });
+        if (!cible) {
+          return interaction.reply({
+            content: `❌ Aucun RDV trouvé avec l'ID \`${lierA}\`. Vérifie l'identifiant.`,
+            ephemeral: true,
+          });
+        }
+        groupeId = lierA; // on utilise l'ID du premier RDV comme identifiant de groupe
+        // Mettre à jour le RDV cible pour lui ajouter le même groupeId
+        await col.updateOne({ id: lierA }, { $set: { groupeId } });
+      }
+
       const id = `rdv_${Date.now()}`;
       const rdvEntry = {
         id,
@@ -131,6 +163,7 @@ module.exports = {
         rappelMinutes,
         statut: 'prévu',
         createdAt: new Date().toISOString(),
+        ...(groupeId ? { groupeId } : {}),
       };
 
       await col.insertOne(rdvEntry);
@@ -176,6 +209,28 @@ module.exports = {
       return interaction.reply({
         content: `<@${interaction.user.id}> <@${clientUser.id}>`,
         embeds: [embed],
+      });
+    }
+
+    // ─── LIER ────────────────────────────────────────────────────────────────
+    if (sub === 'lier') {
+      const id1 = interaction.options.getString('id1');
+      const id2 = interaction.options.getString('id2');
+
+      const [rdv1, rdv2] = await Promise.all([
+        col.findOne({ id: id1 }),
+        col.findOne({ id: id2 }),
+      ]);
+
+      if (!rdv1) return interaction.reply({ content: `❌ RDV introuvable : \`${id1}\``, ephemeral: true });
+      if (!rdv2) return interaction.reply({ content: `❌ RDV introuvable : \`${id2}\``, ephemeral: true });
+
+      const groupeId = id1; // le premier ID sert d'identifiant de groupe
+      await col.updateMany({ id: { $in: [id1, id2] } }, { $set: { groupeId } });
+
+      return interaction.reply({
+        content: `✅ RDV \`${id1}\` et \`${id2}\` sont maintenant liés.\nSur le panel, ils apparaîtront comme **un seul rendez-vous** avec deux parties.`,
+        ephemeral: true,
       });
     }
 

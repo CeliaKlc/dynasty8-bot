@@ -842,6 +842,7 @@ router.get('/rdv', requireAuth, async (req, res) => {
       rappelMinutes: r.rappelMinutes,
       statut:        r.statut,
       createdAt:     r.createdAt,
+      groupeId:      r.groupeId  ?? null,
     }));
 
     // Résumé par agent (pour les filtres)
